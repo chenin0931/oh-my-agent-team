@@ -173,7 +173,7 @@ func TestCanonicalBusinessEmail(t *testing.T) {
 		wantOk  bool
 	}{
 		{"plain", "ada@ohmyagentteam.com", "ada@ohmyagentteam.com", true},
-		{"uppercase normalized", "Ada@OhMyAgentTeam.AI", "ada@ohmyagentteam.com", true},
+		{"uppercase normalized", "Ada@OhMyAgentTeam.COM", "ada@ohmyagentteam.com", true},
 		{"trim whitespace", "  ada@ohmyagentteam.com  ", "ada@ohmyagentteam.com", true},
 		{"display name stripped", "Ada Lovelace <ada@ohmyagentteam.com>", "ada@ohmyagentteam.com", true},
 		{"angle-bracketed", "<ada@ohmyagentteam.com>", "ada@ohmyagentteam.com", true},

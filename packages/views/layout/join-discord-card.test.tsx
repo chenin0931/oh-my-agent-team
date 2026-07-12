@@ -34,7 +34,7 @@ afterEach(() => {
 describe("JoinDiscordCard", () => {
   it("links to GitHub Discussions", () => {
     render(<JoinDiscordCard />);
-    const link = screen.getByRole("link", { name: /join our discord/i });
+    const link = screen.getByRole("link", { name: /join the community/i });
     expect(link).toHaveAttribute("href", "https://github.com/chenin0931/oh-my-agent-team/discussions");
     expect(link).toHaveAttribute("target", "_blank");
   });
