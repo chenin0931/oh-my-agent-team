@@ -7,9 +7,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/multica-ai/multica/server/internal/logger"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
-	"github.com/multica-ai/multica/server/pkg/protocol"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/logger"
+	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
+	"github.com/chenin0931/oh-my-agent-team/server/pkg/protocol"
 )
 
 type ReactionResponse struct {
@@ -57,6 +57,9 @@ func (h *Handler) AddReaction(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "comment not found")
 		return
 	}
+	if h.rejectMemberAssigneeAdvisorMutation(w, r, comment.IssueID, false) {
+		return
+	}
 
 	var req struct {
 		Emoji string `json:"emoji"`
@@ -90,9 +93,11 @@ func (h *Handler) AddReaction(w http.ResponseWriter, r *http.Request) {
 	// Look up issue title for inbox notifications.
 	issueID := uuidToString(comment.IssueID)
 	var issueTitle, issueStatus string
+	targetType := "issue"
 	if issue, err := h.Queries.GetIssue(r.Context(), comment.IssueID); err == nil {
 		issueTitle = issue.Title
 		issueStatus = issue.Status
+		targetType = targetTypeForIssue(issue)
 	}
 
 	h.publish(protocol.EventReactionAdded, workspaceID, actorType, actorID, map[string]any{
@@ -100,6 +105,8 @@ func (h *Handler) AddReaction(w http.ResponseWriter, r *http.Request) {
 		"issue_id":            issueID,
 		"issue_title":         issueTitle,
 		"issue_status":        issueStatus,
+		"target_type":         targetType,
+		"target_id":           issueID,
 		"comment_id":          uuidToString(comment.ID),
 		"comment_author_type": comment.AuthorType,
 		"comment_author_id":   uuidToString(comment.AuthorID),
@@ -132,6 +139,9 @@ func (h *Handler) RemoveReaction(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "comment not found")
 		return
 	}
+	if h.rejectMemberAssigneeAdvisorMutation(w, r, comment.IssueID, false) {
+		return
+	}
 
 	var req struct {
 		Emoji string `json:"emoji"`
@@ -159,11 +169,13 @@ func (h *Handler) RemoveReaction(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.publish(protocol.EventReactionRemoved, workspaceID, actorType, actorID, map[string]any{
-		"comment_id": uuidToString(comment.ID),
-		"issue_id":   uuidToString(comment.IssueID),
-		"emoji":      req.Emoji,
-		"actor_type": actorType,
-		"actor_id":   actorID,
+		"comment_id":  uuidToString(comment.ID),
+		"issue_id":    uuidToString(comment.IssueID),
+		"emoji":       req.Emoji,
+		"actor_type":  actorType,
+		"actor_id":    actorID,
+		"target_type": h.targetTypeForIssueID(r.Context(), comment.IssueID),
+		"target_id":   uuidToString(comment.IssueID),
 	})
 	w.WriteHeader(http.StatusNoContent)
 }

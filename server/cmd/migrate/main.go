@@ -9,9 +9,9 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/multica-ai/multica/server/internal/logger"
-	"github.com/multica-ai/multica/server/internal/migrations"
-	"github.com/multica-ai/multica/server/internal/taskusagebackfill"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/logger"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/migrations"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/taskusagebackfill"
 )
 
 // preMigrationHook runs work that must happen before a specific
@@ -65,7 +65,7 @@ func runTaskUsageHourlyHook(ctx context.Context, pool *pgxpool.Pool) error {
 // runners (multi-replica backend Deployment, scale-up, or a manual
 // `migrate up` overlapping with pod startup). The exact value is
 // arbitrary — it just needs to be stable across every process that runs
-// migrations against the same database. See GitHub multica-ai/multica#3647.
+// migrations against the same database. See GitHub chenin0931/oh-my-agent-team#3647.
 const migrationAdvisoryLockKey int64 = 7244554146635925501
 
 // defaultSchemaMigrationsTable is the unqualified name of the bookkeeping
@@ -119,7 +119,7 @@ func main() {
 
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
-		dbURL = "postgres://multica:multica@localhost:5432/multica?sslmode=disable"
+		dbURL = "postgres://ohmyagentteam:ohmyagentteam@localhost:5432/ohmyagentteam?sslmode=disable"
 	}
 
 	ctx := context.Background()
@@ -163,7 +163,7 @@ func main() {
 // processes against the same database with the same options: every
 // caller blocks on pg_advisory_lock, and once it is their turn the
 // already-applied EXISTS check turns each finished migration into a
-// no-op skip. See GitHub multica-ai/multica#3647 / MUL-2923.
+// no-op skip. See GitHub chenin0931/oh-my-agent-team#3647 / MUL-2923.
 func runMigrations(ctx context.Context, pool *pgxpool.Pool, opts runOptions) error {
 	switch opts.Direction {
 	case "up", "down":

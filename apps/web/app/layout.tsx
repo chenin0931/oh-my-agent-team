@@ -2,12 +2,13 @@ import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { Inter, Geist_Mono, Source_Serif_4 } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
-import { Toaster } from "@multica/ui/components/ui/sonner";
-import { cn } from "@multica/ui/lib/utils";
+import { Toaster } from "@ohmyagentteam/ui/components/ui/sonner";
+import { cn } from "@ohmyagentteam/ui/lib/utils";
 import { WebProviders } from "@/components/web-providers";
-import type { SupportedLocale } from "@multica/core/i18n";
-import { RESOURCES } from "@multica/views/locales";
+import type { SupportedLocale } from "@ohmyagentteam/core/i18n";
+import { RESOURCES } from "@ohmyagentteam/views/locales";
 import { getRequestLocale } from "@/lib/request-locale";
+import { BRAND_NAME, BRAND_TAGLINE } from "@ohmyagentteam/core/brand";
 import "./globals.css";
 
 // Inter is the Latin UI face. next/font produces a hashed family (`__Inter_xxx`)
@@ -33,7 +34,7 @@ const geistMono = Geist_Mono({
   variable: "--font-mono",
   fallback: ["ui-monospace", "SFMono-Regular", "Menlo", "Consolas", "monospace"],
 });
-// Editorial serif used for onboarding headlines. Italic support for h1 em
+// Editorial serif used for product-tour headlines. Italic support for h1 em
 // accents (e.g. "...on one shared board."). Only loaded on routes that
 // render the font; layout-shift-prevention handled by next/font's synthetic
 // fallback metrics, same as Inter.
@@ -61,26 +62,24 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://www.multica.ai"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"),
   title: {
-    default: "Multica — Project Management for Human + Agent Teams",
-    template: "%s | Multica",
+    default: `${BRAND_NAME} — People and agents, one team`,
+    template: `%s | ${BRAND_NAME}`,
   },
   description:
-    "Open-source platform that turns coding agents into real teammates. Assign tasks, track progress, compound skills.",
+    `${BRAND_TAGLINE} Plan work, delegate to people or agents, and collaborate in one shared workspace.`,
   icons: {
     icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
     shortcut: ["/favicon.svg"],
   },
   openGraph: {
     type: "website",
-    siteName: "Multica",
+    siteName: BRAND_NAME,
     locale: "en_US",
   },
   twitter: {
     card: "summary_large_image",
-    site: "@multica_hq",
-    creator: "@multica_hq",
   },
   alternates: {
     canonical: "/",

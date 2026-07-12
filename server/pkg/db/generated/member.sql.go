@@ -86,6 +86,30 @@ func (q *Queries) GetMemberByUserAndWorkspace(ctx context.Context, arg GetMember
 	return i, err
 }
 
+const getWorkspaceOwnershipSuccessor = `-- name: GetWorkspaceOwnershipSuccessor :one
+SELECT user_id FROM member
+WHERE workspace_id = $1 AND user_id <> $2
+ORDER BY
+    CASE role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 ELSE 2 END,
+    created_at ASC
+LIMIT 1
+`
+
+type GetWorkspaceOwnershipSuccessorParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	UserID      pgtype.UUID `json:"user_id"`
+}
+
+// Prefer another workspace owner, then an admin, then the earliest remaining
+// member. The caller only uses the fallback member when the workspace has no
+// second owner/admin, ensuring resources never become orphaned on removal.
+func (q *Queries) GetWorkspaceOwnershipSuccessor(ctx context.Context, arg GetWorkspaceOwnershipSuccessorParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, getWorkspaceOwnershipSuccessor, arg.WorkspaceID, arg.UserID)
+	var user_id pgtype.UUID
+	err := row.Scan(&user_id)
+	return user_id, err
+}
+
 const listMembers = `-- name: ListMembers :many
 SELECT id, workspace_id, user_id, role, created_at FROM member
 WHERE workspace_id = $1

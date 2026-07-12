@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { Check, Copy, Terminal } from "lucide-react";
-import { copyText } from "@multica/ui/lib/clipboard";
+import { copyText } from "@ohmyagentteam/ui/lib/clipboard";
 import { useLocale } from "../../i18n";
 
 const INSTALL_CMD =
-  "curl -fsSL https://raw.githubusercontent.com/multica-ai/multica/main/scripts/install.sh | bash";
-const SETUP_CMD = "multica setup";
+  "curl -fsSL https://raw.githubusercontent.com/chenin0931/oh-my-agent-team/main/scripts/install.sh | bash";
+const SETUP_CMD = "omat setup";
 
 /**
  * Scenario-first CLI section. Copy leans into servers / remote dev
@@ -21,7 +21,7 @@ export function CliSection() {
   return (
     <section id="cli" className="bg-[#f7f7f5] py-20 text-[#0a0d12] sm:py-24">
       <div className="mx-auto max-w-[820px] px-4 sm:px-6 lg:px-8">
-        <h2 className="font-[family-name:var(--font-serif)] text-[2.2rem] leading-[1.1] tracking-[-0.03em] sm:text-[2.6rem]">
+        <h2 className="font-[family-name:var(--font-serif)] text-[2.2rem] leading-[1.1] sm:text-[2.6rem]">
           {d.title}
         </h2>
         <p className="mt-4 max-w-[620px] text-[15px] leading-7 text-[#0a0d12]/72">
@@ -71,7 +71,7 @@ function CommandBlock({
 
   return (
     <div>
-      <p className="mb-2 text-[12px] font-medium uppercase tracking-[0.08em] text-[#0a0d12]/55">
+      <p className="mb-2 text-[12px] font-medium uppercase text-[#0a0d12]/55">
         {label}
       </p>
       <div className="flex items-start gap-3 rounded-xl border border-[#0a0d12]/10 bg-white px-4 py-3 font-mono text-[13.5px]">

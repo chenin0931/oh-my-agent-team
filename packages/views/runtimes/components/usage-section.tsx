@@ -3,16 +3,16 @@
 import { useMemo, useState } from "react";
 import { BarChart3, ChevronRight, AlertCircle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { Skeleton } from "@multica/ui/components/ui/skeleton";
-import { Button } from "@multica/ui/components/ui/button";
-import { useWorkspaceId } from "@multica/core/hooks";
-import { agentListOptions } from "@multica/core/workspace/queries";
-import type { RuntimeUsage, AgentRuntime } from "@multica/core/types";
+import { Skeleton } from "@ohmyagentteam/ui/components/ui/skeleton";
+import { Button } from "@ohmyagentteam/ui/components/ui/button";
+import { useWorkspaceId } from "@ohmyagentteam/core/hooks";
+import { agentListOptions } from "@ohmyagentteam/core/workspace/queries";
+import type { RuntimeUsage, AgentRuntime } from "@ohmyagentteam/core/types";
 import {
   runtimeUsageOptions,
   runtimeUsageByAgentOptions,
-} from "@multica/core/runtimes/queries";
-import { useCustomPricingStore } from "@multica/core/runtimes/custom-pricing-store";
+} from "@ohmyagentteam/core/runtimes/queries";
+import { useCustomPricingStore } from "@ohmyagentteam/core/runtimes/custom-pricing-store";
 import { useViewingTimezone } from "../../common/use-viewing-timezone";
 import {
   formatTokens,

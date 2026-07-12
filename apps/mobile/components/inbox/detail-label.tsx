@@ -16,8 +16,8 @@ import type {
   InboxItemType,
   IssueStatus,
   IssuePriority,
-} from "@multica/core/types";
-import { formatDateOnly } from "@multica/core/issues/date";
+} from "@ohmyagentteam/core/types";
+import { formatDateOnly } from "@ohmyagentteam/core/issues/date";
 import { Text } from "@/components/ui/text";
 import { StatusIcon } from "@/components/ui/status-icon";
 import { PriorityIcon } from "@/components/ui/priority-icon";
@@ -47,6 +47,7 @@ const PRIORITY_LABEL: Record<IssuePriority, string> = {
 // Mirrors useTypeLabels in packages/views/inbox/components/inbox-detail-label.tsx
 const TYPE_LABEL: Record<InboxItemType, string> = {
   issue_assigned: "Assigned",
+  epic_owned: "Epic owner",
   issue_subscribed: "Subscribed",
   unassigned: "Unassigned",
   assignee_changed: "Reassigned",

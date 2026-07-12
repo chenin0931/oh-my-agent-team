@@ -3,14 +3,14 @@
 import { use, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { WorkspaceSlugProvider, paths } from "@multica/core/paths";
-import { workspaceBySlugOptions } from "@multica/core/workspace";
-import { setCurrentWorkspace } from "@multica/core/platform";
-import { useAuthStore } from "@multica/core/auth";
-import { NoAccessPage } from "@multica/views/workspace/no-access-page";
-import { WelcomeAfterOnboarding } from "@multica/views/workspace/welcome-after-onboarding";
-import { MulticaIcon } from "@multica/ui/components/common/multica-icon";
-import { useWorkspaceSeen } from "@multica/views/workspace/use-workspace-seen";
+import { WorkspaceSlugProvider, paths } from "@ohmyagentteam/core/paths";
+import { workspaceBySlugOptions } from "@ohmyagentteam/core/workspace";
+import { setCurrentWorkspace } from "@ohmyagentteam/core/platform";
+import { useAuthStore } from "@ohmyagentteam/core/auth";
+import { NoAccessPage } from "@ohmyagentteam/views/workspace/no-access-page";
+import { WorkspaceFirstRunExperience } from "@ohmyagentteam/views/workspace/workspace-first-run-experience";
+import { BrandMark } from "@ohmyagentteam/ui/components/common/brand-mark";
+import { useWorkspaceSeen } from "@ohmyagentteam/views/workspace/use-workspace-seen";
 
 export default function WorkspaceLayout({
   children,
@@ -31,18 +31,6 @@ export default function WorkspaceLayout({
   useEffect(() => {
     if (!isAuthLoading && !user) router.replace(paths.login());
   }, [isAuthLoading, user, router]);
-
-  // Hard onboarding gate. Authenticated user but onboarded_at NULL means
-  // they bypassed /onboarding (typed the URL, deeplink, etc.). Redirect
-  // back so the questionnaire + Step 3 finish. The reverse gate lives in
-  // `apps/web/app/(auth)/onboarding/page.tsx` — onboarded users hitting
-  // /onboarding bounce out to their workspace. Together those two effects
-  // make `onboarded_at` the single source of truth for "may access /<slug>/*".
-  useEffect(() => {
-    if (user && user.onboarded_at == null) {
-      router.replace(paths.onboarding());
-    }
-  }, [user, router]);
 
   // Resolve workspace by slug from the React Query list cache.
   // Enabled only when user is authenticated — otherwise the list query isn't seeded.
@@ -76,7 +64,7 @@ export default function WorkspaceLayout({
 
   const loadingIndicator = (
     <div className="flex h-svh items-center justify-center">
-      <MulticaIcon className="size-6 animate-pulse" />
+      <BrandMark className="size-6 animate-pulse" />
     </div>
   );
 
@@ -99,11 +87,8 @@ export default function WorkspaceLayout({
   return (
     <WorkspaceSlugProvider slug={workspaceSlug}>
       {children}
-      {/* Reads the welcome-store transient signal parked by
-       *  OnboardingFlow.handleRuntimeNext. Runtime path → loading veil →
-       *  blocking Modal with Helper + starter cards. Skip path → Modal
-       *  with two seeded issues. No signal → null. */}
-      <WelcomeAfterOnboarding />
+      {/* Versioned product tour; never seeds workspace content. */}
+      <WorkspaceFirstRunExperience />
     </WorkspaceSlugProvider>
   );
 }

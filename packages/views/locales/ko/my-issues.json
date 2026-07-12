@@ -1,9 +1,9 @@
 {
   "page": {
-    "breadcrumb": "내 이슈",
+    "breadcrumb": "내 작업",
     "workspace_fallback": "워크스페이스",
-    "empty_title": "내게 할당된 이슈가 없습니다",
-    "empty_description": "내가 만들었거나 담당자로 지정된 이슈가 여기에 표시됩니다."
+    "empty_title": "확인이 필요한 작업이 없습니다",
+    "empty_description": "내가 담당하거나 만들었거나 에이전트에 위임한 작업이 여기에 표시됩니다."
   },
   "header": {
     "scope": {

@@ -1,5 +1,12 @@
 import type {
   Issue,
+  Epic,
+  ListEpicsParams,
+  ListEpicsResponse,
+  CreateEpicRequest,
+  UpdateEpicRequest,
+  EpicWorkItemsResponse,
+  QuickCreateIssueStatus,
   CreateIssueRequest,
   UpdateIssueRequest,
   GroupedIssuesResponse,
@@ -78,6 +85,7 @@ import type {
   CreateProjectRequest,
   UpdateProjectRequest,
   ListProjectsResponse,
+  ProjectActivityResponse,
   ProjectResource,
   CreateProjectResourceRequest,
   UpdateProjectResourceRequest,
@@ -134,7 +142,6 @@ import type {
   BillingCheckoutSessionStatus,
   CreateBillingPortalSessionResponse,
 } from "../types";
-import type { OnboardingCompletionPath } from "../onboarding/types";
 import type { CreateFeedbackResponse, FeedbackKind } from "../feedback/types";
 import type {
   CloudRuntimeNode,
@@ -169,6 +176,8 @@ import {
   EMPTY_CLOUD_RUNTIME_NODE_LIST,
   EMPTY_CREATE_AGENT_FROM_TEMPLATE_RESPONSE,
   EMPTY_GROUPED_ISSUES_RESPONSE,
+  EMPTY_EPIC,
+  EMPTY_LIST_EPICS_RESPONSE,
   EMPTY_LIST_ISSUES_RESPONSE,
   EMPTY_SEARCH_ISSUES_RESPONSE,
   EMPTY_SEARCH_PROJECTS_RESPONSE,
@@ -182,6 +191,10 @@ import {
   AppConfigSchema,
   type AppConfigResponse,
   GroupedIssuesResponseSchema,
+  EpicSchema,
+  ListEpicsResponseSchema,
+  QuickCreateIssueStatusSchema,
+  emptyQuickCreateIssueStatus,
   ListAutopilotsResponseSchema,
   EMPTY_LIST_AUTOPILOTS_RESPONSE,
   ListIssuesResponseSchema,
@@ -309,7 +322,7 @@ export class ApiClient {
     if (typeof document === "undefined") return null;
     const match = document.cookie
       .split("; ")
-      .find((c) => c.startsWith("multica_csrf="));
+      .find((c) => c.startsWith("omat_csrf="));
     return match ? match.split("=")[1] ?? null : null;
   }
 
@@ -448,44 +461,6 @@ export class ApiClient {
     });
   }
 
-  async markOnboardingComplete(payload?: {
-    completion_path?: OnboardingCompletionPath;
-    workspace_id?: string;
-  }): Promise<User> {
-    const raw = await this.fetch<unknown>("/api/me/onboarding/complete", {
-      method: "POST",
-      body: payload ? JSON.stringify(payload) : undefined,
-    });
-    return parseWithFallback(raw, UserSchema, EMPTY_USER, {
-      endpoint: "POST /api/me/onboarding/complete",
-    });
-  }
-
-  async joinCloudWaitlist(payload: {
-    email: string;
-    reason?: string;
-  }): Promise<User> {
-    const raw = await this.fetch<unknown>("/api/me/onboarding/cloud-waitlist", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
-    return parseWithFallback(raw, UserSchema, EMPTY_USER, {
-      endpoint: "POST /api/me/onboarding/cloud-waitlist",
-    });
-  }
-
-  async patchOnboarding(payload: {
-    questionnaire?: Record<string, unknown>;
-  }): Promise<User> {
-    const raw = await this.fetch<unknown>("/api/me/onboarding", {
-      method: "PATCH",
-      body: JSON.stringify(payload),
-    });
-    return parseWithFallback(raw, UserSchema, EMPTY_USER, {
-      endpoint: "PATCH /api/me/onboarding",
-    });
-  }
-
   async updateMe(data: UpdateMeRequest): Promise<User> {
     const raw = await this.fetch<unknown>("/api/me", {
       method: "PATCH",
@@ -503,6 +478,10 @@ export class ApiClient {
     if (params?.offset) search.set("offset", String(params.offset));
     if (params?.workspace_id) search.set("workspace_id", params.workspace_id);
     if (params?.status) search.set("status", params.status);
+    if (params?.issue_type) search.set("issue_type", params.issue_type);
+    if (params?.issue_types?.length) search.set("issue_types", params.issue_types.join(","));
+    if (params?.epic_id) search.set("epic_id", params.epic_id);
+    if (params?.parent_issue_id) search.set("parent_issue_id", params.parent_issue_id);
     if (params?.priority) search.set("priority", params.priority);
     if (params?.assignee_id) search.set("assignee_id", params.assignee_id);
     if (params?.assignee_ids?.length) search.set("assignee_ids", params.assignee_ids.join(","));
@@ -594,6 +573,153 @@ export class ApiClient {
     });
   }
 
+  // Epics are planning containers. They intentionally use a separate API
+  // surface so execution-only issue methods cannot be called accidentally.
+  async listEpics(params?: ListEpicsParams): Promise<ListEpicsResponse> {
+    const search = new URLSearchParams();
+    if (params?.project_id) search.set("project_id", params.project_id);
+    if (params?.lifecycle) search.set("lifecycle", params.lifecycle);
+    if (params?.owner_id) search.set("owner_id", params.owner_id);
+    if (params?.q) search.set("q", params.q);
+    if (params?.limit !== undefined) search.set("limit", String(params.limit));
+    if (params?.offset !== undefined) search.set("offset", String(params.offset));
+    const raw = await this.fetch<unknown>(`/api/epics?${search}`);
+    return parseWithFallback(raw, ListEpicsResponseSchema, EMPTY_LIST_EPICS_RESPONSE, {
+      endpoint: "GET /api/epics",
+    });
+  }
+
+  async searchEpics(params: { q: string; limit?: number; offset?: number; signal?: AbortSignal }): Promise<ListEpicsResponse> {
+    const search = new URLSearchParams({ q: params.q });
+    if (params.limit !== undefined) search.set("limit", String(params.limit));
+    if (params.offset !== undefined) search.set("offset", String(params.offset));
+    const raw = await this.fetch<unknown>(
+      `/api/epics/search?${search}`,
+      params.signal ? { signal: params.signal } : undefined,
+    );
+    return parseWithFallback(raw, ListEpicsResponseSchema, EMPTY_LIST_EPICS_RESPONSE, {
+      endpoint: "GET /api/epics/search",
+    });
+  }
+
+  async getEpic(id: string): Promise<Epic> {
+    const raw = await this.fetch<unknown>(`/api/epics/${id}`);
+    return parseWithFallback(raw, EpicSchema, EMPTY_EPIC, {
+      endpoint: "GET /api/epics/:id",
+    });
+  }
+
+  async createEpic(data: CreateEpicRequest): Promise<Epic> {
+    const raw = await this.fetch<unknown>("/api/epics", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    return parseWithFallback(raw, EpicSchema, EMPTY_EPIC, {
+      endpoint: "POST /api/epics",
+    });
+  }
+
+  async updateEpic(id: string, data: UpdateEpicRequest): Promise<Epic> {
+    const raw = await this.fetch<unknown>(`/api/epics/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+    return parseWithFallback(raw, EpicSchema, EMPTY_EPIC, {
+      endpoint: "PUT /api/epics/:id",
+    });
+  }
+
+  async deleteEpic(id: string): Promise<void> {
+    await this.fetch(`/api/epics/${id}`, { method: "DELETE" });
+  }
+
+  async listEpicWorkItems(id: string): Promise<EpicWorkItemsResponse> {
+    const raw = await this.fetch<unknown>(`/api/epics/${id}/work-items`);
+    return parseWithFallback(raw, ChildIssuesResponseSchema, { issues: [] }, {
+      endpoint: "GET /api/epics/:id/work-items",
+    });
+  }
+
+  async attachEpicWorkItem(epicId: string, issueId: string): Promise<Issue> {
+    return this.fetch(`/api/epics/${epicId}/work-items/${issueId}`, { method: "PUT" });
+  }
+
+  async detachEpicWorkItem(epicId: string, issueId: string): Promise<void> {
+    await this.fetch(`/api/epics/${epicId}/work-items/${issueId}`, { method: "DELETE" });
+  }
+
+  async listEpicComments(epicId: string): Promise<Comment[]> {
+    const raw = await this.fetch<unknown>(`/api/epics/${epicId}/comments`);
+    return parseWithFallback(raw, CommentsListSchema, [], {
+      endpoint: "GET /api/epics/:id/comments",
+    });
+  }
+
+  async createEpicComment(
+    epicId: string,
+    content: string,
+    attachmentIds?: string[],
+    suppressAgentIds?: string[],
+  ): Promise<Comment> {
+    return this.fetch(`/api/epics/${epicId}/comments`, {
+      method: "POST",
+      body: JSON.stringify({
+        content,
+        type: "comment",
+        ...(attachmentIds?.length ? { attachment_ids: attachmentIds } : {}),
+        ...(suppressAgentIds?.length ? { suppress_agent_ids: suppressAgentIds } : {}),
+      }),
+    });
+  }
+
+  async listEpicTimeline(epicId: string): Promise<TimelineEntry[]> {
+    const raw = await this.fetch<unknown>(`/api/epics/${epicId}/timeline`);
+    return parseWithFallback(raw, TimelineEntriesSchema, EMPTY_TIMELINE_ENTRIES, {
+      endpoint: "GET /api/epics/:id/timeline",
+    });
+  }
+
+  async listEpicSubscribers(epicId: string): Promise<IssueSubscriber[]> {
+    const raw = await this.fetch<unknown>(`/api/epics/${epicId}/subscribers`);
+    return parseWithFallback(raw, SubscribersListSchema, [], {
+      endpoint: "GET /api/epics/:id/subscribers",
+    });
+  }
+
+  async subscribeToEpic(epicId: string, userId?: string, userType?: string): Promise<void> {
+    await this.fetch(`/api/epics/${epicId}/subscribe`, {
+      method: "POST",
+      body: JSON.stringify({
+        ...(userId ? { user_id: userId } : {}),
+        ...(userType ? { user_type: userType } : {}),
+      }),
+    });
+  }
+
+  async unsubscribeFromEpic(epicId: string, userId?: string, userType?: string): Promise<void> {
+    await this.fetch(`/api/epics/${epicId}/unsubscribe`, {
+      method: "POST",
+      body: JSON.stringify({
+        ...(userId ? { user_id: userId } : {}),
+        ...(userType ? { user_type: userType } : {}),
+      }),
+    });
+  }
+
+  async listEpicAttachments(epicId: string): Promise<Attachment[]> {
+    return this.fetch(`/api/epics/${epicId}/attachments`);
+  }
+
+  async runEpicAdvisor(
+    epicId: string,
+    data: { agent_id: string; prompt?: string },
+  ): Promise<{ action: "analyze"; queued: boolean; task?: AgentTask }> {
+    return this.fetch(`/api/epics/${epicId}/advisor`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
   async getIssue(id: string): Promise<Issue> {
     return this.fetch(`/api/issues/${id}`);
   }
@@ -609,6 +735,8 @@ export class ApiClient {
     agent_id?: string;
     squad_id?: string;
     prompt: string;
+    mode?: "planning";
+    default_status?: "backlog";
     project_id?: string | null;
     parent_issue_id?: string | null;
     attachment_ids?: string[];
@@ -616,6 +744,13 @@ export class ApiClient {
     return this.fetch("/api/issues/quick-create", {
       method: "POST",
       body: JSON.stringify(data),
+    });
+  }
+
+  async getQuickCreateIssueStatus(taskId: string): Promise<QuickCreateIssueStatus> {
+    const raw = await this.fetch<unknown>(`/api/issues/quick-create/${taskId}/status`);
+    return parseWithFallback(raw, QuickCreateIssueStatusSchema, emptyQuickCreateIssueStatus(taskId), {
+      endpoint: "GET /api/issues/quick-create/:taskId/status",
     });
   }
 
@@ -1000,8 +1135,8 @@ export class ApiClient {
   }
 
   // ---------------------------------------------------------------------
-  // Cloud Billing — proxies to multica-cloud /api/v1/billing/*. The
-  // multica-api server stamps X-User-ID and forwards bytes; everything
+  // Cloud Billing — proxies to ohmyagentteam-cloud /api/v1/billing/*. The
+  // ohmyagentteam-api server stamps X-User-ID and forwards bytes; everything
   // here is upstream-shaped. See packages/core/types/billing.ts for the
   // response field documentation.
   // ---------------------------------------------------------------------
@@ -1488,6 +1623,16 @@ export class ApiClient {
     });
   }
 
+  async runIssueAgentAction(
+    issueId: string,
+    data: { action: "continue" | "summarize" | "decompose"; agent_id?: string; prompt?: string },
+  ): Promise<{ action: string; queued: boolean; task?: AgentTask }> {
+    return this.fetch(`/api/issues/${issueId}/agent-actions`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
   // Inbox
   async listInbox(): Promise<InboxItem[]> {
     return this.fetch("/api/inbox");
@@ -1921,6 +2066,13 @@ export class ApiClient {
     return this.fetch(`/api/projects/${id}`);
   }
 
+  async listProjectActivity(id: string, params?: { limit?: number; offset?: number }): Promise<ProjectActivityResponse> {
+    const search = new URLSearchParams();
+    if (params?.limit) search.set("limit", String(params.limit));
+    if (params?.offset) search.set("offset", String(params.offset));
+    return this.fetch(`/api/projects/${id}/activity?${search}`);
+  }
+
   async createProject(data: CreateProjectRequest): Promise<Project> {
     return this.fetch("/api/projects", {
       method: "POST",
@@ -2003,19 +2155,33 @@ export class ApiClient {
     await this.fetch(`/api/labels/${id}`, { method: "DELETE" });
   }
 
-  async listLabelsForIssue(issueId: string): Promise<IssueLabelsResponse> {
-    return this.fetch(`/api/issues/${issueId}/labels`);
+  async listLabelsForIssue(
+    issueId: string,
+    targetType: "issue" | "epic" = "issue",
+  ): Promise<IssueLabelsResponse> {
+    const collection = targetType === "epic" ? "epics" : "issues";
+    return this.fetch(`/api/${collection}/${issueId}/labels`);
   }
 
-  async attachLabel(issueId: string, labelId: string): Promise<IssueLabelsResponse> {
-    return this.fetch(`/api/issues/${issueId}/labels`, {
+  async attachLabel(
+    issueId: string,
+    labelId: string,
+    targetType: "issue" | "epic" = "issue",
+  ): Promise<IssueLabelsResponse> {
+    const collection = targetType === "epic" ? "epics" : "issues";
+    return this.fetch(`/api/${collection}/${issueId}/labels`, {
       method: "POST",
       body: JSON.stringify({ label_id: labelId }),
     });
   }
 
-  async detachLabel(issueId: string, labelId: string): Promise<IssueLabelsResponse> {
-    return this.fetch(`/api/issues/${issueId}/labels/${labelId}`, {
+  async detachLabel(
+    issueId: string,
+    labelId: string,
+    targetType: "issue" | "epic" = "issue",
+  ): Promise<IssueLabelsResponse> {
+    const collection = targetType === "epic" ? "epics" : "issues";
+    return this.fetch(`/api/${collection}/${issueId}/labels/${labelId}`, {
       method: "DELETE",
     });
   }
@@ -2065,7 +2231,7 @@ export class ApiClient {
     }) as Squad;
   }
 
-  async updateSquad(id: string, data: { name?: string; description?: string; instructions?: string; leader_id?: string; avatar_url?: string }): Promise<Squad> {
+  async updateSquad(id: string, data: { name?: string; description?: string; instructions?: string; leader_id?: string; owner_id?: string; avatar_url?: string }): Promise<Squad> {
     const raw = await this.fetch<unknown>(`/api/squads/${id}`, { method: "PUT", body: JSON.stringify(data) });
     return parseWithFallback(raw, SquadSchema, EMPTY_SQUAD, {
       endpoint: "PUT /api/squads/:id",

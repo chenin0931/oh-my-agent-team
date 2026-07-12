@@ -5,17 +5,17 @@ import { AppLink } from "../../navigation";
 import { useSortable, defaultAnimateLayoutChanges } from "@dnd-kit/sortable";
 import type { AnimateLayoutChanges } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import type { Issue, Project, UpdateIssueRequest } from "@multica/core/types";
-import { formatDateOnly, isPastDateOnly } from "@multica/core/issues/date";
-import { CalendarClock, CalendarDays } from "lucide-react";
+import type { Issue, Project, UpdateIssueRequest } from "@ohmyagentteam/core/types";
+import { formatDateOnly, isPastDateOnly } from "@ohmyagentteam/core/issues/date";
+import { CalendarClock, CalendarDays, FolderMinus } from "lucide-react";
 import { ActorAvatar } from "../../common/actor-avatar";
-import { useWorkspacePaths } from "@multica/core/paths";
-import { useActorName } from "@multica/core/workspace/hooks";
+import { useWorkspacePaths } from "@ohmyagentteam/core/paths";
+import { useActorName } from "@ohmyagentteam/core/workspace/hooks";
 import { useTimeAgo } from "../../i18n";
 import { ProjectIcon } from "../../projects/components/project-icon";
 import { PriorityIcon } from "./priority-icon";
 import { PriorityPicker, AssigneePicker, StartDatePicker, DueDatePicker } from "./pickers";
-import { useViewStore } from "@multica/core/issues/stores/view-store-context";
+import { useViewStore } from "@ohmyagentteam/core/issues/stores/view-store-context";
 import { ProgressRing } from "./progress-ring";
 import type { ChildProgress } from "./list-row";
 import { IssueActionsContextMenu } from "../actions";
@@ -85,7 +85,8 @@ export const BoardCardContent = memo(function BoardCardContent({
   const hasAssignee = !!issue.assignee_type && !!issue.assignee_id;
   const showStartDate = storeProperties.startDate && issue.start_date;
   const showDueDate = storeProperties.dueDate && issue.due_date;
-  const showProject = storeProperties.project && project;
+  const showProject =
+    storeProperties.project && (!!project || !issue.project_id);
   const showChildProgress = storeProperties.childProgress && childProgress;
   const showLabels = storeProperties.labels && labels.length > 0;
 
@@ -194,8 +195,14 @@ export const BoardCardContent = memo(function BoardCardContent({
         <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
           {showProject && (
             <span className="inline-flex items-center gap-1 rounded-full bg-muted/60 px-1.5 py-0.5 text-[11px] text-muted-foreground max-w-[160px]">
-              <ProjectIcon project={project} size="sm" />
-              <span className="truncate">{project!.title}</span>
+              {project ? (
+                <ProjectIcon project={project} size="sm" />
+              ) : (
+                <FolderMinus className="size-3 shrink-0" />
+              )}
+              <span className="truncate">
+                {project ? project.title : t(($) => $.filters.no_project)}
+              </span>
             </span>
           )}
           {showLabels && labels.map((label) => (

@@ -1,7 +1,7 @@
 /**
  * Mobile inbox mutations. Mirrors the optimistic-update + invalidate pattern
  * of packages/core/inbox/mutations.ts — written here in mobile-owned code
- * per Sharing Principles (no runtime imports from @multica/core mutations).
+ * per Sharing Principles (no runtime imports from @ohmyagentteam/core mutations).
  *
  * Behavioral parity:
  *   - mark-read: flip `read` to true locally; rollback on error; settle invalidate.
@@ -26,7 +26,7 @@
  *     Just invalidate on settle. Matches web.
  */
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { InboxItem } from "@multica/core/types";
+import type { InboxItem } from "@ohmyagentteam/core/types";
 import { api } from "@/data/api";
 import { inboxKeys } from "@/data/queries/inbox";
 import { useWorkspaceStore } from "@/data/workspace-store";
@@ -73,10 +73,14 @@ export function useArchiveInbox() {
       // Patching only the tapped row would let dedup'd siblings briefly
       // resurface between the request and the WS invalidate.
       const target = prev?.find((i) => i.id === id);
-      const issueId = target?.issue_id ?? null;
+      const targetId = target?.target_id ?? target?.issue_id ?? null;
+      const targetType = target?.target_type ?? "issue";
       qc.setQueryData<InboxItem[]>(key, (old) =>
         old?.map((item) =>
-          item.id === id || (issueId && item.issue_id === issueId)
+          item.id === id ||
+          (targetId &&
+            (item.target_id ?? item.issue_id) === targetId &&
+            (item.target_type ?? "issue") === targetType)
             ? { ...item, archived: true }
             : item,
         ),

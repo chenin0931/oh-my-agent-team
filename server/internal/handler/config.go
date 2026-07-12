@@ -6,8 +6,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/multica-ai/multica/server/internal/analytics"
-	"github.com/multica-ai/multica/server/internal/featureflags"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/analytics"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/featureflags"
 )
 
 type AppConfig struct {
@@ -32,8 +32,8 @@ type AppConfig struct {
 	// previous shape for the common managed-cloud case (#3433).
 	WorkspaceCreationDisabled bool `json:"workspace_creation_disabled,omitempty"`
 	// Public daemon setup config consumed by the web app at runtime so
-	// self-hosted instances can show `multica setup self-host` commands
-	// with the operator's own domains instead of Multica Cloud defaults.
+	// self-hosted instances can show `omat setup self-host` commands
+	// with the operator's own domains instead of OhMyAgentTeam Cloud defaults.
 	DaemonServerURL string `json:"daemon_server_url,omitempty"`
 	DaemonAppURL    string `json:"daemon_app_url,omitempty"`
 
@@ -65,7 +65,7 @@ func (h *Handler) GetConfig(w http.ResponseWriter, r *http.Request) {
 		config.CdnDomain = h.Storage.CdnDomain()
 	}
 	config.CdnSigned = h.CFSigner != nil
-	config.DaemonServerURL, config.DaemonAppURL = daemonSetupURLsFromEnv()
+	config.DaemonServerURL, config.DaemonAppURL = daemonSetupURLsFromEnv(r)
 	config.FeatureFlags = featureflags.EvaluateFrontendPublicFlags(r.Context(), h.FeatureFlags)
 
 	// Re-read from env on every request so operators can rotate keys via
@@ -82,9 +82,9 @@ func (h *Handler) GetConfig(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, config)
 }
 
-func daemonSetupURLsFromEnv() (string, string) {
-	serverURL := normalizePublicURL(os.Getenv("MULTICA_PUBLIC_URL"))
-	appURL := normalizePublicURL(os.Getenv("MULTICA_APP_URL"))
+func daemonSetupURLsFromEnv(r *http.Request) (string, string) {
+	serverURL := normalizePublicURL(os.Getenv("OMAT_PUBLIC_URL"))
+	appURL := normalizePublicURL(os.Getenv("OMAT_APP_URL"))
 	if appURL == "" {
 		appURL = normalizePublicURL(os.Getenv("FRONTEND_ORIGIN"))
 	}
@@ -93,7 +93,10 @@ func daemonSetupURLsFromEnv() (string, string) {
 	}
 
 	if serverURL == "" {
-		serverURL = appURL
+		serverURL = loopbackAPIOrigin(r, appURL)
+		if serverURL == "" {
+			serverURL = appURL
+		}
 	}
 	if isOfficialCloudDaemonConfig(appURL) {
 		return "", ""
@@ -101,21 +104,45 @@ func daemonSetupURLsFromEnv() (string, string) {
 	return serverURL, appURL
 }
 
+// loopbackAPIOrigin handles split-port local development where the browser is
+// served from localhost:3000 but calls the API directly on localhost:8080.
+// It is deliberately restricted to loopback hosts; public deployments must
+// configure OMAT_PUBLIC_URL instead of trusting an arbitrary Host header.
+func loopbackAPIOrigin(r *http.Request, appURL string) string {
+	if r == nil || !isLoopbackURL(appURL) || !isLoopbackHost(r.Host) {
+		return ""
+	}
+	scheme := "http"
+	if r.TLS != nil {
+		scheme = "https"
+	}
+	return scheme + "://" + r.Host
+}
+
+func isLoopbackURL(raw string) bool {
+	return isLoopbackHost(canonicalURLHost(raw))
+}
+
+func isLoopbackHost(raw string) bool {
+	host := canonicalURLHost(raw)
+	return host == "localhost" || host == "127.0.0.1" || host == "::1"
+}
+
 func normalizePublicURL(raw string) string {
 	return strings.TrimRight(strings.TrimSpace(raw), "/")
 }
 
 // isOfficialCloudDaemonConfig reports whether this deployment is the official
-// Multica Cloud, identified by its frontend host alone (multica.ai /
-// app.multica.ai). The daemon setup for the managed cloud is always
-// `multica setup` (which hardcodes api.multica.ai), so the per-deployment URLs
-// must be omitted from /api/config even when MULTICA_PUBLIC_URL is unset or
-// misconfigured. Previously this also required serverURL==api.multica.ai, so a
-// cloud deployment that forgot MULTICA_PUBLIC_URL fell through and emitted a
-// `setup self-host --server-url https://multica.ai` command — pointing the
+// OhMyAgentTeam Cloud, identified by its frontend host alone (ohmyagentteam.com /
+// app.ohmyagentteam.com). The daemon setup for the managed cloud is always
+// `omat setup` (which hardcodes api.ohmyagentteam.com), so the per-deployment URLs
+// must be omitted from /api/config even when OMAT_PUBLIC_URL is unset or
+// misconfigured. Previously this also required serverURL==api.ohmyagentteam.com, so a
+// cloud deployment that forgot OMAT_PUBLIC_URL fell through and emitted a
+// `setup self-host --server-url https://ohmyagentteam.com` command — pointing the
 // daemon's backend at the frontend (no /health, no WebSocket proxy).
 func isOfficialCloudDaemonConfig(appURL string) bool {
-	return urlHostEquals(appURL, "multica.ai") || urlHostEquals(appURL, "app.multica.ai")
+	return urlHostEquals(appURL, "ohmyagentteam.com") || urlHostEquals(appURL, "app.ohmyagentteam.com")
 }
 
 func urlHostEquals(raw, want string) bool {

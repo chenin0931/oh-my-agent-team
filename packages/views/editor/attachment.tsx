@@ -30,13 +30,13 @@ import {
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@multica/ui/lib/utils";
-import { copyText } from "@multica/ui/lib/clipboard";
+import { cn } from "@ohmyagentteam/ui/lib/utils";
+import { copyText } from "@ohmyagentteam/ui/lib/clipboard";
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@multica/core/api";
-import { useConfigStore } from "@multica/core/config";
-import type { Attachment as AttachmentRecord } from "@multica/core/types";
-import { attachmentIdFromDownloadURL } from "@multica/core/types/attachment-url";
+import { api } from "@ohmyagentteam/core/api";
+import { useConfigStore } from "@ohmyagentteam/core/config";
+import type { Attachment as AttachmentRecord } from "@ohmyagentteam/core/types";
+import { attachmentIdFromDownloadURL } from "@ohmyagentteam/core/types/attachment-url";
 import { useT } from "../i18n";
 import { useAttachmentDownloadResolver } from "./attachment-download-context";
 import { useAttachmentPreview } from "./attachment-preview-modal";
@@ -210,7 +210,7 @@ function absolutizeMediaURL(rawUrl: string): string {
 //   - `record.markdown_url` — the durable URL the server picked for
 //                             persistence (MUL-3192 / `buildMarkdownURL`):
 //                             public CDN passthrough when the storage is
-//                             public-readable, or `MULTICA_PUBLIC_URL +
+//                             public-readable, or `OMAT_PUBLIC_URL +
 //                             /api/attachments/<id>/download` for
 //                             private-bucket modes. Aligned with the
 //                             server-side policy by construction, so it

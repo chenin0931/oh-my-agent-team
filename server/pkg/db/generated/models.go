@@ -286,7 +286,7 @@ type ChannelOutboundCardMessage struct {
 type ChannelUserBinding struct {
 	ID             pgtype.UUID        `json:"id"`
 	WorkspaceID    pgtype.UUID        `json:"workspace_id"`
-	MulticaUserID  pgtype.UUID        `json:"multica_user_id"`
+	OmatUserID  pgtype.UUID        `json:"omat_user_id"`
 	InstallationID pgtype.UUID        `json:"installation_id"`
 	ChannelType    string             `json:"channel_type"`
 	ChannelUserID  string             `json:"channel_user_id"`
@@ -481,6 +481,8 @@ type InboxItem struct {
 	ActorType     pgtype.Text        `json:"actor_type"`
 	ActorID       pgtype.UUID        `json:"actor_id"`
 	Details       []byte             `json:"details"`
+	TargetType    pgtype.Text        `json:"target_type"`
+	TargetID      pgtype.UUID        `json:"target_id"`
 }
 
 type Issue struct {
@@ -495,7 +497,6 @@ type Issue struct {
 	CreatorType        string             `json:"creator_type"`
 	CreatorID          pgtype.UUID        `json:"creator_id"`
 	ParentIssueID      pgtype.UUID        `json:"parent_issue_id"`
-	AcceptanceCriteria []byte             `json:"acceptance_criteria"`
 	ContextRefs        []byte             `json:"context_refs"`
 	Position           float64            `json:"position"`
 	DueDate            pgtype.Date        `json:"due_date"`
@@ -509,6 +510,20 @@ type Issue struct {
 	StartDate          pgtype.Date        `json:"start_date"`
 	Metadata           []byte             `json:"metadata"`
 	Stage              pgtype.Int4        `json:"stage"`
+	IssueType          string             `json:"issue_type"`
+	EpicID             pgtype.UUID        `json:"epic_id"`
+	AcceptanceCriteria pgtype.Text        `json:"acceptance_criteria"`
+	EpicHealth         pgtype.Text        `json:"epic_health"`
+}
+
+type IssueAdvisorInvocation struct {
+	ID             pgtype.UUID        `json:"id"`
+	IssueID        pgtype.UUID        `json:"issue_id"`
+	WorkspaceID    pgtype.UUID        `json:"workspace_id"`
+	AssigneeUserID pgtype.UUID        `json:"assignee_user_id"`
+	AgentID        pgtype.UUID        `json:"agent_id"`
+	TaskID         pgtype.UUID        `json:"task_id"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 }
 
 type IssueDependency struct {
@@ -633,7 +648,7 @@ type LarkOutboundCardMessage struct {
 type LarkUserBinding struct {
 	ID             pgtype.UUID        `json:"id"`
 	WorkspaceID    pgtype.UUID        `json:"workspace_id"`
-	MulticaUserID  pgtype.UUID        `json:"multica_user_id"`
+	OmatUserID  pgtype.UUID        `json:"omat_user_id"`
 	InstallationID pgtype.UUID        `json:"installation_id"`
 	LarkOpenID     string             `json:"lark_open_id"`
 	UnionID        pgtype.Text        `json:"union_id"`
@@ -753,6 +768,7 @@ type Squad struct {
 	ArchivedBy   pgtype.UUID        `json:"archived_by"`
 	AvatarUrl    pgtype.Text        `json:"avatar_url"`
 	Instructions string             `json:"instructions"`
+	OwnerID      pgtype.UUID        `json:"owner_id"`
 }
 
 type SquadMember struct {
@@ -863,19 +879,14 @@ type TaskUsageHourlyRollupState struct {
 }
 
 type User struct {
-	ID                      pgtype.UUID        `json:"id"`
-	Name                    string             `json:"name"`
-	Email                   string             `json:"email"`
-	AvatarUrl               pgtype.Text        `json:"avatar_url"`
-	CreatedAt               pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt               pgtype.Timestamptz `json:"updated_at"`
-	OnboardedAt             pgtype.Timestamptz `json:"onboarded_at"`
-	OnboardingQuestionnaire []byte             `json:"onboarding_questionnaire"`
-	CloudWaitlistEmail      pgtype.Text        `json:"cloud_waitlist_email"`
-	CloudWaitlistReason     pgtype.Text        `json:"cloud_waitlist_reason"`
-	StarterContentState     pgtype.Text        `json:"starter_content_state"`
-	Language                pgtype.Text        `json:"language"`
-	ProfileDescription      string             `json:"profile_description"`
+	ID                 pgtype.UUID        `json:"id"`
+	Name               string             `json:"name"`
+	Email              string             `json:"email"`
+	AvatarUrl          pgtype.Text        `json:"avatar_url"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+	Language           pgtype.Text        `json:"language"`
+	ProfileDescription string             `json:"profile_description"`
 	// User-preferred IANA timezone for report rendering (Viewing tz). NULL means "use the browser-detected tz at render time". Affects dashboards, charts, and any "today" label shown to this user. Does not affect data materialisation — all rollups remain in UTC.
 	Timezone pgtype.Text `json:"timezone"`
 }

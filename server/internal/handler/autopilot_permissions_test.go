@@ -160,7 +160,7 @@ func TestAutopilotCollaborator_GrantedMemberCanWrite(t *testing.T) {
 	}
 
 	apID := createAutopilotAs(t, "", "ap-collab-grant")
-	member := createPlainMember(t, "ap-collab-grantee@multica.test")
+	member := createPlainMember(t, "ap-collab-grantee@ohmyagentteam.test")
 
 	updateAs := func(caller string) int {
 		w := httptest.NewRecorder()
@@ -212,8 +212,8 @@ func TestAutopilotCollaborator_NonWriterCannotGrant(t *testing.T) {
 	}
 
 	apID := createAutopilotAs(t, "", "ap-collab-guard")
-	stranger := createPlainMember(t, "ap-collab-stranger@multica.test")
-	victim := createPlainMember(t, "ap-collab-victim@multica.test")
+	stranger := createPlainMember(t, "ap-collab-stranger@ohmyagentteam.test")
+	victim := createPlainMember(t, "ap-collab-victim@ohmyagentteam.test")
 
 	// A non-writer cannot grant access to anyone.
 	grantAutopilotAccess(t, stranger, apID, victim, http.StatusForbidden)
@@ -232,9 +232,9 @@ func TestAutopilotCollaborator_CannotManageAccessList(t *testing.T) {
 	}
 
 	apID := createAutopilotAs(t, "", "ap-collab-noescalate")
-	carol := createPlainMember(t, "ap-collab-carol@multica.test")
-	dave := createPlainMember(t, "ap-collab-dave@multica.test")
-	bob := createPlainMember(t, "ap-collab-bob2@multica.test")
+	carol := createPlainMember(t, "ap-collab-carol@ohmyagentteam.test")
+	dave := createPlainMember(t, "ap-collab-dave@ohmyagentteam.test")
+	bob := createPlainMember(t, "ap-collab-bob2@ohmyagentteam.test")
 
 	// Owner grants two collaborators.
 	grantAutopilotAccess(t, "", apID, carol, http.StatusCreated)
@@ -279,7 +279,7 @@ func TestAutopilotWrite_PlainMemberCannotMutateOthers(t *testing.T) {
 	}
 
 	apID := createAutopilotAs(t, "", "ap-perm-owner-created")
-	member := createPlainMember(t, "ap-perm-stranger@multica.test")
+	member := createPlainMember(t, "ap-perm-stranger@ohmyagentteam.test")
 
 	// Update.
 	w := httptest.NewRecorder()
@@ -316,7 +316,7 @@ func TestAutopilotWrite_CreatorCanMutateOwn(t *testing.T) {
 		t.Skip("database not available")
 	}
 
-	member := createPlainMember(t, "ap-perm-creator@multica.test")
+	member := createPlainMember(t, "ap-perm-creator@ohmyagentteam.test")
 	apID := createAutopilotAs(t, member, "ap-perm-member-created")
 
 	w := httptest.NewRecorder()
@@ -335,7 +335,7 @@ func TestAutopilotWrite_AdminCanMutateMembersAutopilot(t *testing.T) {
 		t.Skip("database not available")
 	}
 
-	member := createPlainMember(t, "ap-perm-admin-target@multica.test")
+	member := createPlainMember(t, "ap-perm-admin-target@ohmyagentteam.test")
 	apID := createAutopilotAs(t, member, "ap-perm-admin-target")
 
 	// testUserID is the workspace owner.
@@ -358,7 +358,7 @@ func TestAutopilotWrite_WebhookSecretRedactedForNonWriter(t *testing.T) {
 	}
 
 	apID := createAutopilotAs(t, "", "ap-perm-secret")
-	stranger := createPlainMember(t, "ap-perm-secret-stranger@multica.test")
+	stranger := createPlainMember(t, "ap-perm-secret-stranger@ohmyagentteam.test")
 
 	// Owner adds a webhook trigger.
 	w := httptest.NewRecorder()

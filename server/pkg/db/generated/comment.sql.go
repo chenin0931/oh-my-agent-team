@@ -365,6 +365,21 @@ func (q *Queries) HasAgentRepliedInThread(ctx context.Context, arg HasAgentRepli
 	return has_replied, err
 }
 
+const hasCommentBySourceTaskID = `-- name: HasCommentBySourceTaskID :one
+SELECT EXISTS (
+  SELECT 1
+  FROM comment
+  WHERE source_task_id = $1
+)
+`
+
+func (q *Queries) HasCommentBySourceTaskID(ctx context.Context, sourceTaskID pgtype.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, hasCommentBySourceTaskID, sourceTaskID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const listCommentsForIssue = `-- name: ListCommentsForIssue :many
 SELECT id, issue_id, author_type, author_id, content, type, created_at, updated_at, parent_id, workspace_id, resolved_at, resolved_by_type, resolved_by_id, source_task_id FROM comment
 WHERE issue_id = $1 AND workspace_id = $2

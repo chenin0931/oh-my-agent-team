@@ -91,6 +91,15 @@ describe("ApiClient schema fallback", () => {
     });
   });
 
+  describe("listEpics", () => {
+    it("falls back to an empty planning list when the response is malformed", async () => {
+      stubFetchJson({ epics: "not-an-array", total: 1 });
+      const client = new ApiClient("https://api.example.test");
+      const res = await client.listEpics();
+      expect(res).toEqual({ epics: [], total: 0 });
+    });
+  });
+
   describe("searchIssues", () => {
     it("falls back to an empty result when the response is malformed", async () => {
       stubFetchJson({ issues: "not-an-array", total: 0 });

@@ -17,18 +17,116 @@
   "new_page": {
     "back": "戻る",
     "log_out": "ログアウト",
-    "title": "Multicaへようこそ",
+    "title": "OhMyAgentTeamへようこそ",
     "description": "あなたとAIの仲間が同じコンテキストを共有しながら、イシューを引き受け、コメントを残し、隣り合って作業する1つのワークスペースです。",
     "invite_hint": "ワークスペースの準備ができたら、仲間を招待できます。"
   },
   "creation_disabled": {
     "title": "ワークスペースの作成が無効になっています",
-    "description": "このMultica instanceでは新しいワークスペースを作成できません。既存のワークスペースへの招待を管理者に依頼してください。"
+    "description": "このOhMyAgentTeam instanceでは新しいワークスペースを作成できません。既存のワークスペースへの招待を管理者に依頼してください。"
   },
   "no_access": {
     "title": "ワークスペースを利用できません",
     "description": "このワークスペースは存在しないか、アクセス権がありません。",
     "go_to_workspaces": "マイワークスペースへ移動",
     "sign_in_different": "別のユーザーでログイン"
+  },
+  "product_tour": {
+    "skip": "スキップ",
+    "back": "戻る",
+    "next": "次へ",
+    "finish": "コラボレーションを始める",
+    "go_to_slide": "スライド {{count}} へ移動",
+    "slides": {
+      "network": {
+        "eyebrow": "コラボレーションネットワーク",
+        "title": "人とエージェントを一つのチームに",
+        "description": "OhMyAgentTeam では、人、自分のエージェント、ほかのメンバーのエージェントが同じ仕事の文脈を共有して協力します。",
+        "bullet_1": "人が目標、判断、最終決定を担います。",
+        "bullet_2": "エージェントが計画、実行、コメント、成果物を担います。"
+      },
+      "projects": {
+        "eyebrow": "プロジェクトと作業項目",
+        "title": "プロジェクトが目標を、作業項目が実行を担う",
+        "description": "プロジェクトはビジネス目標と全体進捗をまとめ、作業項目は担当、移動、完了ができる実行単位です。",
+        "bullet_1": "一つのプロジェクトに複数の作業項目を含められます。",
+        "bullet_2": "所属が未確定の仕事はプロジェクト未割り当てのまま整理できます。"
+      },
+      "planning": {
+        "eyebrow": "エージェントによる計画",
+        "title": "目標を伝えれば、エージェントが分解して割り当てる",
+        "description": "上部に目標を入力すると、計画エージェントが独立して担当できる作業に分け、最適な人、エージェント、スクワッドへ割り当てます。",
+        "bullet_1": "一つの依頼から複数の作業項目を作成できます。",
+        "bullet_2": "計画結果はすべて Backlog に入り、確認を待ちます。"
+      },
+      "workflow": {
+        "eyebrow": "制御された実行",
+        "title": "Todo に入って初めてエージェントが動き出す",
+        "description": "ステータスは進捗表示であると同時に実行スイッチです。Backlog では動かず、担当項目を Todo に進めると実行が始まります。",
+        "bullet_1": "購読やアクティビティ閲覧だけでは実行されません。",
+        "bullet_2": "プロセス、コメント、結果は作業項目の履歴に残ります。"
+      },
+      "human": {
+        "eyebrow": "人との協働",
+        "title": "人が決め、エージェントが助言する",
+        "description": "人に割り当てた仕事はアクションセンターに届きます。その人のアドバイザーエージェントは、仕事を操作せず個別に提案できます。",
+        "bullet_1": "ステータスと最終判断の権限は人が持ちます。",
+        "bullet_2": "アドバイザーはコメントと購読のみで、自動実行しません。"
+      },
+      "runtime": {
+        "eyebrow": "実行能力",
+        "title": "ツールを接続し、エージェントチームを作る",
+        "description": "実行能力が Codex、Claude Code、WorkBuddy と互換 CLI を接続し、Agent が役割と専門性を定義し、スクワッドが複数の Agent をまとめます。",
+        "bullet_1": "一つのランタイムで複数の専門エージェントを動かせます。",
+        "bullet_2": "エージェントもスクワッドも作業項目の担当者になれます。"
+      }
+    },
+    "visual": {
+      "project_title": "新製品ローンチ計画",
+      "project_summary": "4 件の作業項目 · 2 件完了",
+      "project_item_1": "製品範囲を定義",
+      "project_item_2": "購入計画を確認",
+      "project_item_3": "ローンチ施策を準備",
+      "complete": "完了",
+      "planning_prompt": "顧客ラウンドテーブルを計画し、適切な人とエージェントに割り当てる",
+      "analyzing": "作業を分解して担当者を照合中",
+      "plan_item_1": "アジェンダを設計",
+      "plan_item_2": "招待内容を準備",
+      "plan_item_3": "会場を確認",
+      "product_agent": "プロダクト計画エージェント",
+      "growth_agent": "グロースエージェント",
+      "research_agent": "リサーチエージェント",
+      "you": "あなた",
+      "backlog": "Backlog",
+      "status": {
+        "backlog": "Backlog",
+        "todo": "Todo",
+        "in_progress": "進行中",
+        "in_review": "レビュー中",
+        "done": "完了"
+      },
+      "execution_rule": "実行ルール",
+      "backlog_waits": "Backlog：計画のみ",
+      "todo_starts": "Todo：実行開始",
+      "activity_started": "作業項目を Todo に移動",
+      "activity_agent": "エージェントが作業を開始",
+      "activity_result": "エージェントが結果を投稿",
+      "just_now": "たった今",
+      "running": "実行中",
+      "activity_feed": "アクティビティ",
+      "action_center": "アクションセンター",
+      "assigned_to_you": "あなたに割り当て",
+      "human_task": "年間購入予算を確認",
+      "agent_advice": "エージェントの助言",
+      "advice_1": "三つの購入案と主なリスクを比較しました。",
+      "advice_2": "業者との交渉前に予算上限を確認することを勧めます。",
+      "human_decides": "あなたが確認し、ステータスを進めます",
+      "runtime_name": "Codex · ローカルランタイム",
+      "runtime_description": "実際のツールとローカル実行環境を提供",
+      "online": "オンライン",
+      "virtual_member": "仮想メンバー",
+      "squad": "ローンチスクワッド",
+      "squad_summary": "3 体のエージェントが協働"
+    }
   }
 }

@@ -20,6 +20,7 @@ import {
   Moon,
   Sun,
   BookOpenText,
+  Layers3,
   Settings,
   type LucideIcon,
 } from "lucide-react";
@@ -30,35 +31,36 @@ import type {
   MemberWithUser,
   SearchIssueResult,
   SearchProjectResult,
-} from "@multica/core/types";
-import { api } from "@multica/core/api";
+  Epic,
+} from "@ohmyagentteam/core/types";
+import { api } from "@ohmyagentteam/core/api";
 import {
   openCreateIssueWithPreference,
   selectRecentIssues,
   useRecentIssuesStore,
-} from "@multica/core/issues/stores";
-import { issueDetailOptions } from "@multica/core/issues/queries";
-import { useWorkspaceId } from "@multica/core";
-import { useWorkspacePaths } from "@multica/core/paths";
-import type { WorkspacePaths } from "@multica/core/paths";
-import { useModalStore } from "@multica/core/modals";
-import { memberListOptions } from "@multica/core/workspace/queries";
-import { resolvePublicFileUrl } from "@multica/core/workspace/avatar-url";
+} from "@ohmyagentteam/core/issues/stores";
+import { issueDetailOptions } from "@ohmyagentteam/core/issues/queries";
+import { useWorkspaceId } from "@ohmyagentteam/core";
+import { useWorkspacePaths } from "@ohmyagentteam/core/paths";
+import type { WorkspacePaths } from "@ohmyagentteam/core/paths";
+import { useModalStore } from "@ohmyagentteam/core/modals";
+import { memberListOptions } from "@ohmyagentteam/core/workspace/queries";
+import { resolvePublicFileUrl } from "@ohmyagentteam/core/workspace/avatar-url";
 import { StatusIcon } from "../issues/components";
 import { ProjectIcon } from "../projects/components/project-icon";
-import { PROJECT_STATUS_CONFIG } from "@multica/core/projects/config";
-import type { ProjectStatus } from "@multica/core/types";
+import { PROJECT_STATUS_CONFIG } from "@ohmyagentteam/core/projects/config";
+import type { ProjectStatus } from "@ohmyagentteam/core/types";
 import { ActorAvatar } from "../common/actor-avatar";
-import { ActorAvatar as ActorAvatarBase } from "@multica/ui/components/common/actor-avatar";
+import { ActorAvatar as ActorAvatarBase } from "@ohmyagentteam/ui/components/common/actor-avatar";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from "@multica/ui/components/ui/dialog";
-import { useTheme } from "@multica/ui/components/common/theme-provider";
-import { copyText } from "@multica/ui/lib/clipboard";
+} from "@ohmyagentteam/ui/components/ui/dialog";
+import { useTheme } from "@ohmyagentteam/ui/components/common/theme-provider";
+import { copyText } from "@ohmyagentteam/ui/lib/clipboard";
 import { useNavigation } from "../navigation";
 import { useT } from "../i18n";
 import { matchesPinyin } from "../editor/extensions/pinyin-match";
@@ -136,20 +138,11 @@ interface CommandItem {
 interface SearchResults {
   issues: SearchIssueResult[];
   projects: SearchProjectResult[];
+  epics: Epic[];
 }
 
 export function SearchCommand() {
   const { t } = useT("search");
-  const navPages: NavPage[] = [
-    { key: "inbox", label: t(($) => $.pages.inbox), icon: Inbox, keywords: ["inbox", "notifications", "收件箱"] },
-    { key: "myIssues", label: t(($) => $.pages.my_issues), icon: CircleUser, keywords: ["my", "issues", "assigned", "我的"] },
-    { key: "issues", label: t(($) => $.pages.issues), icon: ListTodo, keywords: ["issues", "tasks", "bugs"] },
-    { key: "projects", label: t(($) => $.pages.projects), icon: FolderKanban, keywords: ["projects", "kanban", "项目"] },
-    { key: "agents", label: t(($) => $.pages.agents), icon: Bot, keywords: ["agents", "bots", "ai"] },
-    { key: "runtimes", label: t(($) => $.pages.runtimes), icon: Monitor, keywords: ["runtimes", "environments"] },
-    { key: "skills", label: t(($) => $.pages.skills), icon: BookOpenText, keywords: ["skills", "library"] },
-    { key: "settings", label: t(($) => $.pages.settings), icon: Settings, keywords: ["settings", "config", "preferences", "设置"] },
-  ];
   const { push, pathname, getShareableUrl } = useNavigation();
   const open = useSearchStore((s) => s.open);
   const setOpen = useSearchStore((s) => s.setOpen);
@@ -173,7 +166,7 @@ export function SearchCommand() {
   );
 
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<SearchResults>({ issues: [], projects: [] });
+  const [results, setResults] = useState<SearchResults>({ issues: [], projects: [], epics: [] });
   const [isLoading, setIsLoading] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -181,12 +174,22 @@ export function SearchCommand() {
   const filteredPages = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return [];
-    return navPages.filter(
+    const pages: NavPage[] = [
+      { key: "inbox", label: t(($) => $.pages.inbox), icon: Inbox, keywords: ["inbox", "notifications", "收件箱"] },
+      { key: "myIssues", label: t(($) => $.pages.my_issues), icon: CircleUser, keywords: ["my", "issues", "assigned", "我的"] },
+      { key: "issues", label: t(($) => $.pages.issues), icon: ListTodo, keywords: ["issues", "tasks", "bugs"] },
+      { key: "projects", label: t(($) => $.pages.projects), icon: FolderKanban, keywords: ["projects", "kanban", "项目"] },
+      { key: "agents", label: t(($) => $.pages.agents), icon: Bot, keywords: ["agents", "bots", "ai"] },
+      { key: "runtimes", label: t(($) => $.pages.runtimes), icon: Monitor, keywords: ["runtimes", "environments"] },
+      { key: "skills", label: t(($) => $.pages.skills), icon: BookOpenText, keywords: ["skills", "library"] },
+      { key: "settings", label: t(($) => $.pages.settings), icon: Settings, keywords: ["settings", "config", "preferences", "设置"] },
+    ];
+    return pages.filter(
       (page) =>
         page.label.toLowerCase().includes(q) ||
         page.keywords.some((kw) => kw.includes(q)),
     );
-  }, [query]);
+  }, [query, t]);
 
   // Detect if current route is an issue detail page — /{slug}/issues/{id}.
   // Falls back to null on any other route; used to gate issue-specific commands.
@@ -227,6 +230,16 @@ export function SearchCommand() {
         keywords: ["new", "project", "create", "add"],
         onSelect: () => {
           useModalStore.getState().open("create-project");
+          setOpen(false);
+        },
+      },
+      {
+        key: "new-epic",
+        label: t(($) => $.commands.new_epic),
+        icon: Layers3,
+        keywords: ["new", "epic", "plan", "outcome"],
+        onSelect: () => {
+          useModalStore.getState().open("create-epic");
           setOpen(false);
         },
       },
@@ -331,6 +344,7 @@ export function SearchCommand() {
   const hasResults =
     results.issues.length > 0 ||
     results.projects.length > 0 ||
+    results.epics.length > 0 ||
     filteredMembers.length > 0;
 
   // Global Cmd+K / Ctrl+K shortcut
@@ -371,7 +385,7 @@ export function SearchCommand() {
   useEffect(() => {
     if (!open) {
       setQuery("");
-      setResults({ issues: [], projects: [] });
+      setResults({ issues: [], projects: [], epics: [] });
       setIsLoading(false);
     }
   }, [open]);
@@ -381,7 +395,7 @@ export function SearchCommand() {
     if (abortRef.current) abortRef.current.abort();
 
     if (!q.trim()) {
-      setResults({ issues: [], projects: [] });
+      setResults({ issues: [], projects: [], epics: [] });
       setIsLoading(false);
       return;
     }
@@ -391,7 +405,7 @@ export function SearchCommand() {
       const controller = new AbortController();
       abortRef.current = controller;
       try {
-        const [issueRes, projectRes] = await Promise.all([
+        const [issueRes, projectRes, epicRes] = await Promise.all([
           api.searchIssues({
             q: q.trim(),
             limit: 20,
@@ -404,11 +418,17 @@ export function SearchCommand() {
             include_closed: true,
             signal: controller.signal,
           }),
+          api.searchEpics({
+            q: q.trim(),
+            limit: 10,
+            signal: controller.signal,
+          }),
         ]);
         if (!controller.signal.aborted) {
           setResults({
             issues: issueRes.issues,
             projects: projectRes.projects,
+            epics: epicRes.epics,
           });
           setIsLoading(false);
         }
@@ -434,6 +454,8 @@ export function SearchCommand() {
       if (value.startsWith("project:")) {
         // value is "project:<id>" — slice off the 8-char prefix to extract the id.
         push(p.projectDetail(value.slice(8)));
+      } else if (value.startsWith("epic:")) {
+        push(p.epicDetail(value.slice(5)));
       } else {
         push(p.issueDetail(value));
       }
@@ -621,6 +643,27 @@ export function SearchCommand() {
               </CommandPrimitive.Group>
             )}
 
+            {!isLoading && results.epics.length > 0 && (
+              <CommandPrimitive.Group
+                heading={t(($) => $.groups.epics)}
+                className="p-2 [&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground"
+              >
+                {results.epics.map((epic) => (
+                  <CommandPrimitive.Item
+                    key={`epic:${epic.id}`}
+                    value={`epic:${epic.id}`}
+                    onSelect={handleSelect}
+                    className="flex cursor-default select-none items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm outline-none data-selected:bg-accent"
+                  >
+                    <Layers3 className="size-4 shrink-0 text-muted-foreground" />
+                    <span className="shrink-0 text-xs text-muted-foreground">{epic.identifier}</span>
+                    <span className="min-w-0 flex-1 truncate"><HighlightText text={epic.title} query={query} /></span>
+                    <span className="text-xs tabular-nums text-muted-foreground">{epic.completion_percent}%</span>
+                  </CommandPrimitive.Item>
+                ))}
+              </CommandPrimitive.Group>
+            )}
+
             {!isLoading && results.issues.length > 0 && (
               <CommandPrimitive.Group
                 heading={t(($) => $.groups.issues)}
@@ -685,14 +728,15 @@ export function SearchCommand() {
                 {recentIssues.map((item) => (
                   <CommandPrimitive.Item
                     key={item.id}
-                    value={item.id}
+                    value={item.issue_type === "epic" ? `epic:${item.id}` : item.id}
                     onSelect={handleSelect}
                     className="flex cursor-default select-none items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm outline-none data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 data-selected:bg-accent"
                   >
-                    <StatusIcon
-                      status={item.status}
-                      className="size-4 shrink-0"
-                    />
+                    {item.issue_type === "epic" ? (
+                      <Layers3 className="size-4 shrink-0 text-muted-foreground" />
+                    ) : (
+                      <StatusIcon status={item.status} className="size-4 shrink-0" />
+                    )}
                     <span className="text-xs text-muted-foreground shrink-0">
                       {item.identifier}
                     </span>

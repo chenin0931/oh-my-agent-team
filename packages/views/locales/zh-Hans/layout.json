@@ -1,22 +1,23 @@
 {
   "nav": {
-    "inbox": "收件箱",
-    "my_issues": "我的 issue",
-    "issues": "Issues",
+    "inbox": "行动中心",
+    "my_issues": "我负责的工作",
+    "issues": "全部工作项",
     "projects": "项目",
     "autopilots": "自动化",
-    "agents": "智能体",
-    "squads": "小队",
+    "agents": "协作网络",
+    "squads": "协作小队",
     "usage": "用量",
-    "runtimes": "运行时",
-    "skills": "Skills",
+    "runtimes": "执行能力",
+    "skills": "技能",
     "settings": "设置"
   },
   "help": {
     "trigger": "帮助",
+    "product_tour": "新手引导",
     "docs": "文档",
     "changelog": "更新日志",
-    "discord": "Discord",
+    "discord": "社区",
     "feedback": "反馈"
   },
   "workspace_loader": {
@@ -32,15 +33,19 @@
     "invitation_join": "加入",
     "invitation_decline": "拒绝",
     "log_out": "退出登录",
-    "new_issue": "新建 issue",
+    "new_issue": "新建工作项",
     "new_issue_shortcut": "C",
     "pinned_label": "固定",
+    "personal_group": "我的工作",
+    "work_group": "规划与交付",
+    "network_group": "协作网络",
+    "system_group": "系统能力",
     "workspace_group": "工作区",
     "configure_group": "配置",
     "unread_overflow": "99+",
     "discord_card": {
-      "title": "加入我们的 Discord",
-      "description": "和团队及其他用户一起交流。",
+      "title": "加入开源社区",
+      "description": "在 GitHub Discussions 提问和交流。",
       "dismiss": "关闭"
     }
   }

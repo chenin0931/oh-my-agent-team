@@ -23,7 +23,7 @@ interface IssueDraft {
 const EMPTY_DRAFT: IssueDraft = {
   title: "",
   description: "",
-  status: "todo",
+  status: "backlog",
   priority: "none",
   assigneeType: undefined,
   assigneeId: undefined,
@@ -70,7 +70,7 @@ export const useIssueDraftStore = create<IssueDraftStore>()(
       },
     }),
     {
-      name: "multica_issue_draft",
+      name: "omat_issue_draft",
       storage: createJSONStorage(() => createWorkspaceAwareStorage(defaultStorage)),
       // Drafts persisted by older builds predate fields added later (e.g.
       // `attachments`). Backfill EMPTY_DRAFT defaults on rehydrate so every

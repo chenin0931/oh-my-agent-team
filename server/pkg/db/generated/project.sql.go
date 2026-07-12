@@ -14,6 +14,7 @@ import (
 const countIssuesByProject = `-- name: CountIssuesByProject :one
 SELECT count(*) FROM issue
 WHERE project_id = $1
+  AND issue_type IN ('issue', 'subtask')
 `
 
 func (q *Queries) CountIssuesByProject(ctx context.Context, projectID pgtype.UUID) (int64, error) {
@@ -72,7 +73,14 @@ func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) (P
 }
 
 const deleteProject = `-- name: DeleteProject :exec
-DELETE FROM project WHERE id = $1 AND workspace_id = $2
+WITH deleted_epics AS (
+  DELETE FROM issue
+  WHERE project_id = $1
+    AND workspace_id = $2
+    AND issue_type = 'epic'
+  RETURNING id
+)
+DELETE FROM project p WHERE p.id = $1 AND p.workspace_id = $2
 `
 
 type DeleteProjectParams struct {
@@ -80,7 +88,9 @@ type DeleteProjectParams struct {
 	WorkspaceID pgtype.UUID `json:"workspace_id"`
 }
 
-// Defense-in-depth: workspace_id is a SQL-layer tenant guard. See DeleteIssue.
+// Epic containers cannot exist without a project. Delete those containers
+// first; their work items are detached by the epic_id FK, then the project FK
+// clears project_id on the surviving executable work items.
 func (q *Queries) DeleteProject(ctx context.Context, arg DeleteProjectParams) error {
 	_, err := q.db.Exec(ctx, deleteProject, arg.ID, arg.WorkspaceID)
 	return err
@@ -145,6 +155,7 @@ SELECT project_id,
        count(*) FILTER (WHERE status IN ('done', 'cancelled'))::bigint AS done_count
 FROM issue
 WHERE project_id = ANY($1::uuid[])
+  AND issue_type <> 'epic'
 GROUP BY project_id
 `
 
@@ -164,6 +175,128 @@ func (q *Queries) GetProjectIssueStats(ctx context.Context, projectIds []pgtype.
 	for rows.Next() {
 		var i GetProjectIssueStatsRow
 		if err := rows.Scan(&i.ProjectID, &i.TotalCount, &i.DoneCount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listEpicsByProjectForDelete = `-- name: ListEpicsByProjectForDelete :many
+SELECT id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, context_refs, position, due_date, created_at, updated_at, number, project_id, origin_type, origin_id, first_executed_at, start_date, metadata, stage, issue_type, epic_id, acceptance_criteria, epic_health FROM issue
+WHERE workspace_id = $1
+  AND project_id = $2
+  AND issue_type = 'epic'
+`
+
+type ListEpicsByProjectForDeleteParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	ProjectID   pgtype.UUID `json:"project_id"`
+}
+
+func (q *Queries) ListEpicsByProjectForDelete(ctx context.Context, arg ListEpicsByProjectForDeleteParams) ([]Issue, error) {
+	rows, err := q.db.Query(ctx, listEpicsByProjectForDelete, arg.WorkspaceID, arg.ProjectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Issue{}
+	for rows.Next() {
+		var i Issue
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.Title,
+			&i.Description,
+			&i.Status,
+			&i.Priority,
+			&i.AssigneeType,
+			&i.AssigneeID,
+			&i.CreatorType,
+			&i.CreatorID,
+			&i.ParentIssueID,
+			&i.ContextRefs,
+			&i.Position,
+			&i.DueDate,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Number,
+			&i.ProjectID,
+			&i.OriginType,
+			&i.OriginID,
+			&i.FirstExecutedAt,
+			&i.StartDate,
+			&i.Metadata,
+			&i.Stage,
+			&i.IssueType,
+			&i.EpicID,
+			&i.AcceptanceCriteria,
+			&i.EpicHealth,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listExecutableIssuesByProjectForDelete = `-- name: ListExecutableIssuesByProjectForDelete :many
+SELECT id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, context_refs, position, due_date, created_at, updated_at, number, project_id, origin_type, origin_id, first_executed_at, start_date, metadata, stage, issue_type, epic_id, acceptance_criteria, epic_health FROM issue
+WHERE workspace_id = $1
+  AND project_id = $2
+  AND issue_type IN ('issue', 'subtask')
+`
+
+type ListExecutableIssuesByProjectForDeleteParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	ProjectID   pgtype.UUID `json:"project_id"`
+}
+
+func (q *Queries) ListExecutableIssuesByProjectForDelete(ctx context.Context, arg ListExecutableIssuesByProjectForDeleteParams) ([]Issue, error) {
+	rows, err := q.db.Query(ctx, listExecutableIssuesByProjectForDelete, arg.WorkspaceID, arg.ProjectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Issue{}
+	for rows.Next() {
+		var i Issue
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.Title,
+			&i.Description,
+			&i.Status,
+			&i.Priority,
+			&i.AssigneeType,
+			&i.AssigneeID,
+			&i.CreatorType,
+			&i.CreatorID,
+			&i.ParentIssueID,
+			&i.ContextRefs,
+			&i.Position,
+			&i.DueDate,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Number,
+			&i.ProjectID,
+			&i.OriginType,
+			&i.OriginID,
+			&i.FirstExecutedAt,
+			&i.StartDate,
+			&i.Metadata,
+			&i.Stage,
+			&i.IssueType,
+			&i.EpicID,
+			&i.AcceptanceCriteria,
+			&i.EpicHealth,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

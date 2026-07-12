@@ -3,9 +3,9 @@ package handler
 import (
 	"testing"
 
-	"github.com/multica-ai/multica/server/internal/events"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
-	"github.com/multica-ai/multica/server/pkg/protocol"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/events"
+	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
+	"github.com/chenin0931/oh-my-agent-team/server/pkg/protocol"
 )
 
 // A successful BYO install must broadcast slack_installation:created so all open

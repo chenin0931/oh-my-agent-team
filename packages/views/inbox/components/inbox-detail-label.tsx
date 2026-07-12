@@ -1,10 +1,9 @@
 "use client";
 
-import { STATUS_CONFIG, PRIORITY_CONFIG } from "@multica/core/issues/config";
-import { formatDateOnly } from "@multica/core/issues/date";
-import { useActorName } from "@multica/core/workspace/hooks";
+import { formatDateOnly } from "@ohmyagentteam/core/issues/date";
+import { useActorName } from "@ohmyagentteam/core/workspace/hooks";
 import { StatusIcon, PriorityIcon } from "../../issues/components";
-import type { InboxItem, InboxItemType, IssueStatus, IssuePriority } from "@multica/core/types";
+import type { InboxItem, InboxItemType, IssueStatus, IssuePriority } from "@ohmyagentteam/core/types";
 import { getQuickCreateFailureDetail } from "./inbox-display";
 import { useT } from "../../i18n";
 
@@ -14,6 +13,7 @@ import { useT } from "../../i18n";
 export function useTypeLabels(): Record<InboxItemType, string> {
   const { t } = useT("inbox");
   return {
+    epic_owned: t(($) => $.types.epic_owned),
     issue_assigned: t(($) => $.types.issue_assigned),
     issue_subscribed: t(($) => $.types.issue_subscribed),
     unassigned: t(($) => $.types.unassigned),
@@ -36,21 +36,38 @@ export function useTypeLabels(): Record<InboxItemType, string> {
 }
 
 // start_date / due_date are calendar days — format timezone-safely so the day
-// never shifts with the viewer's offset (see @multica/core/issues/date).
+// never shifts with the viewer's offset (see @ohmyagentteam/core/issues/date).
 function shortDate(dateStr: string): string {
   return formatDateOnly(dateStr, { month: "short", day: "numeric" }, "en-US");
 }
 
 export function InboxDetailLabel({ item }: { item: InboxItem }) {
   const { t } = useT("inbox");
+  const { t: issueT } = useT("issues");
   const typeLabels = useTypeLabels();
   const { getActorName } = useActorName();
   const details = item.details ?? {};
+  const statusLabels: Record<IssueStatus, string> = {
+    backlog: issueT(($) => $.status.backlog),
+    todo: issueT(($) => $.status.todo),
+    in_progress: issueT(($) => $.status.in_progress),
+    in_review: issueT(($) => $.status.in_review),
+    done: issueT(($) => $.status.done),
+    blocked: issueT(($) => $.status.blocked),
+    cancelled: issueT(($) => $.status.cancelled),
+  };
+  const priorityLabels: Record<IssuePriority, string> = {
+    urgent: issueT(($) => $.priority.urgent),
+    high: issueT(($) => $.priority.high),
+    medium: issueT(($) => $.priority.medium),
+    low: issueT(($) => $.priority.low),
+    none: issueT(($) => $.priority.none),
+  };
 
   switch (item.type) {
     case "status_changed": {
       if (!details.to) return <span>{typeLabels[item.type]}</span>;
-      const label = STATUS_CONFIG[details.to as IssueStatus]?.label ?? details.to;
+      const label = statusLabels[details.to as IssueStatus] ?? details.to;
       return (
         <span className="inline-flex items-center gap-1">
           {t(($) => $.labels.set_status_to)}
@@ -61,7 +78,7 @@ export function InboxDetailLabel({ item }: { item: InboxItem }) {
     }
     case "priority_changed": {
       if (!details.to) return <span>{typeLabels[item.type]}</span>;
-      const label = PRIORITY_CONFIG[details.to as IssuePriority]?.label ?? details.to;
+      const label = priorityLabels[details.to as IssuePriority] ?? details.to;
       return (
         <span className="inline-flex items-center gap-1">
           {t(($) => $.labels.set_priority_to)}
@@ -102,6 +119,10 @@ export function InboxDetailLabel({ item }: { item: InboxItem }) {
       return <span>{typeLabels[item.type]}</span>;
     }
     case "quick_create_done": {
+      const issueCount = Number(details.issue_count ?? 0);
+      if (details.mode === "planning" && issueCount > 0) {
+        return <span>{t(($) => $.labels.planned_with_agent, { count: issueCount })}</span>;
+      }
       const identifier = details.identifier;
       if (identifier) return <span>{t(($) => $.labels.created_with_agent, { identifier })}</span>;
       return <span>{typeLabels[item.type]}</span>;

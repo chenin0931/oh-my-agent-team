@@ -10,9 +10,9 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/multica-ai/multica/server/internal/middleware"
-	"github.com/multica-ai/multica/server/internal/util"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/middleware"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/util"
+	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
 )
 
 // withChatTestWorkspaceCtx injects the workspace+member context that the

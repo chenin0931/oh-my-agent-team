@@ -16,6 +16,7 @@ import {
 import { issueKeys } from "./queries";
 import { labelKeys } from "../labels/queries";
 import { projectKeys } from "../projects/queries";
+import { epicKeys } from "../epics/queries";
 import type {
   AgentActivityBucket,
   AgentRunCount,
@@ -801,5 +802,30 @@ describe("project gantt cache invalidation", () => {
   it("invalidates the project Gantt cache on issue:deleted", () => {
     onIssueDeleted(qc, WS_ID, ISSUE_ID);
     expectInvalidated(qc, issueKeys.projectGantt(WS_ID, PROJECT_ID));
+  });
+});
+
+describe("Epic work-item cache invalidation", () => {
+  const EPIC_ID = "epic-1";
+  let qc: QueryClient;
+
+  beforeEach(() => {
+    qc = new QueryClient();
+    qc.setQueryData(epicKeys.workItems(WS_ID, EPIC_ID), [baseIssue]);
+  });
+
+  it("refreshes Epic aggregates on issue:created", () => {
+    onIssueCreated(qc, WS_ID, { ...otherIssue, epic_id: EPIC_ID });
+    expectInvalidated(qc, epicKeys.workItems(WS_ID, EPIC_ID));
+  });
+
+  it("refreshes Epic aggregates on issue:updated", () => {
+    onIssueUpdated(qc, WS_ID, { id: ISSUE_ID, status: "done" });
+    expectInvalidated(qc, epicKeys.workItems(WS_ID, EPIC_ID));
+  });
+
+  it("refreshes Epic aggregates on issue:deleted", () => {
+    onIssueDeleted(qc, WS_ID, ISSUE_ID);
+    expectInvalidated(qc, epicKeys.workItems(WS_ID, EPIC_ID));
   });
 });

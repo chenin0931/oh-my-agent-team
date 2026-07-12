@@ -13,9 +13,9 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/multica-ai/multica/server/internal/logger"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
-	"github.com/multica-ai/multica/server/pkg/protocol"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/logger"
+	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
+	"github.com/chenin0931/oh-my-agent-team/server/pkg/protocol"
 )
 
 // ---------------------------------------------------------------------------
@@ -307,12 +307,30 @@ func (h *Handler) listLabelsForIssueSafe(r *http.Request, issueID, workspaceID p
 	return labels, true
 }
 
+func (h *Handler) publishTargetLabelsChanged(r *http.Request, issue db.Issue, userID string, labels []LabelResponse) {
+	workspaceID := uuidToString(issue.WorkspaceID)
+	if defaultIssueType(issue.IssueType) == "epic" {
+		total, done, blocked, distribution := h.epicMetrics(r, issue)
+		epic := epicToResponse(issue, h.getIssuePrefix(r.Context(), issue.WorkspaceID), total, done, blocked, distribution)
+		epic.Labels = &labels
+		h.publish(protocol.EventEpicUpdated, workspaceID, "member", userID, map[string]any{
+			"epic":           epic,
+			"labels_changed": true,
+		})
+		return
+	}
+	h.publish(protocol.EventIssueLabelsChanged, workspaceID, "member", userID, map[string]any{
+		"issue_id": uuidToString(issue.ID),
+		"labels":   labels,
+	})
+}
+
 // ListLabelsForIssue returns the labels currently attached to an issue.
 func (h *Handler) ListLabelsForIssue(w http.ResponseWriter, r *http.Request) {
 	issueID := chi.URLParam(r, "id")
 	// Authorize via the issue — if it's not in this workspace, the caller
 	// shouldn't see its labels.
-	issue, ok := h.loadIssueForUser(w, r, issueID)
+	issue, ok := h.loadCollaborativeTargetForRoute(w, r, issueID)
 	if !ok {
 		return
 	}
@@ -347,8 +365,11 @@ func (h *Handler) AttachLabel(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Both the issue and label must belong to this workspace.
-	issue, ok := h.loadIssueForUser(w, r, issueID)
+	issue, ok := h.loadCollaborativeTargetForRoute(w, r, issueID)
 	if !ok {
+		return
+	}
+	if h.rejectMemberAssigneeAdvisorMutation(w, r, issue.ID, false) {
 		return
 	}
 	labelID, ok := parseUUIDOrBadRequest(w, req.LabelID, "label_id")
@@ -387,10 +408,7 @@ func (h *Handler) AttachLabel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	resp := labelsToResponse(labels)
-	h.publish(protocol.EventIssueLabelsChanged, uuidToString(issue.WorkspaceID), "member", userID, map[string]any{
-		"issue_id": uuidToString(issue.ID),
-		"labels":   resp,
-	})
+	h.publishTargetLabelsChanged(r, issue, userID, resp)
 	writeJSON(w, http.StatusOK, map[string]any{"labels": resp})
 }
 
@@ -407,8 +425,11 @@ func (h *Handler) DetachLabel(w http.ResponseWriter, r *http.Request) {
 	// (mirror of AttachLabel). Without this, a crafted request with a foreign
 	// labelID would no-op and return 200 — "silent success" is worse than an
 	// explicit 404.
-	issue, ok := h.loadIssueForUser(w, r, issueID)
+	issue, ok := h.loadCollaborativeTargetForRoute(w, r, issueID)
 	if !ok {
+		return
+	}
+	if h.rejectMemberAssigneeAdvisorMutation(w, r, issue.ID, false) {
 		return
 	}
 	labelUUID, ok := parseUUIDOrBadRequest(w, labelID, "label id")
@@ -443,9 +464,6 @@ func (h *Handler) DetachLabel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	resp := labelsToResponse(labels)
-	h.publish(protocol.EventIssueLabelsChanged, uuidToString(issue.WorkspaceID), "member", userID, map[string]any{
-		"issue_id": uuidToString(issue.ID),
-		"labels":   resp,
-	})
+	h.publishTargetLabelsChanged(r, issue, userID, resp)
 	writeJSON(w, http.StatusOK, map[string]any{"labels": resp})
 }

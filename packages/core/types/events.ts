@@ -1,4 +1,5 @@
 import type { Issue, IssueMetadata, IssueReaction } from "./issue";
+import type { Epic } from "./epic";
 import type { Agent } from "./agent";
 import type { InboxItem } from "./inbox";
 import type { Comment, Reaction } from "./comment";
@@ -12,6 +13,9 @@ export type WSEventType =
   | "issue:created"
   | "issue:updated"
   | "issue:deleted"
+  | "epic:created"
+  | "epic:updated"
+  | "epic:deleted"
   | "comment:created"
   | "comment:updated"
   | "comment:deleted"
@@ -112,6 +116,22 @@ export interface IssueDeletedPayload {
   issue_id: string;
 }
 
+export interface EpicCreatedPayload {
+  epic: Epic;
+}
+
+export interface EpicUpdatedPayload {
+  epic: Epic;
+  owner_changed?: boolean;
+  lifecycle_changed?: boolean;
+  project_changed?: boolean;
+  health_changed?: boolean;
+}
+
+export interface EpicDeletedPayload {
+  epic_id: string;
+}
+
 export interface IssueLabelsChangedPayload {
   issue_id: string;
   labels: Label[];
@@ -164,23 +184,33 @@ export interface InboxBatchArchivedPayload {
 
 export interface CommentCreatedPayload {
   comment: Comment;
+  target_type?: "issue" | "epic";
+  target_id?: string;
 }
 
 export interface CommentUpdatedPayload {
   comment: Comment;
+  target_type?: "issue" | "epic";
+  target_id?: string;
 }
 
 export interface CommentDeletedPayload {
   comment_id: string;
   issue_id: string;
+  target_type?: "issue" | "epic";
+  target_id?: string;
 }
 
 export interface CommentResolvedPayload {
   comment: Comment;
+  target_type?: "issue" | "epic";
+  target_id?: string;
 }
 
 export interface CommentUnresolvedPayload {
   comment: Comment;
+  target_type?: "issue" | "epic";
+  target_id?: string;
 }
 
 export interface WorkspaceUpdatedPayload {
@@ -209,6 +239,8 @@ export interface MemberRemovedPayload {
 
 export interface SubscriberAddedPayload {
   issue_id: string;
+  target_type?: "issue" | "epic";
+  target_id?: string;
   user_type: string;
   user_id: string;
   reason: string;
@@ -216,12 +248,16 @@ export interface SubscriberAddedPayload {
 
 export interface SubscriberRemovedPayload {
   issue_id: string;
+  target_type?: "issue" | "epic";
+  target_id?: string;
   user_type: string;
   user_id: string;
 }
 
 export interface ActivityCreatedPayload {
   issue_id: string;
+  target_type?: "issue" | "epic";
+  target_id?: string;
   entry: TimelineEntry;
 }
 
@@ -303,11 +339,15 @@ export interface TaskCancelledPayload {
 export interface ReactionAddedPayload {
   reaction: Reaction;
   issue_id: string;
+  target_type?: "issue" | "epic";
+  target_id?: string;
 }
 
 export interface ReactionRemovedPayload {
   comment_id: string;
   issue_id: string;
+  target_type?: "issue" | "epic";
+  target_id?: string;
   emoji: string;
   actor_type: string;
   actor_id: string;
@@ -406,6 +446,9 @@ export interface WSEventPayloadMap {
   "issue:created": IssueCreatedPayload;
   "issue:updated": IssueUpdatedPayload;
   "issue:deleted": IssueDeletedPayload;
+  "epic:created": EpicCreatedPayload;
+  "epic:updated": EpicUpdatedPayload;
+  "epic:deleted": EpicDeletedPayload;
   "issue_labels:changed": IssueLabelsChangedPayload;
   "issue_reaction:added": IssueReactionAddedPayload;
   "issue_reaction:removed": IssueReactionRemovedPayload;

@@ -17,10 +17,10 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/multica-ai/multica/server/internal/analytics"
-	"github.com/multica-ai/multica/server/internal/auth"
-	"github.com/multica-ai/multica/server/internal/events"
-	"github.com/multica-ai/multica/server/internal/realtime"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/analytics"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/auth"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/events"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/realtime"
 )
 
 var (
@@ -35,7 +35,7 @@ var (
 // the JWT_SECRET env var (set in .env) and stays in sync with the server.
 
 const (
-	integrationTestEmail         = "integration-test@multica.ai"
+	integrationTestEmail         = "integration-test@ohmyagentteam.com"
 	integrationTestName          = "Integration Tester"
 	integrationTestWorkspaceSlug = "integration-tests"
 )
@@ -44,7 +44,7 @@ func TestMain(m *testing.M) {
 	ctx := context.Background()
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
-		dbURL = "postgres://multica:multica@localhost:5432/multica?sslmode=disable"
+		dbURL = "postgres://ohmyagentteam:ohmyagentteam@localhost:5432/ohmyagentteam?sslmode=disable"
 	}
 
 	pool, err := pgxpool.New(ctx, dbURL)
@@ -275,7 +275,7 @@ func TestConfigRouteIsPublic(t *testing.T) {
 // ---- Auth ----
 
 func TestSendCodeAndVerify(t *testing.T) {
-	const email = "integration-sendcode@multica.ai"
+	const email = "integration-sendcode@ohmyagentteam.com"
 	ctx := context.Background()
 
 	t.Cleanup(func() {
@@ -358,7 +358,7 @@ func TestSendCodeAndVerify(t *testing.T) {
 }
 
 func TestVerifyCodeNewUserHasNoWorkspace(t *testing.T) {
-	const email = "new-integration-verify@multica.ai"
+	const email = "new-integration-verify@ohmyagentteam.com"
 	ctx := context.Background()
 
 	t.Cleanup(func() {
@@ -848,10 +848,9 @@ func TestInboxUnreadSummaryThroughRouter(t *testing.T) {
 	}
 }
 
-// An issue's inbox notifications are deduplicated per issue: opening the issue
-// marks only the NEWEST item read, leaving older siblings unread. The summary
-// must mirror the inbox UI (issue is read when its newest item is read), so a
-// read-newest / unread-older issue must NOT light the switcher dot (MUL-3695).
+// An issue's inbox notifications are deduplicated per issue. Informational
+// rows use the newest item, while an unread action-required row remains
+// surfaced until opened.
 func TestInboxUnreadSummaryDedupesByIssue(t *testing.T) {
 	ctx := context.Background()
 
@@ -892,6 +891,34 @@ func TestInboxUnreadSummaryDedupesByIssue(t *testing.T) {
 		if s.WorkspaceID == testWorkspaceID && s.Count > 0 {
 			t.Fatalf("issue whose newest item is read must not count as unread, got count %d", s.Count)
 		}
+	}
+
+	// Promote the older row to an assignment. It must now remain visible and
+	// unread even though the newer informational row has already been read.
+	if _, err := testPool.Exec(ctx, `
+		UPDATE inbox_item
+		SET type = 'issue_assigned', severity = 'action_required'
+		WHERE issue_id = $1 AND title = 'older'
+	`, issueID); err != nil {
+		t.Fatalf("failed to promote older item to action-required: %v", err)
+	}
+	resp = authRequest(t, "GET", "/api/inbox/unread-summary", nil)
+	readJSON(t, resp, &summary)
+	var actionFound bool
+	for _, s := range summary {
+		if s.WorkspaceID == testWorkspaceID && s.Count >= 1 {
+			actionFound = true
+		}
+	}
+	if !actionFound {
+		t.Fatalf("expected unread assignment to survive newer info row, got %+v", summary)
+	}
+
+	if _, err := testPool.Exec(ctx, `
+		UPDATE inbox_item SET type = 'new_comment', severity = 'info'
+		WHERE issue_id = $1 AND title = 'older'
+	`, issueID); err != nil {
+		t.Fatalf("failed to restore older item: %v", err)
 	}
 
 	// Now mark the newest item unread again → the issue becomes unread and the

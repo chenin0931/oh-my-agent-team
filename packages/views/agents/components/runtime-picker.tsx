@@ -4,14 +4,14 @@ import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, Cloud, Loader2, Lock, Search } from "lucide-react";
 import { ProviderLogo } from "../../runtimes/components/provider-logo";
 import { ActorAvatar } from "../../common/actor-avatar";
-import { runtimeDisplayName } from "@multica/core/runtimes";
-import type { MemberWithUser, RuntimeDevice } from "@multica/core/types";
+import { runtimeDisplayName } from "@ohmyagentteam/core/runtimes";
+import type { MemberWithUser, RuntimeDevice } from "@ohmyagentteam/core/types";
 import {
   Popover,
   PopoverTrigger,
   PopoverContent,
-} from "@multica/ui/components/ui/popover";
-import { Label } from "@multica/ui/components/ui/label";
+} from "@ohmyagentteam/ui/components/ui/popover";
+import { Label } from "@ohmyagentteam/ui/components/ui/label";
 import { useT } from "../../i18n";
 import {
   buildRuntimeMachines,

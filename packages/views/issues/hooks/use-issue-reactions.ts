@@ -2,14 +2,14 @@
 
 import { useCallback, useMemo } from "react";
 import { useQuery, useQueryClient, useMutationState } from "@tanstack/react-query";
-import type { IssueReaction } from "@multica/core/types";
+import type { IssueReaction } from "@ohmyagentteam/core/types";
 import type {
   IssueReactionAddedPayload,
   IssueReactionRemovedPayload,
-} from "@multica/core/types";
-import { issueReactionsOptions, issueKeys } from "@multica/core/issues/queries";
-import { useToggleIssueReaction, type ToggleIssueReactionVars } from "@multica/core/issues/mutations";
-import { useWSEvent, useWSReconnect } from "@multica/core/realtime";
+} from "@ohmyagentteam/core/types";
+import { issueReactionsOptions, issueKeys } from "@ohmyagentteam/core/issues/queries";
+import { useToggleIssueReaction, type ToggleIssueReactionVars } from "@ohmyagentteam/core/issues/mutations";
+import { useWSEvent, useWSReconnect } from "@ohmyagentteam/core/realtime";
 
 export function useIssueReactions(issueId: string, userId?: string) {
   const qc = useQueryClient();

@@ -1,16 +1,16 @@
 "use client";
 
 import { useRef, useState, useCallback, useEffect } from "react";
-import { cn } from "@multica/ui/lib/utils";
+import { cn } from "@ohmyagentteam/ui/lib/utils";
 import { ContentEditor, type ContentEditorRef, useFileDropZone, FileDropOverlay } from "../../editor";
-import { FileUploadButton } from "@multica/ui/components/common/file-upload-button";
-import { SubmitButton } from "@multica/ui/components/common/submit-button";
-import { useFileUpload } from "@multica/core/hooks/use-file-upload";
-import { api } from "@multica/core/api";
-import type { Attachment } from "@multica/core/types";
-import { contentReferencesAttachment } from "@multica/core/types";
-import { enterKey, formatShortcut, modKey } from "@multica/core/platform";
-import { useCommentDraftStore } from "@multica/core/issues/stores";
+import { FileUploadButton } from "@ohmyagentteam/ui/components/common/file-upload-button";
+import { SubmitButton } from "@ohmyagentteam/ui/components/common/submit-button";
+import { useFileUpload } from "@ohmyagentteam/core/hooks/use-file-upload";
+import { api } from "@ohmyagentteam/core/api";
+import type { Attachment } from "@ohmyagentteam/core/types";
+import { contentReferencesAttachment } from "@ohmyagentteam/core/types";
+import { enterKey, formatShortcut, modKey } from "@ohmyagentteam/core/platform";
+import { useCommentDraftStore } from "@ohmyagentteam/core/issues/stores";
 import { useT } from "../../i18n";
 import { CommentTriggerChips } from "./comment-trigger-chips";
 import { useCommentTriggerPreview } from "../hooks/use-comment-trigger-preview";

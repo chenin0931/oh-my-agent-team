@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { InboxItem } from "@multica/core/types";
+import type { InboxItem } from "@ohmyagentteam/core/types";
 import {
   getInboxDisplayTitle,
   getQuickCreateFailureDetail,
@@ -38,6 +38,15 @@ describe("inbox display helpers", () => {
     ).toBe("Fix agent list column widths");
   });
 
+  it("removes planning quick-create planned prefixes from list titles", () => {
+    expect(
+      stripQuickCreatePrefix(
+        "Planned MUL-1688: Draft onboarding backlog",
+        "MUL-1688",
+      ),
+    ).toBe("Draft onboarding backlog");
+  });
+
   it("cleans quick-create success titles before rendering the inbox row", () => {
     const quickCreateItem = item({
       type: "quick_create_done",
@@ -47,6 +56,35 @@ describe("inbox display helpers", () => {
 
     expect(getInboxDisplayTitle(quickCreateItem)).toBe(
       "Fix agent list column widths",
+    );
+  });
+
+  it("cleans planning quick-create success titles before rendering the inbox row", () => {
+    const planningItem = item({
+      type: "quick_create_done",
+      title: "Planned MUL-1688: Draft onboarding backlog",
+      details: { identifier: "MUL-1688", mode: "planning" },
+    });
+
+    expect(getInboxDisplayTitle(planningItem)).toBe(
+      "Draft onboarding backlog",
+    );
+  });
+
+  it("uses the original planning prompt for multi-issue completion rows", () => {
+    const planningItem = item({
+      type: "quick_create_done",
+      title: "Planned 3 backlog issues",
+      details: {
+        identifier: "MUL-1688",
+        issue_count: "3",
+        mode: "planning",
+        original_prompt: "Plan a customer roundtable\nand assign the work",
+      },
+    });
+
+    expect(getInboxDisplayTitle(planningItem)).toBe(
+      "Plan a customer roundtable and assign the work",
     );
   });
 

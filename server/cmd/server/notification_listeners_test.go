@@ -4,11 +4,12 @@ import (
 	"context"
 	"testing"
 
-	"github.com/multica-ai/multica/server/internal/events"
-	"github.com/multica-ai/multica/server/internal/handler"
-	"github.com/multica-ai/multica/server/internal/util"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
-	"github.com/multica-ai/multica/server/pkg/protocol"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/events"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/handler"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/service"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/util"
+	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
+	"github.com/chenin0931/oh-my-agent-team/server/pkg/protocol"
 )
 
 // notificationTest helpers — reuse the integration test fixtures from TestMain
@@ -83,7 +84,7 @@ func TestNotification_IssueCreated_AssigneeNotified(t *testing.T) {
 	queries := db.New(testPool)
 	bus := newNotificationBus(t, queries)
 
-	assigneeEmail := "notif-assignee-created@multica.ai"
+	assigneeEmail := "notif-assignee-created@ohmyagentteam.com"
 	assigneeID := createTestUser(t, assigneeEmail)
 	t.Cleanup(func() { cleanupTestUser(t, assigneeEmail) })
 
@@ -192,6 +193,52 @@ func TestNotification_IssueCreated_SelfAssign(t *testing.T) {
 	}
 }
 
+func TestNotification_IssueCreated_MapPayloadMemberAssigneeNotified(t *testing.T) {
+	queries := db.New(testPool)
+	bus := newNotificationBus(t, queries)
+
+	assigneeEmail := "notif-map-assignee-created@ohmyagentteam.com"
+	assigneeID := createTestUser(t, assigneeEmail)
+	t.Cleanup(func() { cleanupTestUser(t, assigneeEmail) })
+
+	issueID := createTestIssue(t, testWorkspaceID, testUserID)
+	t.Cleanup(func() {
+		cleanupInboxForIssue(t, issueID)
+		cleanupTestIssue(t, issueID)
+	})
+
+	bus.Publish(events.Event{
+		Type:        protocol.EventIssueCreated,
+		WorkspaceID: testWorkspaceID,
+		ActorType:   "member",
+		ActorID:     testUserID,
+		Payload: map[string]any{
+			"issue": map[string]any{
+				"id":            issueID,
+				"workspace_id":  testWorkspaceID,
+				"title":         "map payload assignee issue",
+				"status":        "todo",
+				"priority":      "medium",
+				"creator_type":  "member",
+				"creator_id":    testUserID,
+				"assignee_type": "member",
+				"assignee_id":   assigneeID,
+			},
+		},
+	})
+
+	items := inboxItemsForRecipient(t, queries, assigneeID)
+	if len(items) != 1 {
+		t.Fatalf("expected 1 inbox item for map payload assignee, got %d", len(items))
+	}
+	if items[0].Type != "issue_assigned" {
+		t.Fatalf("expected type 'issue_assigned', got %q", items[0].Type)
+	}
+	if items[0].Severity != "action_required" {
+		t.Fatalf("expected severity 'action_required', got %q", items[0].Severity)
+	}
+}
+
 // TestNotification_IssueCreated_NoAssignee verifies that when an issue is
 // created without an assignee, no notifications are generated.
 func TestNotification_IssueCreated_NoAssignee(t *testing.T) {
@@ -243,11 +290,11 @@ func TestNotification_StatusChanged(t *testing.T) {
 	bus := newNotificationBus(t, queries)
 
 	// Create two extra users as subscribers
-	sub1Email := "notif-sub1-status@multica.ai"
+	sub1Email := "notif-sub1-status@ohmyagentteam.com"
 	sub1ID := createTestUser(t, sub1Email)
 	t.Cleanup(func() { cleanupTestUser(t, sub1Email) })
 
-	sub2Email := "notif-sub2-status@multica.ai"
+	sub2Email := "notif-sub2-status@ohmyagentteam.com"
 	sub2ID := createTestUser(t, sub2Email)
 	t.Cleanup(func() { cleanupTestUser(t, sub2Email) })
 
@@ -322,11 +369,11 @@ func TestNotification_CommentCreated(t *testing.T) {
 	queries := db.New(testPool)
 	bus := newNotificationBus(t, queries)
 
-	commenterEmail := "notif-commenter@multica.ai"
+	commenterEmail := "notif-commenter@ohmyagentteam.com"
 	commenterID := createTestUser(t, commenterEmail)
 	t.Cleanup(func() { cleanupTestUser(t, commenterEmail) })
 
-	sub1Email := "notif-sub1-comment@multica.ai"
+	sub1Email := "notif-sub1-comment@ohmyagentteam.com"
 	sub1ID := createTestUser(t, sub1Email)
 	t.Cleanup(func() { cleanupTestUser(t, sub1Email) })
 
@@ -402,13 +449,13 @@ func TestNotification_SystemCommentSkipsInboxAndMentions(t *testing.T) {
 	bus := newNotificationBus(t, queries)
 
 	// Subscriber on the issue who would normally receive new_comment.
-	subEmail := "notif-system-comment-sub@multica.ai"
+	subEmail := "notif-system-comment-sub@ohmyagentteam.com"
 	subID := createTestUser(t, subEmail)
 	t.Cleanup(func() { cleanupTestUser(t, subEmail) })
 
 	// A second member whose UUID we will smuggle into the system-comment
 	// body as a fake mention to prove the listener does not parse it.
-	targetEmail := "notif-system-comment-target@multica.ai"
+	targetEmail := "notif-system-comment-target@ohmyagentteam.com"
 	targetID := createTestUser(t, targetEmail)
 	t.Cleanup(func() { cleanupTestUser(t, targetEmail) })
 
@@ -496,15 +543,15 @@ func TestNotification_AssigneeChanged(t *testing.T) {
 	queries := db.New(testPool)
 	bus := newNotificationBus(t, queries)
 
-	oldAssigneeEmail := "notif-old-assignee@multica.ai"
+	oldAssigneeEmail := "notif-old-assignee@ohmyagentteam.com"
 	oldAssigneeID := createTestUser(t, oldAssigneeEmail)
 	t.Cleanup(func() { cleanupTestUser(t, oldAssigneeEmail) })
 
-	newAssigneeEmail := "notif-new-assignee@multica.ai"
+	newAssigneeEmail := "notif-new-assignee@ohmyagentteam.com"
 	newAssigneeID := createTestUser(t, newAssigneeEmail)
 	t.Cleanup(func() { cleanupTestUser(t, newAssigneeEmail) })
 
-	bystanderEmail := "notif-bystander@multica.ai"
+	bystanderEmail := "notif-bystander@ohmyagentteam.com"
 	bystanderID := createTestUser(t, bystanderEmail)
 	t.Cleanup(func() { cleanupTestUser(t, bystanderEmail) })
 
@@ -538,8 +585,8 @@ func TestNotification_AssigneeChanged(t *testing.T) {
 				AssigneeType: &newAssigneeType,
 				AssigneeID:   &newAssigneeID,
 			},
-			"assignee_changed":  true,
-			"status_changed":    false,
+			"assignee_changed":   true,
+			"status_changed":     false,
 			"prev_assignee_type": &oldAssigneeType,
 			"prev_assignee_id":   &oldAssigneeID,
 		},
@@ -669,13 +716,48 @@ func TestNotification_TaskFailed(t *testing.T) {
 	}
 }
 
+// TestNotification_TaskFailed_AdvisorSkipped verifies that an optional
+// comment-only advisor failure does not become a human action item. The
+// failure is still recorded by the activity listener in production.
+func TestNotification_TaskFailed_AdvisorSkipped(t *testing.T) {
+	queries := db.New(testPool)
+	bus := newNotificationBus(t, queries)
+
+	issueID := createTestIssue(t, testWorkspaceID, testUserID)
+	t.Cleanup(func() {
+		cleanupInboxForIssue(t, issueID)
+		cleanupTestIssue(t, issueID)
+	})
+
+	agentID := "00000000-0000-0000-0000-aaaaaaaaaaaa"
+	addTestSubscriber(t, issueID, "member", testUserID, "creator")
+	addTestSubscriber(t, issueID, "agent", agentID, "advisor")
+
+	bus.Publish(events.Event{
+		Type:        protocol.EventTaskFailed,
+		WorkspaceID: testWorkspaceID,
+		ActorType:   "system",
+		Payload: map[string]any{
+			"task_id":   "00000000-0000-0000-0000-bbbbbbbbbbbb",
+			"agent_id":  agentID,
+			"issue_id":  issueID,
+			"status":    "failed",
+			"task_role": service.TaskCollaborationRoleAdvisor,
+		},
+	})
+
+	if items := inboxItemsForRecipient(t, queries, testUserID); len(items) != 0 {
+		t.Fatalf("expected no human inbox item for advisor failure, got %d", len(items))
+	}
+}
+
 // TestNotification_PriorityChanged verifies that all subscribers except the actor
 // receive a "priority_changed" notification when an issue priority changes.
 func TestNotification_PriorityChanged(t *testing.T) {
 	queries := db.New(testPool)
 	bus := newNotificationBus(t, queries)
 
-	sub1Email := "notif-sub1-priority@multica.ai"
+	sub1Email := "notif-sub1-priority@ohmyagentteam.com"
 	sub1ID := createTestUser(t, sub1Email)
 	t.Cleanup(func() { cleanupTestUser(t, sub1Email) })
 
@@ -740,7 +822,7 @@ func TestNotification_DueDateChanged(t *testing.T) {
 	queries := db.New(testPool)
 	bus := newNotificationBus(t, queries)
 
-	sub1Email := "notif-sub1-duedate@multica.ai"
+	sub1Email := "notif-sub1-duedate@ohmyagentteam.com"
 	sub1ID := createTestUser(t, sub1Email)
 	t.Cleanup(func() { cleanupTestUser(t, sub1Email) })
 
@@ -801,7 +883,7 @@ func TestNotification_StartDateChanged(t *testing.T) {
 	queries := db.New(testPool)
 	bus := newNotificationBus(t, queries)
 
-	sub1Email := "notif-sub1-startdate@multica.ai"
+	sub1Email := "notif-sub1-startdate@ohmyagentteam.com"
 	sub1ID := createTestUser(t, sub1Email)
 	t.Cleanup(func() { cleanupTestUser(t, sub1Email) })
 
@@ -861,7 +943,7 @@ func TestNotification_ParentBubble_StatusChanged(t *testing.T) {
 	queries := db.New(testPool)
 	bus := newNotificationBus(t, queries)
 
-	parentSubEmail := "notif-parent-sub-status@multica.ai"
+	parentSubEmail := "notif-parent-sub-status@ohmyagentteam.com"
 	parentSubID := createTestUser(t, parentSubEmail)
 	t.Cleanup(func() { cleanupTestUser(t, parentSubEmail) })
 
@@ -923,11 +1005,11 @@ func TestNotification_ParentBubble_NewCommentSuppressed(t *testing.T) {
 	queries := db.New(testPool)
 	bus := newNotificationBus(t, queries)
 
-	commenterEmail := "notif-parent-bubble-commenter@multica.ai"
+	commenterEmail := "notif-parent-bubble-commenter@ohmyagentteam.com"
 	commenterID := createTestUser(t, commenterEmail)
 	t.Cleanup(func() { cleanupTestUser(t, commenterEmail) })
 
-	parentSubEmail := "notif-parent-sub-comment@multica.ai"
+	parentSubEmail := "notif-parent-sub-comment@ohmyagentteam.com"
 	parentSubID := createTestUser(t, parentSubEmail)
 	t.Cleanup(func() { cleanupTestUser(t, parentSubEmail) })
 
@@ -975,7 +1057,7 @@ func TestNotification_ParentBubble_PriorityChangeSuppressed(t *testing.T) {
 	queries := db.New(testPool)
 	bus := newNotificationBus(t, queries)
 
-	parentSubEmail := "notif-parent-sub-priority@multica.ai"
+	parentSubEmail := "notif-parent-sub-priority@ohmyagentteam.com"
 	parentSubID := createTestUser(t, parentSubEmail)
 	t.Cleanup(func() { cleanupTestUser(t, parentSubEmail) })
 
@@ -1081,7 +1163,7 @@ func TestNotification_StatusChange_ArchivesStaleTaskFailed(t *testing.T) {
 	queries := db.New(testPool)
 	bus := newNotificationBus(t, queries)
 
-	subEmail := "notif-archive-task-failed-sub@multica.ai"
+	subEmail := "notif-archive-task-failed-sub@ohmyagentteam.com"
 	subID := createTestUser(t, subEmail)
 	t.Cleanup(func() { cleanupTestUser(t, subEmail) })
 

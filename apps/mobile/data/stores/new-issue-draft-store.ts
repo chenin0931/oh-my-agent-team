@@ -26,7 +26,7 @@ import type {
   IssuePriority,
   IssueStatus,
   Project,
-} from "@multica/core/types";
+} from "@ohmyagentteam/core/types";
 import type { AssigneeValue } from "@/components/issue/pickers/assignee-picker-body";
 
 interface NewIssueDraftState {
@@ -47,7 +47,7 @@ const INITIAL: Pick<
   NewIssueDraftState,
   "status" | "priority" | "assignee" | "dueDate" | "project"
 > = {
-  status: "todo",
+  status: "backlog",
   priority: "none",
   assignee: null,
   dueDate: null,

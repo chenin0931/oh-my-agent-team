@@ -1,6 +1,7 @@
-import { deriveRuntimeHealth, type RuntimeHealth } from "@multica/core/runtimes";
-import type { AgentRuntime } from "@multica/core/types";
+import { deriveRuntimeHealth, type RuntimeHealth } from "@ohmyagentteam/core/runtimes";
+import type { AgentRuntime } from "@ohmyagentteam/core/types";
 import { formatDeviceInfo } from "../utils";
+import { runtimeLogoProvider } from "./runtime-logo";
 
 export type RuntimeMachineSection = "local" | "remote" | "cloud";
 export type RuntimeMachineFilter = "all" | "online" | "issues";
@@ -181,7 +182,9 @@ function finalizeRuntimeMachine(
     a.provider.localeCompare(b.provider),
   );
   const first = runtimes[0];
-  const providerNames = Array.from(new Set(runtimes.map((r) => r.provider))).sort();
+  const providerNames = Array.from(
+    new Set(runtimes.map((r) => runtimeLogoProvider(r))),
+  ).sort();
   // Device-name consolidation is only safe for the current user's own
   // local runtimes — the list spans the whole workspace, so a host-name
   // match alone could claim another member's identically-named machine.

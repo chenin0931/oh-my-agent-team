@@ -118,8 +118,8 @@ jobs:
         # to apps/mobile/** + packages/core/**) so it doesn't add
         # ~50s of expo-lint + tsc to every web/desktop PR. Keep this
         # filter in sync with the root package.json scripts, which also
-        # exclude @multica/mobile.
-        run: pnpm exec turbo build typecheck lint test --filter='!@multica/docs' --filter='!@multica/mobile'
+        # exclude @ohmyagentteam/mobile.
+        run: pnpm exec turbo build typecheck lint test --filter='!@ohmyagentteam/docs' --filter='!@ohmyagentteam/mobile'
 
   backend:
     runs-on: ubuntu-latest
@@ -127,13 +127,13 @@ jobs:
       postgres:
         image: pgvector/pgvector:pg17
         env:
-          POSTGRES_DB: multica
-          POSTGRES_USER: multica
-          POSTGRES_PASSWORD: multica
+          POSTGRES_DB: ohmyagentteam
+          POSTGRES_USER: ohmyagentteam
+          POSTGRES_PASSWORD: ohmyagentteam
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U multica -d multica"
+          --health-cmd "pg_isready -U ohmyagentteam -d ohmyagentteam"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 20
@@ -147,7 +147,7 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     env:
-      DATABASE_URL: postgres://multica:multica@localhost:5432/multica?sslmode=disable
+      DATABASE_URL: postgres://ohmyagentteam:ohmyagentteam@localhost:5432/ohmyagentteam?sslmode=disable
       # Wires up the RedisLocalSkill*_test.go suite. Distinct from REDIS_URL
       # (which would flip the server binary itself onto the Redis-backed
       # realtime relay + request stores); the tests talk to this Redis

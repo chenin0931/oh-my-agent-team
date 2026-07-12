@@ -143,6 +143,21 @@
     "local_hint": "다른 기기의 에이전트는 이 경로를 볼 수 없어 시작에 실패합니다. 공유 작업에는 저장소를 사용하세요."
   },
   "create_issue": {
+    "issue_types": {
+      "epic": "Epic",
+      "issue": "Issue",
+      "subtask": "하위 작업"
+    },
+    "typed": {
+      "sr_manual": "새 {{type}}",
+      "manual_breadcrumb": "{{type}} 직접 만들기",
+      "title_placeholder": "{{type}} 제목",
+      "title_required": "{{type}}을 만들려면 제목을 입력하세요",
+      "submit": "{{type}} 만들기",
+      "toast_created": "{{type}} 생성됨",
+      "view": "{{type}} 보기",
+      "toast_failed": "{{type}}을 만들지 못했습니다"
+    },
     "sr_manual": "새 이슈",
     "sr_agent": "빠른 이슈 생성",
     "manual_breadcrumb": "직접 만들기",
@@ -192,7 +207,7 @@
       "search_placeholder": "에이전트와 스쿼드 검색...",
       "agents_group": "에이전트",
       "squads_group": "스쿼드",
-      "version_missing": "이 에이전트의 데몬이 CLI 버전을 보고하지 않습니다. 에이전트로 만들기에는 multica CLI {{min}} 이상이 필요합니다. 데몬을 업그레이드하고 다시 연결하거나 직접 만들기로 전환하세요.",
+      "version_missing": "이 에이전트의 데몬이 CLI 버전을 보고하지 않습니다. 에이전트로 만들기에는 OMAT CLI {{min}} 이상이 필요합니다. 데몬을 업그레이드하고 다시 연결하거나 직접 만들기로 전환하세요.",
       "version_below": "이 에이전트의 데몬 CLI는 {{current}}입니다. 에이전트로 만들기에는 {{min}} 이상이 필요합니다. 데몬을 업그레이드하거나 직접 만들기로 전환하세요.",
       "prompt_placeholder": "에이전트에게 할 일을 알려주세요. 예: \"Bohan이 Web 프로젝트의 인박스 로딩 지연을 고치게 해줘\"",
       "submit": "만들기",

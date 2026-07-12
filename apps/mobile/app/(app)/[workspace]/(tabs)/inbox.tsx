@@ -8,7 +8,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import type { InboxItem } from "@multica/core/types";
+import type { InboxItem } from "@ohmyagentteam/core/types";
 import { Text } from "@/components/ui/text";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -58,12 +58,17 @@ export default function Inbox() {
       // snapshot for the native stack push transition.
       markRead.mutate(item.id);
     }
-    if (item.issue_id && wsSlug) {
+    const targetId = item.target_id ?? item.issue_id;
+    const targetType = item.target_type ?? "issue";
+    if (targetId && wsSlug) {
       router.push({
-        pathname: "/[workspace]/issue/[id]",
+        pathname:
+          targetType === "epic"
+            ? "/[workspace]/epic/[id]"
+            : "/[workspace]/issue/[id]",
         params: {
           workspace: wsSlug,
-          id: item.issue_id,
+          id: targetId,
           highlight: item.details?.comment_id,
           h: String(Date.now()),
         },

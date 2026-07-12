@@ -13,18 +13,18 @@ import {
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import type { Agent, SkillSummary } from "@multica/core/types";
-import { api } from "@multica/core/api";
-import { workspaceKeys } from "@multica/core/workspace/queries";
-import { resolvePublicFileUrl } from "@multica/core/workspace/avatar-url";
-import { Button } from "@multica/ui/components/ui/button";
-import { Checkbox } from "@multica/ui/components/ui/checkbox";
-import { Input } from "@multica/ui/components/ui/input";
+import type { Agent, SkillSummary } from "@ohmyagentteam/core/types";
+import { api } from "@ohmyagentteam/core/api";
+import { workspaceKeys } from "@ohmyagentteam/core/workspace/queries";
+import { resolvePublicFileUrl } from "@ohmyagentteam/core/workspace/avatar-url";
+import { Button } from "@ohmyagentteam/ui/components/ui/button";
+import { Checkbox } from "@ohmyagentteam/ui/components/ui/checkbox";
+import { Input } from "@ohmyagentteam/ui/components/ui/input";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "@multica/ui/components/ui/collapsible";
+} from "@ohmyagentteam/ui/components/ui/collapsible";
 import {
   Dialog,
   DialogContent,
@@ -32,21 +32,21 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@multica/ui/components/ui/dialog";
+} from "@ohmyagentteam/ui/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@multica/ui/components/ui/dropdown-menu";
+} from "@ohmyagentteam/ui/components/ui/dropdown-menu";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@multica/ui/components/ui/tooltip";
-import { ActorAvatar } from "@multica/ui/components/common/actor-avatar";
-import { cn } from "@multica/ui/lib/utils";
+} from "@ohmyagentteam/ui/components/ui/tooltip";
+import { ActorAvatar } from "@ohmyagentteam/ui/components/common/actor-avatar";
+import { cn } from "@ohmyagentteam/ui/lib/utils";
 import { useT } from "../../i18n";
 import type { SkillRow } from "./skills-page";
 

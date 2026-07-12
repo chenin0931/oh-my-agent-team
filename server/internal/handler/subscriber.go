@@ -5,8 +5,8 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
-	"github.com/multica-ai/multica/server/pkg/protocol"
+	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
+	"github.com/chenin0931/oh-my-agent-team/server/pkg/protocol"
 )
 
 // SubscriberResponse is the JSON shape returned for each issue subscriber.
@@ -31,11 +31,10 @@ func subscriberToResponse(s db.IssueSubscriber) SubscriberResponse {
 // ListIssueSubscribers returns all subscribers for an issue.
 func (h *Handler) ListIssueSubscribers(w http.ResponseWriter, r *http.Request) {
 	issueID := chi.URLParam(r, "id")
-	issue, ok := h.loadIssueForUser(w, r, issueID)
+	issue, ok := h.loadCollaborativeTargetForRoute(w, r, issueID)
 	if !ok {
 		return
 	}
-
 	subscribers, err := h.Queries.ListIssueSubscribers(r.Context(), issue.ID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to list subscribers")
@@ -54,8 +53,11 @@ func (h *Handler) ListIssueSubscribers(w http.ResponseWriter, r *http.Request) {
 // If request body contains user_id, subscribes that user; otherwise subscribes the caller.
 func (h *Handler) SubscribeToIssue(w http.ResponseWriter, r *http.Request) {
 	issueID := chi.URLParam(r, "id")
-	issue, ok := h.loadIssueForUser(w, r, issueID)
+	issue, ok := h.loadCollaborativeTargetForRoute(w, r, issueID)
 	if !ok {
+		return
+	}
+	if h.rejectMemberAssigneeAdvisorMutation(w, r, issue.ID, false) {
 		return
 	}
 
@@ -96,10 +98,12 @@ func (h *Handler) SubscribeToIssue(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.publish(protocol.EventSubscriberAdded, workspaceID, callerActorType, callerActorID, map[string]any{
-		"issue_id":  issueID,
-		"user_type": targetUserType,
-		"user_id":   targetUserID,
-		"reason":    "manual",
+		"issue_id":    uuidToString(issue.ID),
+		"target_type": targetTypeForIssue(issue),
+		"target_id":   uuidToString(issue.ID),
+		"user_type":   targetUserType,
+		"user_id":     targetUserID,
+		"reason":      "manual",
 	})
 
 	writeJSON(w, http.StatusOK, map[string]bool{"subscribed": true})
@@ -109,8 +113,11 @@ func (h *Handler) SubscribeToIssue(w http.ResponseWriter, r *http.Request) {
 // If request body contains user_id, unsubscribes that user; otherwise unsubscribes the caller.
 func (h *Handler) UnsubscribeFromIssue(w http.ResponseWriter, r *http.Request) {
 	issueID := chi.URLParam(r, "id")
-	issue, ok := h.loadIssueForUser(w, r, issueID)
+	issue, ok := h.loadCollaborativeTargetForRoute(w, r, issueID)
 	if !ok {
+		return
+	}
+	if h.rejectMemberAssigneeAdvisorMutation(w, r, issue.ID, false) {
 		return
 	}
 
@@ -150,9 +157,11 @@ func (h *Handler) UnsubscribeFromIssue(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.publish(protocol.EventSubscriberRemoved, workspaceID, callerActorType, callerActorID, map[string]any{
-		"issue_id":  issueID,
-		"user_type": targetUserType,
-		"user_id":   targetUserID,
+		"issue_id":    uuidToString(issue.ID),
+		"target_type": targetTypeForIssue(issue),
+		"target_id":   uuidToString(issue.ID),
+		"user_type":   targetUserType,
+		"user_id":     targetUserID,
 	})
 
 	writeJSON(w, http.StatusOK, map[string]bool{"subscribed": false})

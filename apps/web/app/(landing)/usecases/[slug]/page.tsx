@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { cn } from "@multica/ui/lib/utils";
+import { cn } from "@ohmyagentteam/ui/lib/utils";
 import { LandingHeader } from "@/features/landing/components/landing-header";
 import { LandingFooter } from "@/features/landing/components/landing-footer";
 import { Screenshot } from "@/features/landing/components/mdx/screenshot";
@@ -12,7 +12,7 @@ import {
   getUseCaseLocale,
   useCaseText,
 } from "@/lib/use-cases-i18n";
-import type { SupportedLocale } from "@multica/core/i18n";
+import type { SupportedLocale } from "@ohmyagentteam/core/i18n";
 
 type Params = { slug: string };
 
@@ -141,13 +141,13 @@ function createMdxComponents(locale: SupportedLocale) {
     Screenshot,
     h2: (props: ComponentPropsWithoutRef<"h2">) => (
       <h2
-        className="mt-16 mb-4 scroll-mt-[100px] text-[1.5rem] font-semibold tracking-tight text-[#0a0d12] sm:text-[1.75rem]"
+        className="mt-16 mb-4 scroll-mt-[100px] text-[1.5rem] font-semibold text-[#0a0d12] sm:text-[1.75rem]"
         {...props}
       />
     ),
     h3: (props: ComponentPropsWithoutRef<"h3">) => (
       <h3
-        className="mt-10 mb-3 scroll-mt-[100px] text-[1.1rem] font-semibold tracking-tight text-[#0a0d12] sm:text-[1.2rem]"
+        className="mt-10 mb-3 scroll-mt-[100px] text-[1.1rem] font-semibold text-[#0a0d12] sm:text-[1.2rem]"
         {...props}
       />
     ),
@@ -231,7 +231,7 @@ export default async function UseCasePage(props: { params: Promise<Params> }) {
           )}
         >
           <article>
-            <h1 className="font-[family-name:var(--font-serif)] text-[2.6rem] leading-[1.05] tracking-[-0.03em] sm:text-[3.4rem]">
+            <h1 className="font-[family-name:var(--font-serif)] text-[2.6rem] leading-[1.05] sm:text-[3.4rem]">
               {page.data.title}
             </h1>
             <div className="mt-10 text-[16px] leading-[1.85] text-[#0a0d12]/72 [&>:first-child]:mt-0 [&>p]:my-5 sm:text-[17px]">
@@ -242,7 +242,7 @@ export default async function UseCasePage(props: { params: Promise<Params> }) {
           {toc.length > 0 ? (
             <aside className="hidden lg:block">
               <nav className="sticky top-[100px] max-h-[calc(100vh-120px)] overflow-y-auto">
-                <div className="mb-3 text-[11px] font-medium uppercase tracking-[0.14em] text-[#0a0d12]/40">
+                <div className="mb-3 text-[11px] font-medium uppercase text-[#0a0d12]/40">
                   {text.tableOfContents}
                 </div>
                 <ul className="border-l border-[#0a0d12]/8">

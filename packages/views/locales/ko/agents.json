@@ -11,6 +11,43 @@
     "list_load_failed_default": "에이전트 목록을 가져오는 중 문제가 발생했습니다.",
     "try_again": "다시 시도"
   },
+  "network": {
+    "page_title": "협업 네트워크",
+    "view_network": "네트워크",
+    "view_directory": "목록",
+    "metrics": {
+      "people": "사람",
+      "agents": "에이전트",
+      "squads": "스쿼드",
+      "active_work": "진행 중 작업",
+      "capacity": "온라인 용량",
+      "shared_agents": "공유 에이전트",
+      "online_hint": "{{count}} 온라인",
+      "working_hint": "{{count}} 작업 중"
+    },
+    "people_title": "구성원과 소유 에이전트",
+    "people_subtitle": "소유 관계, 가용성, 위임 작업을 한 곳에서 확인합니다.",
+    "my_team_title": "내 팀",
+    "my_team_description": "내 에이전트와 스쿼드, 이들을 통해 위임된 작업을 확인합니다.",
+    "my_team_empty": "이 워크스페이스에서 내 멤버 프로필을 찾을 수 없습니다.",
+    "other_teams_title": "다른 사람의 팀",
+    "other_teams_description": "각 멤버가 네트워크에 연결한 에이전트와 스쿼드의 소유자로 표시됩니다.",
+    "other_teams_empty": "아직 다른 멤버가 참여하지 않았습니다.",
+    "workload_summary": "직접 {{direct}} · 위임 {{delegated}}",
+    "no_owned_agents": "소유 에이전트 없음",
+    "no_owned_team_assets": "에이전트나 스쿼드가 없습니다",
+    "unowned_agents": "소유자 없는 에이전트",
+    "squads_title": "스쿼드",
+    "no_leader": "리더 없음",
+    "member_count_other": "구성원 {{count}}명",
+    "no_squads": "활성 스쿼드 없음",
+    "capacity_title": "실행 용량",
+    "agent_count_other": "에이전트 {{count}}개",
+    "no_capacity": "연결된 런타임 없음",
+    "shared": "공유",
+    "squad_asset": "스쿼드",
+    "active_issue_count_other": "활성 작업 {{count}}개"
+  },
   "scope": {
     "mine": "내 것",
     "all": "전체",
@@ -40,7 +77,7 @@
   },
   "empty": {
     "title": "아직 에이전트가 없습니다",
-    "description": "팀원에게 하듯 에이전트를 만들고 이슈를 할당하세요. 로컬 에이전트는 내 기기에서, 클라우드 에이전트는 Multica 런타임에서 실행됩니다."
+    "description": "팀원에게 하듯 에이전트를 만들고 이슈를 할당하세요. 로컬 에이전트는 내 기기에서, 클라우드 에이전트는 OhMyAgentTeam 런타임에서 실행됩니다."
   },
   "no_matches": {
     "title": "일치하는 결과 없음",
@@ -250,6 +287,9 @@
     "runtime_search_placeholder": "기기 검색…",
     "runtime_no_results": "일치하는 기기가 없습니다",
     "runtime_group_online": "{{online}}/{{total}} 온라인",
+    "no_runtime_title": "먼저 실행 능력을 연결하세요",
+    "no_runtime_description": "에이전트가 작업을 받으려면 온라인 CLI 런타임이 필요합니다.",
+    "open_execution_tools": "실행 도구로 이동",
     "duplicate_copy_suffix": " (사본)",
     "create": "만들기",
     "creating": "만드는 중...",

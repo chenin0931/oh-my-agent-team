@@ -3,9 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
-import { MulticaIcon } from "@multica/ui/components/common/multica-icon";
-import { cn } from "@multica/ui/lib/utils";
-import { useAuthStore } from "@multica/core/auth";
+import { BrandMark } from "@ohmyagentteam/ui/components/common/brand-mark";
+import { BRAND_NAME } from "@ohmyagentteam/core/brand";
+import { cn } from "@ohmyagentteam/ui/lib/utils";
+import { useAuthStore } from "@ohmyagentteam/core/auth";
 import { docsHrefForLocale, useLocale } from "../i18n";
 import { formatStarCount, useGithubStars } from "../utils/use-github-stars";
 import { GitHubMark, githubUrl, headerButtonClassName } from "./shared";
@@ -41,20 +42,19 @@ export function LandingHeader({
       <div className="mx-auto flex h-[76px] max-w-[1320px] items-center justify-between px-4 sm:px-6 lg:px-8">
         <div className="flex min-w-0 items-center gap-6 lg:gap-8">
           <Link href="/" className="flex shrink-0 items-center gap-3">
-            <MulticaIcon
+            <BrandMark
               className={cn(
                 "size-5",
                 variant === "dark" ? "text-white" : "text-[#0a0d12]",
               )}
-              noSpin
             />
             <span
               className={cn(
-                "text-[18px] font-semibold tracking-[0.04em] lowercase sm:text-[20px]",
+                "font-serif text-[18px] font-medium sm:text-[20px]",
                 variant === "dark" ? "text-white/92" : "text-[#0a0d12]",
               )}
             >
-              multica
+              {BRAND_NAME}
             </span>
           </Link>
 

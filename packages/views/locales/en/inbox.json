@@ -1,7 +1,14 @@
 {
   "page": {
-    "title": "Inbox",
-    "back": "Inbox"
+    "title": "Action center",
+    "back": "Action center"
+  },
+  "filters": {
+    "label": "Action center views",
+    "all": "All",
+    "action": "Needs action",
+    "agents": "Agents",
+    "system": "System"
   },
   "menu": {
     "mark_all_read": "Mark all as read",
@@ -11,6 +18,8 @@
   },
   "list": {
     "empty": "No notifications",
+    "empty_filter": "Nothing in this view",
+    "action_required": "Action required",
     "mark_done_tooltip": "Mark as done",
     "archive_tooltip": "Archive",
     "time": {
@@ -28,6 +37,7 @@
     "archive": "Archive"
   },
   "types": {
+    "epic_owned": "Epic owner",
     "issue_assigned": "Assigned",
     "issue_subscribed": "Subscribed",
     "unassigned": "Unassigned",
@@ -58,6 +68,7 @@
     "removed_due_date": "Removed due date",
     "reacted_to_comment": "Reacted {{emoji}} to your comment",
     "created_with_agent": "Created with agent: {{identifier}}",
+    "planned_with_agent": "Agent planned {{count}} backlog work items",
     "failed_with_detail": "Failed: {{detail}}"
   },
   "errors": {

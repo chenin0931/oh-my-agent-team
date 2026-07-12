@@ -71,6 +71,139 @@ describe("deduplicateInboxItems", () => {
     expect(merged[0]?.id).toBe("newer-comment");
     expect(merged[0]?.details?.comment_id).toBe("comment-2");
   });
+
+  it("keeps an unread assignment visible above newer agent comments", () => {
+    const merged = deduplicateInboxItems([
+      item({
+        id: "assignment",
+        type: "issue_assigned",
+        severity: "action_required",
+        actor_type: "agent",
+        created_at: "2026-06-15T08:00:00Z",
+      }),
+      item({
+        id: "advisor-comment",
+        type: "new_comment",
+        severity: "info",
+        actor_type: "agent",
+        created_at: "2026-06-15T08:02:00Z",
+        details: { comment_id: "comment-2" },
+      }),
+    ]);
+
+    expect(merged).toHaveLength(1);
+    expect(merged[0]).toMatchObject({
+      id: "assignment",
+      type: "issue_assigned",
+      severity: "action_required",
+    });
+    expect(merged[0]?.details?.comment_id).toBeUndefined();
+  });
+
+  it("returns to the newest update after the action is read", () => {
+    const merged = deduplicateInboxItems([
+      item({
+        id: "assignment",
+        type: "issue_assigned",
+        severity: "action_required",
+        read: true,
+        created_at: "2026-06-15T08:00:00Z",
+      }),
+      item({
+        id: "advisor-comment",
+        type: "new_comment",
+        created_at: "2026-06-15T08:02:00Z",
+      }),
+    ]);
+
+    expect(merged[0]?.id).toBe("advisor-comment");
+  });
+
+  it("replaces a failed quick-create attempt with its newer successful retry", () => {
+    const prompt = "Plan a customer roundtable";
+    const merged = deduplicateInboxItems([
+      item({
+        id: "failed-attempt",
+        issue_id: null,
+        type: "quick_create_failed",
+        severity: "action_required",
+        created_at: "2026-06-15T08:00:00Z",
+        details: { agent_id: "agent-1", original_prompt: prompt },
+      }),
+      item({
+        id: "successful-retry",
+        issue_id: "issue-2",
+        type: "quick_create_done",
+        severity: "info",
+        created_at: "2026-06-15T08:02:00Z",
+        details: { agent_id: "agent-1", original_prompt: prompt },
+      }),
+    ]);
+
+    expect(merged).toHaveLength(1);
+    expect(merged[0]?.id).toBe("successful-retry");
+  });
+
+  it("surfaces a newer quick-create failure after an older success", () => {
+    const prompt = "Plan a customer roundtable";
+    const merged = deduplicateInboxItems([
+      item({
+        id: "older-success",
+        issue_id: "issue-2",
+        type: "quick_create_done",
+        created_at: "2026-06-15T08:00:00Z",
+        details: { agent_id: "agent-1", original_prompt: prompt },
+      }),
+      item({
+        id: "newer-failure",
+        issue_id: null,
+        type: "quick_create_failed",
+        severity: "action_required",
+        created_at: "2026-06-15T08:02:00Z",
+        details: { agent_id: "agent-1", original_prompt: prompt },
+      }),
+    ]);
+
+    expect(merged).toHaveLength(1);
+    expect(merged[0]?.id).toBe("newer-failure");
+  });
+
+  it("still preserves a human assignment after a quick-create retry succeeds", () => {
+    const prompt = "Plan a customer roundtable";
+    const merged = deduplicateInboxItems([
+      item({
+        id: "failed-attempt",
+        issue_id: null,
+        type: "quick_create_failed",
+        severity: "action_required",
+        created_at: "2026-06-15T08:00:00Z",
+        details: { agent_id: "agent-1", original_prompt: prompt },
+      }),
+      item({
+        id: "assignment",
+        issue_id: "issue-2",
+        type: "issue_assigned",
+        severity: "action_required",
+        created_at: "2026-06-15T08:01:00Z",
+      }),
+      item({
+        id: "successful-retry",
+        issue_id: "issue-2",
+        type: "quick_create_done",
+        created_at: "2026-06-15T08:02:00Z",
+        details: { agent_id: "agent-1", original_prompt: prompt },
+      }),
+      item({
+        id: "advisor-comment",
+        issue_id: "issue-2",
+        type: "new_comment",
+        created_at: "2026-06-15T08:03:00Z",
+      }),
+    ]);
+
+    expect(merged).toHaveLength(1);
+    expect(merged[0]?.id).toBe("assignment");
+  });
 });
 
 describe("hasOtherWorkspaceUnread", () => {

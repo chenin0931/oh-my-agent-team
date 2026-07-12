@@ -33,7 +33,7 @@ func TestProjectResourceLifecycle(t *testing.T) {
 	req = newRequest("POST", "/api/projects/"+project.ID+"/resources", map[string]any{
 		"resource_type": "github_repo",
 		"resource_ref": map[string]any{
-			"url": "https://github.com/multica-ai/multica",
+			"url": "https://github.com/chenin0931/oh-my-agent-team",
 			"ref": "release/v2",
 		},
 	})
@@ -56,7 +56,7 @@ func TestProjectResourceLifecycle(t *testing.T) {
 	if err := json.Unmarshal(created.ResourceRef, &ref); err != nil {
 		t.Fatalf("decode resource_ref: %v", err)
 	}
-	if ref.URL != "https://github.com/multica-ai/multica" {
+	if ref.URL != "https://github.com/chenin0931/oh-my-agent-team" {
 		t.Errorf("created.ResourceRef.url = %q", ref.URL)
 	}
 	if ref.Ref != "release/v2" {
@@ -90,7 +90,7 @@ func TestProjectResourceLifecycle(t *testing.T) {
 	req = newRequest("POST", "/api/projects/"+project.ID+"/resources", map[string]any{
 		"resource_type": "github_repo",
 		"resource_ref": map[string]any{
-			"url": "https://github.com/multica-ai/multica",
+			"url": "https://github.com/chenin0931/oh-my-agent-team",
 			"ref": "release/v2",
 		},
 	})
@@ -173,8 +173,8 @@ func TestProjectResourceAcceptsSSHRepoURLs(t *testing.T) {
 		name string
 		url  string
 	}{
-		{"scp-like", "git@github.com:multica-ai/multica.git"},
-		{"ssh-scheme", "ssh://git@github.com/multica-ai/multica.git"},
+		{"scp-like", "git@github.com:chenin0931/oh-my-agent-team.git"},
+		{"ssh-scheme", "ssh://git@github.com/chenin0931/oh-my-agent-team.git"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -207,18 +207,18 @@ func TestProjectResourceAcceptsSSHRepoURLs(t *testing.T) {
 
 func TestIsValidGitRepoURL(t *testing.T) {
 	good := []string{
-		"https://github.com/multica-ai/multica",
-		"https://github.com/multica-ai/multica.git",
+		"https://github.com/chenin0931/oh-my-agent-team",
+		"https://github.com/chenin0931/oh-my-agent-team.git",
 		"http://github.example.com/x/y",
-		"ssh://git@github.com/multica-ai/multica.git",
-		"ssh://git@github.com:22/multica-ai/multica.git",
-		"git@github.com:multica-ai/multica.git",
+		"ssh://git@github.com/chenin0931/oh-my-agent-team.git",
+		"ssh://git@github.com:22/chenin0931/oh-my-agent-team.git",
+		"git@github.com:chenin0931/oh-my-agent-team.git",
 		"git@gitlab.example.com:group/sub/repo.git",
 	}
 	bad := []string{
 		"",
 		"not-a-url",
-		"github.com/multica-ai/multica", // no scheme, no scp-style colon
+		"github.com/chenin0931/oh-my-agent-team", // no scheme, no scp-style colon
 		"https://",                      // empty host
 		"git@github.com",                // missing :path
 		"git@:foo/bar",                  // missing host
@@ -470,7 +470,7 @@ func TestCreateProjectAttachesResources(t *testing.T) {
 		"resources": []map[string]any{
 			{
 				"resource_type": "github_repo",
-				"resource_ref":  map[string]any{"url": "https://github.com/multica-ai/multica"},
+				"resource_ref":  map[string]any{"url": "https://github.com/chenin0931/oh-my-agent-team"},
 			},
 		},
 	})
@@ -539,7 +539,7 @@ func TestProjectResourceCountBreadcrumb(t *testing.T) {
 	w = httptest.NewRecorder()
 	req = newRequest("POST", "/api/projects/"+project.ID+"/resources", map[string]any{
 		"resource_type": "github_repo",
-		"resource_ref":  map[string]any{"url": "https://github.com/multica-ai/breadcrumb"},
+		"resource_ref":  map[string]any{"url": "https://github.com/chenin0931/breadcrumb"},
 	})
 	req = withURLParam(req, "id", project.ID)
 	testHandler.CreateProjectResource(w, req)
@@ -600,6 +600,29 @@ func TestProjectResourceCountBreadcrumb(t *testing.T) {
 		testPool.Exec(context.Background(), `DELETE FROM issue WHERE id = $1`, issueID)
 	})
 
+	var epicNumber int
+	if err := testPool.QueryRow(context.Background(), `
+		UPDATE workspace
+		SET issue_counter = GREATEST(issue_counter, (SELECT COALESCE(MAX(number), 0) FROM issue WHERE workspace_id = $1)) + 1
+		WHERE id = $1 RETURNING issue_counter
+	`, testWorkspaceID).Scan(&epicNumber); err != nil {
+		t.Fatalf("next epic number: %v", err)
+	}
+	var epicID string
+	if err := testPool.QueryRow(context.Background(), `
+		INSERT INTO issue (
+			workspace_id, creator_type, creator_id, title, status, priority,
+			project_id, number, position, issue_type
+		)
+			VALUES ($1, 'member', $2, 'Planning container', 'planned', 'none', $3, $4, 0, 'epic')
+		RETURNING id
+	`, testWorkspaceID, testUserID, project.ID, epicNumber).Scan(&epicID); err != nil {
+		t.Fatalf("create project epic: %v", err)
+	}
+	t.Cleanup(func() {
+		testPool.Exec(context.Background(), `DELETE FROM issue WHERE id = $1`, epicID)
+	})
+
 	// UpdateProject must preserve the breadcrumb. A title-only PUT used to
 	// reset derived counts to 0 because UpdateProject didn't reload them.
 	w = httptest.NewRecorder()
@@ -633,7 +656,7 @@ func TestCreateProjectWithResourcesEchoesCount(t *testing.T) {
 		"resources": []map[string]any{
 			{
 				"resource_type": "github_repo",
-				"resource_ref":  map[string]any{"url": "https://github.com/multica-ai/echo-count"},
+				"resource_ref":  map[string]any{"url": "https://github.com/chenin0931/echo-count"},
 			},
 		},
 	})

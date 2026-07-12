@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { Markdown as MarkdownBase } from "@multica/ui/markdown";
+import { Markdown as MarkdownBase } from "@ohmyagentteam/ui/markdown";
 import { Markdown } from "./markdown";
 
-vi.mock("@multica/core/config", () => ({
+vi.mock("@ohmyagentteam/core/config", () => ({
   useConfigStore: (selector: (state: { cdnDomain: string }) => unknown) =>
     selector({ cdnDomain: "" }),
 }));
@@ -15,8 +15,8 @@ vi.mock("../issues/components/issue-mention-card", () => ({
   ),
 }));
 
-vi.mock("@multica/core/paths", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@multica/core/paths")>();
+vi.mock("@ohmyagentteam/core/paths", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@ohmyagentteam/core/paths")>();
   return {
     ...actual,
     useWorkspaceSlug: () => "acme",

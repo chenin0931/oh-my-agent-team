@@ -11,10 +11,10 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/slack-go/slack"
 
-	"github.com/multica-ai/multica/server/internal/integrations/channel"
-	"github.com/multica-ai/multica/server/internal/integrations/channel/engine"
-	"github.com/multica-ai/multica/server/internal/util"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/integrations/channel"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/integrations/channel/engine"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/util"
+	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
 )
 
 // This file is the Slack OutboundReplier — the engine seam that delivers a
@@ -57,10 +57,10 @@ type OutboundReplier struct {
 type OutboundReplierConfig struct {
 	Binding bindingMinter
 	Decrypt Decrypter
-	// AppURL is the Multica web app host the user clicks into to redeem the
-	// binding token (e.g. https://multica.example). It comes from MULTICA_APP_URL
+	// AppURL is the OhMyAgentTeam web app host the user clicks into to redeem the
+	// binding token (e.g. https://ohmyagentteam.example). It comes from OMAT_APP_URL
 	// (falling back to FRONTEND_ORIGIN) and is intentionally separate from
-	// MULTICA_PUBLIC_URL, which is the backend/API public URL used for webhook and
+	// OMAT_PUBLIC_URL, which is the backend/API public URL used for webhook and
 	// daemon-facing endpoints — the bind page (/slack/bind) is served by the web
 	// app, so the link must point at the app host, not the API host. Mirrors the
 	// Lark replier's AppURL.
@@ -151,7 +151,7 @@ func (r *OutboundReplier) sendBindingPrompt(ctx context.Context, inst engine.Res
 	// Wrap the URL as an explicit Slack link <url|label>: formatMrkdwn protects
 	// these from its markdown passes, so the base64url token's `_`/`-` chars are
 	// not mangled into italics.
-	text := "👋 To start chatting with me, link your Slack account to Multica: <" +
+	text := "👋 To start chatting with me, link your Slack account to OhMyAgentTeam: <" +
 		bindURL + "|link your account>\n(This link expires in 15 minutes.)"
 	return r.post(ctx, inst, msg, text)
 }

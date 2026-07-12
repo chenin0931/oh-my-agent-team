@@ -1,6 +1,6 @@
 {
   "page": {
-    "title": "ランタイム",
+    "title": "実行能力",
     "tagline": "エージェントの CLI セッションを実行するマシンとクラウドワーカーです。",
     "learn_more": "詳しく見る →",
     "connect_remote": "コンピュータを追加",
@@ -26,6 +26,32 @@
       "title": "ローカルランタイムを起動中…",
       "hint": "通常は数秒かかります。デーモンがワークスペースに登録しています。"
     }
+  },
+  "execution_tools": {
+    "title": "実行ツールを接続",
+    "description": "よく使われる3つのローカル Agent CLI から始めます。",
+    "click_hint": "ツールを選んで手順を表示",
+    "online": "このワークスペースでオンライン",
+    "not_connected": "接続ガイドを表示",
+    "guide_title": "{{name}} を接続",
+    "guide_description": "ツールはコンピュータ上で動作し、OhMyAgentTeam が割り当てられた作業をルーティングします。",
+    "install_title": "CLI をインストール",
+    "install_description": "ターミナルで公式パッケージコマンドを実行します。",
+    "login_title": "ツールにログイン",
+    "login_description": "{{name}} を一度起動してアカウント設定を完了します。",
+    "connect_title": "このコンピュータを接続",
+    "connect_description": "OMAT がインストール済みツールを検出し、ワークスペースで利用可能にします。",
+    "open_connect": "接続設定を開く"
+  },
+  "capacity_pulse": {
+    "machines": "マシン",
+    "runtimes": "ランタイム",
+    "agents": "接続済みエージェント",
+    "work": "実行中",
+    "online": "オンライン",
+    "ready": "利用可能",
+    "bound": "接続済み",
+    "work_hint": "{{queued}} 待機中"
   },
   "machine": {
     "search_placeholder": "マシンを検索…",
@@ -171,7 +197,7 @@
   "connect": {
     "title": "コンピュータを追加",
     "description": "追加したいコンピュータで、この 2 つのコマンドを実行してください。デーモンがオンラインになった瞬間に検出します。",
-    "step1_label": "Multica CLI をインストール",
+    "step1_label": "OhMyAgentTeam CLI をインストール",
     "step2_label": "デーモンを起動",
     "step2_hint": "サインインのためにブラウザを開き、その後デーモンをバックグラウンドで実行し続けます。",
     "live_listening": "あなたのコンピュータを待っています",
@@ -234,7 +260,7 @@
     "cli_version_label": "CLI バージョン:",
     "version_unknown": "不明",
     "managed_by_desktop": "デスクトップで管理",
-    "managed_by_desktop_title": "CLI バイナリは Multica Desktop で管理されています。CLI をアップグレードするには Desktop を更新してください。",
+    "managed_by_desktop_title": "CLI バイナリは OhMyAgentTeam Desktop で管理されています。CLI をアップグレードするには Desktop を更新してください。",
     "latest": "最新",
     "available": "利用可能",
     "action": "更新",
@@ -289,7 +315,7 @@
     "builtin_section_aria": "サポートされている組み込みプロトコルファミリー",
     "builtin_reference": "参考",
     "empty_title": "最初のカスタムランタイムを作成",
-    "empty_description": "ベースプロトコルファミリーを選び、Multica が実行するコマンドを指定します。",
+    "empty_description": "ベースプロトコルファミリーを選び、OhMyAgentTeam が実行するコマンドを指定します。",
     "badge_builtin": "組み込み",
     "badge_custom": "カスタム",
     "badge_disabled": "無効",

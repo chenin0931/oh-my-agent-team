@@ -14,17 +14,17 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
-import { ApiError } from "@multica/core/api";
+import { ApiError } from "@ohmyagentteam/core/api";
 import type {
   RuntimeProfile,
   RuntimeProtocolFamily,
-} from "@multica/core/types";
+} from "@ohmyagentteam/core/types";
 import {
   runtimeProfileListOptions,
   useCreateRuntimeProfile,
   useUpdateRuntimeProfile,
-} from "@multica/core/runtimes";
-import { Button } from "@multica/ui/components/ui/button";
+} from "@ohmyagentteam/core/runtimes";
+import { Button } from "@ohmyagentteam/ui/components/ui/button";
 import {
   Dialog,
   DialogClose,
@@ -32,12 +32,13 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@multica/ui/components/ui/dialog";
-import { Input } from "@multica/ui/components/ui/input";
-import { Label } from "@multica/ui/components/ui/label";
-import { Textarea } from "@multica/ui/components/ui/textarea";
-import { cn } from "@multica/ui/lib/utils";
+} from "@ohmyagentteam/ui/components/ui/dialog";
+import { Input } from "@ohmyagentteam/ui/components/ui/input";
+import { Label } from "@ohmyagentteam/ui/components/ui/label";
+import { Textarea } from "@ohmyagentteam/ui/components/ui/textarea";
+import { cn } from "@ohmyagentteam/ui/lib/utils";
 import { ProviderLogo } from "./provider-logo";
+import { runtimeProfileLogoProvider } from "./runtime-logo";
 import { DeleteRuntimeProfileDialog } from "./delete-runtime-profile-dialog";
 import {
   PROTOCOL_FAMILIES,
@@ -375,7 +376,11 @@ function CatalogRow({
     >
       <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border bg-background">
         <ProviderLogo
-          provider={entry.protocolFamily}
+          provider={
+            entry.kind === "custom"
+              ? runtimeProfileLogoProvider(entry.profile)
+              : entry.protocolFamily
+          }
           className={cn("h-4 w-4", isBuiltin && "opacity-75")}
         />
       </span>
@@ -485,7 +490,7 @@ function DetailPanel({
           <div className="flex min-w-0 items-center gap-3">
             <span className="flex h-10 w-10 items-center justify-center rounded-md border bg-background">
               <ProviderLogo
-                provider={profile.protocol_family}
+                provider={runtimeProfileLogoProvider(profile)}
                 className="h-5 w-5"
               />
             </span>

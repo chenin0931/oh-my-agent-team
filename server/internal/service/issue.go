@@ -7,14 +7,14 @@ import (
 	"log/slog"
 
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/multica-ai/multica/server/internal/analytics"
-	"github.com/multica-ai/multica/server/internal/events"
-	"github.com/multica-ai/multica/server/internal/issueguard"
-	"github.com/multica-ai/multica/server/internal/issueposition"
-	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
-	"github.com/multica-ai/multica/server/internal/util"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
-	"github.com/multica-ai/multica/server/pkg/protocol"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/analytics"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/events"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/issueguard"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/issueposition"
+	obsmetrics "github.com/chenin0931/oh-my-agent-team/server/internal/metrics"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/util"
+	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
+	"github.com/chenin0931/oh-my-agent-team/server/pkg/protocol"
 )
 
 // IssueService is the single service-layer entry point for creating issues.
@@ -50,23 +50,27 @@ func NewIssueService(q *db.Queries, tx TxStarter, bus *events.Bus, ac analytics.
 // to IssueService.Create. The handler owns the parsing step that turns its
 // request payload into this struct; the service stays transport-agnostic.
 type IssueCreateParams struct {
-	WorkspaceID    pgtype.UUID
-	Title          string
-	Description    pgtype.Text
-	Status         string
-	Priority       string
-	AssigneeType   pgtype.Text
-	AssigneeID     pgtype.UUID
-	CreatorType    string // "agent" or "member"
-	CreatorID      pgtype.UUID
-	ParentIssueID  pgtype.UUID
-	ProjectID      pgtype.UUID
-	StartDate      pgtype.Date
-	DueDate        pgtype.Date
-	OriginType     pgtype.Text
-	OriginID       pgtype.UUID
-	AttachmentIDs  []pgtype.UUID
-	AllowDuplicate bool
+	WorkspaceID        pgtype.UUID
+	IssueType          string
+	EpicID             pgtype.UUID
+	Title              string
+	Description        pgtype.Text
+	AcceptanceCriteria pgtype.Text
+	EpicHealth         pgtype.Text
+	Status             string
+	Priority           string
+	AssigneeType       pgtype.Text
+	AssigneeID         pgtype.UUID
+	CreatorType        string // "agent" or "member"
+	CreatorID          pgtype.UUID
+	ParentIssueID      pgtype.UUID
+	ProjectID          pgtype.UUID
+	StartDate          pgtype.Date
+	DueDate            pgtype.Date
+	OriginType         pgtype.Text
+	OriginID           pgtype.UUID
+	AttachmentIDs      []pgtype.UUID
+	AllowDuplicate     bool
 	// Stage groups this issue into an ordered barrier group under its parent
 	// (NULL = unstaged). See issue_child_done.go for the staged-barrier wake.
 	Stage pgtype.Int4
@@ -124,6 +128,16 @@ var ErrParentIssueNotFound = errors.New("parent issue not found in this workspac
 // having to remember it. Callers translate this into 400.
 var ErrProjectNotFound = errors.New("project not found in this workspace")
 
+// ErrInvalidIssueHierarchy signals that issue_type / parent_issue_id /
+// project_id do not form a valid Project > Epic > Issue > Subtask hierarchy.
+var ErrInvalidIssueHierarchy = errors.New("invalid issue hierarchy")
+
+const (
+	IssueTypeEpic    = "epic"
+	IssueTypeIssue   = "issue"
+	IssueTypeSubtask = "subtask"
+)
+
 // IssueCreateResult is the typed return from IssueService.Create.
 //
 //   - On the happy path: Issue is the new row, Attachments lists the
@@ -157,6 +171,9 @@ type IssueCreateResult struct {
 // Caller-owned validation is limited to transport-shaped checks: title
 // required, RFC3339 date format, assignee pair sanity.
 func (s *IssueService) Create(ctx context.Context, p IssueCreateParams, opts IssueCreateOpts) (IssueCreateResult, error) {
+	if p.IssueType == "" {
+		p.IssueType = IssueTypeIssue
+	}
 	tx, err := s.TxStarter.Begin(ctx)
 	if err != nil {
 		return IssueCreateResult{}, fmt.Errorf("begin tx: %w", err)
@@ -170,20 +187,57 @@ func (s *IssueService) Create(ctx context.Context, p IssueCreateParams, opts Iss
 	// WorkspaceID — there is no path from this service to a row in a
 	// foreign workspace.
 	projectID := p.ProjectID
+	epicID := p.EpicID
+	var parent db.Issue
 	if p.ParentIssueID.Valid {
-		parent, err := qtx.GetIssueInWorkspace(ctx, db.GetIssueInWorkspaceParams{
+		parentRow, err := qtx.GetIssueInWorkspace(ctx, db.GetIssueInWorkspaceParams{
 			ID:          p.ParentIssueID,
 			WorkspaceID: p.WorkspaceID,
 		})
-		if err != nil || !parent.ID.Valid {
+		if err != nil || !parentRow.ID.Valid {
 			return IssueCreateResult{}, ErrParentIssueNotFound
 		}
-		// Back-fill project from parent when the caller did not pin
-		// one explicitly. Matches the long-standing HTTP behavior: a
-		// sub-issue inherits its parent's project unless overridden.
-		if !projectID.Valid {
-			projectID = parent.ProjectID
+		parent = parentRow
+	}
+
+	var epic db.Issue
+	if epicID.Valid {
+		epicRow, err := qtx.GetIssueInWorkspace(ctx, db.GetIssueInWorkspaceParams{
+			ID:          epicID,
+			WorkspaceID: p.WorkspaceID,
+		})
+		if err != nil || !epicRow.ID.Valid {
+			return IssueCreateResult{}, ErrInvalidIssueHierarchy
 		}
+		epic = epicRow
+	}
+
+	switch p.IssueType {
+	case IssueTypeEpic:
+		if p.ParentIssueID.Valid || epicID.Valid || !projectID.Valid {
+			return IssueCreateResult{}, ErrInvalidIssueHierarchy
+		}
+	case IssueTypeIssue:
+		if p.ParentIssueID.Valid {
+			return IssueCreateResult{}, ErrInvalidIssueHierarchy
+		}
+		if epicID.Valid {
+			if defaultIssueType(epic.IssueType) != IssueTypeEpic || !epic.ProjectID.Valid {
+				return IssueCreateResult{}, ErrInvalidIssueHierarchy
+			}
+			if projectID.Valid && projectID != epic.ProjectID {
+				return IssueCreateResult{}, ErrInvalidIssueHierarchy
+			}
+			projectID = epic.ProjectID
+		}
+	case IssueTypeSubtask:
+		if !p.ParentIssueID.Valid || defaultIssueType(parent.IssueType) != IssueTypeIssue {
+			return IssueCreateResult{}, ErrInvalidIssueHierarchy
+		}
+		projectID = parent.ProjectID
+		epicID = parent.EpicID
+	default:
+		return IssueCreateResult{}, ErrInvalidIssueHierarchy
 	}
 	if projectID.Valid {
 		if _, err := qtx.GetProjectInWorkspace(ctx, db.GetProjectInWorkspaceParams{
@@ -225,43 +279,51 @@ func (s *IssueService) Create(ctx context.Context, p IssueCreateParams, opts Iss
 	var issue db.Issue
 	if p.OriginType.Valid {
 		issue, err = qtx.CreateIssueWithOrigin(ctx, db.CreateIssueWithOriginParams{
-			WorkspaceID:   p.WorkspaceID,
-			Title:         p.Title,
-			Description:   p.Description,
-			Status:        p.Status,
-			Priority:      p.Priority,
-			AssigneeType:  p.AssigneeType,
-			AssigneeID:    p.AssigneeID,
-			CreatorType:   p.CreatorType,
-			CreatorID:     p.CreatorID,
-			ParentIssueID: p.ParentIssueID,
-			Position:      newPosition,
-			StartDate:     p.StartDate,
-			DueDate:       p.DueDate,
-			Number:        issueNumber,
-			ProjectID:     projectID,
-			OriginType:    p.OriginType,
-			OriginID:      p.OriginID,
-			Stage:         p.Stage,
+			WorkspaceID:        p.WorkspaceID,
+			IssueType:          p.IssueType,
+			EpicID:             epicID,
+			Title:              p.Title,
+			Description:        p.Description,
+			AcceptanceCriteria: p.AcceptanceCriteria,
+			EpicHealth:         p.EpicHealth,
+			Status:             p.Status,
+			Priority:           p.Priority,
+			AssigneeType:       p.AssigneeType,
+			AssigneeID:         p.AssigneeID,
+			CreatorType:        p.CreatorType,
+			CreatorID:          p.CreatorID,
+			ParentIssueID:      p.ParentIssueID,
+			Position:           newPosition,
+			StartDate:          p.StartDate,
+			DueDate:            p.DueDate,
+			Number:             issueNumber,
+			ProjectID:          projectID,
+			OriginType:         p.OriginType,
+			OriginID:           p.OriginID,
+			Stage:              p.Stage,
 		})
 	} else {
 		issue, err = qtx.CreateIssue(ctx, db.CreateIssueParams{
-			WorkspaceID:   p.WorkspaceID,
-			Title:         p.Title,
-			Description:   p.Description,
-			Status:        p.Status,
-			Priority:      p.Priority,
-			AssigneeType:  p.AssigneeType,
-			AssigneeID:    p.AssigneeID,
-			CreatorType:   p.CreatorType,
-			CreatorID:     p.CreatorID,
-			ParentIssueID: p.ParentIssueID,
-			Position:      newPosition,
-			StartDate:     p.StartDate,
-			DueDate:       p.DueDate,
-			Number:        issueNumber,
-			ProjectID:     projectID,
-			Stage:         p.Stage,
+			WorkspaceID:        p.WorkspaceID,
+			IssueType:          p.IssueType,
+			EpicID:             epicID,
+			Title:              p.Title,
+			Description:        p.Description,
+			AcceptanceCriteria: p.AcceptanceCriteria,
+			EpicHealth:         p.EpicHealth,
+			Status:             p.Status,
+			Priority:           p.Priority,
+			AssigneeType:       p.AssigneeType,
+			AssigneeID:         p.AssigneeID,
+			CreatorType:        p.CreatorType,
+			CreatorID:          p.CreatorID,
+			ParentIssueID:      p.ParentIssueID,
+			Position:           newPosition,
+			StartDate:          p.StartDate,
+			DueDate:            p.DueDate,
+			Number:             issueNumber,
+			ProjectID:          projectID,
+			Stage:              p.Stage,
 		})
 	}
 	if err != nil {
@@ -282,8 +344,16 @@ func (s *IssueService) Create(ctx context.Context, p IssueCreateParams, opts Iss
 	s.publishIssueCreated(issue, attachments, p.CreatorType, actorID, opts)
 	s.captureCreatedAnalytics(issue, p.CreatorType, actorID, opts)
 	s.maybeEnqueueOnAssign(ctx, issue, p.CreatorType, actorID)
+	s.maybeEnqueueMemberAssigneeAdvisors(ctx, issue)
 
 	return IssueCreateResult{Issue: issue, Attachments: attachments}, nil
+}
+
+func defaultIssueType(issueType string) string {
+	if issueType == "" {
+		return IssueTypeIssue
+	}
+	return issueType
 }
 
 // linkAttachments links the given attachment IDs to the newly created
@@ -331,8 +401,12 @@ func (s *IssueService) publishIssueCreated(issue db.Issue, attachments []db.Atta
 		// full IssueResponse must pass BroadcastPayload.
 		payload = map[string]any{"issue_id": util.UUIDToString(issue.ID)}
 	}
+	eventType := protocol.EventIssueCreated
+	if defaultIssueType(issue.IssueType) == IssueTypeEpic {
+		eventType = protocol.EventEpicCreated
+	}
 	s.Bus.Publish(events.Event{
-		Type:        protocol.EventIssueCreated,
+		Type:        eventType,
 		WorkspaceID: util.UUIDToString(issue.WorkspaceID),
 		ActorType:   creatorType,
 		ActorID:     actorID,
@@ -386,6 +460,9 @@ func classifyOrigin(issue db.Issue, opts IssueCreateOpts) (source, taskID, autop
 }
 
 func (s *IssueService) maybeEnqueueOnAssign(ctx context.Context, issue db.Issue, creatorType, actorID string) {
+	if defaultIssueType(issue.IssueType) == IssueTypeEpic {
+		return
+	}
 	if !issue.AssigneeType.Valid || !issue.AssigneeID.Valid {
 		return
 	}
@@ -401,13 +478,20 @@ func (s *IssueService) maybeEnqueueOnAssign(ctx context.Context, issue db.Issue,
 	}
 }
 
+func (s *IssueService) maybeEnqueueMemberAssigneeAdvisors(ctx context.Context, issue db.Issue) {
+	if s.TaskService == nil || defaultIssueType(issue.IssueType) == IssueTypeEpic {
+		return
+	}
+	s.TaskService.EnqueueMemberAssigneeAdvisors(ctx, issue)
+}
+
 // shouldEnqueueAgentTask returns true when an issue create or assignment
 // should trigger the assigned agent. Backlog issues are skipped — backlog
 // acts as a parking lot for pre-assigning without immediate execution.
 // Mirrors handler.shouldEnqueueAgentTask; kept here to make the service
 // self-contained, since both code paths must move together.
 func (s *IssueService) shouldEnqueueAgentTask(ctx context.Context, issue db.Issue) bool {
-	if issue.Status == "backlog" {
+	if issue.Status == "backlog" || defaultIssueType(issue.IssueType) == IssueTypeEpic {
 		return false
 	}
 	return s.isAgentAssigneeReady(ctx, issue)
@@ -425,7 +509,7 @@ func (s *IssueService) isAgentAssigneeReady(ctx context.Context, issue db.Issue)
 }
 
 func (s *IssueService) shouldEnqueueSquadLeaderOnAssign(ctx context.Context, issue db.Issue) bool {
-	if issue.Status == "backlog" {
+	if issue.Status == "backlog" || defaultIssueType(issue.IssueType) == IssueTypeEpic {
 		return false
 	}
 	return s.isSquadLeaderReady(ctx, issue)

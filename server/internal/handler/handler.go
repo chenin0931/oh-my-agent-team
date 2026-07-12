@@ -10,30 +10,31 @@ import (
 	"net/http"
 	"net/netip"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/multica-ai/multica/server/internal/analytics"
-	"github.com/multica-ai/multica/server/internal/auth"
-	"github.com/multica-ai/multica/server/internal/cloudruntime"
-	"github.com/multica-ai/multica/server/internal/daemonws"
-	"github.com/multica-ai/multica/server/internal/events"
-	"github.com/multica-ai/multica/server/internal/featureflagdispatch"
-	"github.com/multica-ai/multica/server/internal/integrations/channel/engine"
-	composio "github.com/multica-ai/multica/server/internal/integrations/composio"
-	"github.com/multica-ai/multica/server/internal/integrations/lark"
-	"github.com/multica-ai/multica/server/internal/integrations/slack"
-	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
-	"github.com/multica-ai/multica/server/internal/middleware"
-	"github.com/multica-ai/multica/server/internal/realtime"
-	"github.com/multica-ai/multica/server/internal/service"
-	"github.com/multica-ai/multica/server/internal/storage"
-	"github.com/multica-ai/multica/server/internal/util"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
-	"github.com/multica-ai/multica/server/pkg/featureflag"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/analytics"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/auth"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/cloudruntime"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/daemonws"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/events"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/featureflagdispatch"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/integrations/channel/engine"
+	composio "github.com/chenin0931/oh-my-agent-team/server/internal/integrations/composio"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/integrations/lark"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/integrations/slack"
+	obsmetrics "github.com/chenin0931/oh-my-agent-team/server/internal/metrics"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/middleware"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/realtime"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/service"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/storage"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/util"
+	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
+	"github.com/chenin0931/oh-my-agent-team/server/pkg/featureflag"
 )
 
 // randomID returns a random 16-byte hex string used as a request ID for
@@ -66,7 +67,7 @@ type Config struct {
 	// the UI can hide every "Create workspace" affordance — see #3433.
 	DisableWorkspaceCreation bool
 	// PublicURL is the absolute base URL the API is reachable at from the
-	// public internet, with no trailing slash (e.g. "https://app.multica.ai").
+	// public internet, with no trailing slash (e.g. "https://app.ohmyagentteam.com").
 	// Used only to build webhook_url responses for autopilot webhook triggers
 	// — never for auth, routing, or workspace resolution. Empty when unset,
 	// in which case clients fall back to webhook_path + their own origin.
@@ -78,7 +79,7 @@ type Config struct {
 	// TrustedProxies are CIDRs whose source IP we trust to set
 	// X-Forwarded-For / X-Real-IP. Empty means "trust nothing": the rate
 	// limiter uses r.RemoteAddr exclusively. Populated via the
-	// MULTICA_TRUSTED_PROXIES env var (comma-separated CIDRs, e.g.
+	// OMAT_TRUSTED_PROXIES env var (comma-separated CIDRs, e.g.
 	// "10.0.0.0/8,127.0.0.1/32"). This is specifically to keep the per-IP
 	// webhook limiter from being bypassed by a spoofed XFF on deployments
 	// without a header-stripping reverse proxy in front.
@@ -141,7 +142,7 @@ type Handler struct {
 	WebhookIPRateLimiter WebhookRateLimiter
 	CloudRuntime         cloudRuntimeProxy
 	// Lark integration. All three are nil when the Lark master key
-	// (MULTICA_LARK_SECRET_KEY) is unset; the corresponding HTTP
+	// (OMAT_LARK_SECRET_KEY) is unset; the corresponding HTTP
 	// handlers return 503 in that case so a misconfigured self-host
 	// deployment surfaces a clear error instead of silently using a
 	// zero key. Wired in cmd/server/router.go after handler.New.
@@ -157,7 +158,7 @@ type Handler struct {
 	// LarkAPIClient is the live transport that backs SendInteractiveCard,
 	// PatchInteractiveCard, SendBindingPromptCard, GetBotInfo. The
 	// router wires the real Lark HTTP client whenever
-	// MULTICA_LARK_SECRET_KEY is set; tests that need a no-op
+	// OMAT_LARK_SECRET_KEY is set; tests that need a no-op
 	// behaviour can swap in `lark.NewStubAPIClient(...)` directly. The
 	// UI consults IsConfigured() to decide whether to surface install
 	// entry points.
@@ -172,7 +173,7 @@ type Handler struct {
 	// engine). The router constructs it UNCONDITIONALLY — it drives any
 	// channel type, not just Feishu, so it does not depend on the Lark
 	// master key; each platform registers its Factory only when configured
-	// (Feishu when MULTICA_LARK_SECRET_KEY is set). The router does NOT
+	// (Feishu when OMAT_LARK_SECRET_KEY is set). The router does NOT
 	// call Run; the process owner (main.go) starts it under a long-running
 	// context and joins via WaitWithTimeout (bounded, fenced by
 	// ShutdownTimeout) during graceful shutdown so the lease renewer yields
@@ -187,13 +188,13 @@ type Handler struct {
 	ChannelRouter *engine.Router
 	// SlackInstall owns the bring-your-own-app Slack install lifecycle (register
 	// pasted tokens / list / revoke) and the at-rest encryption of each app's bot
-	// + app tokens (MUL-3666). Nil unless MULTICA_SLACK_SECRET_KEY is set.
+	// + app tokens (MUL-3666). Nil unless OMAT_SLACK_SECRET_KEY is set.
 	SlackInstall *slack.InstallService
 	// SlackBindingTokens mints/redeems the user-binding tokens behind the
 	// "link your Slack account" prompt (MUL-3666). Nil unless Slack is
-	// configured (MULTICA_SLACK_SECRET_KEY set).
+	// configured (OMAT_SLACK_SECRET_KEY set).
 	SlackBindingTokens *slack.BindingTokenService
-	// SlackHistory backs the agent-facing `multica chat history` command: it
+	// SlackHistory backs the agent-facing `omat chat history` command: it
 	// reads a chat session's bound Slack conversation on demand (MUL-3871). Nil
 	// unless Slack is configured; GetChatChannelHistory then reports "no channel
 	// integration". A future platform satisfies the same reader interface.
@@ -657,6 +658,53 @@ func (h *Handler) loadIssueForUser(w http.ResponseWriter, r *http.Request, issue
 		return db.Issue{}, false
 	}
 	return issue, true
+}
+
+func (h *Handler) loadExecutableIssueForUser(w http.ResponseWriter, r *http.Request, issueID string) (db.Issue, bool) {
+	issue, ok := h.loadIssueForUser(w, r, issueID)
+	if !ok {
+		return db.Issue{}, false
+	}
+	if defaultIssueType(issue.IssueType) == service.IssueTypeEpic {
+		h.writeEpicExecutionConflict(w, r, issue)
+		return db.Issue{}, false
+	}
+	return issue, true
+}
+
+func (h *Handler) writeEpicExecutionConflict(w http.ResponseWriter, r *http.Request, epic db.Issue) {
+	writeJSON(w, http.StatusConflict, map[string]any{
+		"code":       "epic_planning_container",
+		"error":      "epics are planning containers and cannot use issue execution operations",
+		"epic_id":    uuidToString(epic.ID),
+		"identifier": h.getIssuePrefix(r.Context(), epic.WorkspaceID) + "-" + strconv.Itoa(int(epic.Number)),
+	})
+}
+
+// loadCollaborativeTargetForRoute keeps the shared collaboration handlers
+// (comments, timeline, subscribers, labels, attachments and reactions) behind
+// their public domain route. An Epic UUID passed through /api/issues must not
+// reopen the planning container through a legacy work-item endpoint.
+func (h *Handler) loadCollaborativeTargetForRoute(w http.ResponseWriter, r *http.Request, targetID string) (db.Issue, bool) {
+	if strings.HasPrefix(r.URL.Path, "/api/epics/") {
+		return h.loadEpicForUser(w, r, targetID)
+	}
+	return h.loadExecutableIssueForUser(w, r, targetID)
+}
+
+func targetTypeForIssue(issue db.Issue) string {
+	if defaultIssueType(issue.IssueType) == service.IssueTypeEpic {
+		return "epic"
+	}
+	return "issue"
+}
+
+func (h *Handler) targetTypeForIssueID(ctx context.Context, issueID pgtype.UUID) string {
+	issue, err := h.Queries.GetIssue(ctx, issueID)
+	if err != nil {
+		return "issue"
+	}
+	return targetTypeForIssue(issue)
 }
 
 // resolveIssueByIdentifier tries to look up an issue by "PREFIX-NUMBER" format.

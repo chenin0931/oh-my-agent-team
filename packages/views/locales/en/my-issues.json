@@ -1,9 +1,9 @@
 {
   "page": {
-    "breadcrumb": "My Issues",
+    "breadcrumb": "My work",
     "workspace_fallback": "Workspace",
-    "empty_title": "No issues assigned to you",
-    "empty_description": "Issues you create or are assigned to will appear here."
+    "empty_title": "No work needs your attention",
+    "empty_description": "Work you own, create, or delegate to your agents appears here."
   },
   "header": {
     "scope": {

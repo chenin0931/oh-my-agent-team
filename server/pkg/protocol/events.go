@@ -8,6 +8,13 @@ const (
 	EventIssueDeleted         = "issue:deleted"
 	EventIssueMetadataChanged = "issue_metadata:changed"
 
+	// Epic events are deliberately separate from issue events. Epics share a
+	// table with issues, but clients must not merge planning containers into
+	// executable-work caches or derive task behavior from these broadcasts.
+	EventEpicCreated = "epic:created"
+	EventEpicUpdated = "epic:updated"
+	EventEpicDeleted = "epic:deleted"
+
 	// Comment events
 	EventCommentCreated       = "comment:created"
 	EventCommentUpdated       = "comment:updated"

@@ -4,9 +4,9 @@ import { useEffect, useRef } from "react";
 import {
   registerSystemNotificationClickHandler,
   type SystemNotificationPayload,
-} from "@multica/core/platform";
-import { paths } from "@multica/core/paths";
-import { useNavigation } from "@multica/views/navigation";
+} from "@ohmyagentteam/core/platform";
+import { paths } from "@ohmyagentteam/core/paths";
+import { useNavigation } from "@ohmyagentteam/views/navigation";
 
 /**
  * Routes browser notification clicks to the source workspace's inbox, focused
@@ -31,9 +31,9 @@ export function WebNotificationBridge() {
 
   useEffect(() => {
     registerSystemNotificationClickHandler(
-      ({ slug, issueKey }: SystemNotificationPayload) => {
+      ({ slug, issueKey, targetType }: SystemNotificationPayload) => {
         if (!slug) return;
-        const inboxPath = `${paths.workspace(slug).inbox()}?issue=${encodeURIComponent(issueKey)}`;
+        const inboxPath = `${paths.workspace(slug).inbox()}?issue=${encodeURIComponent(issueKey)}&type=${targetType ?? "issue"}`;
         pushRef.current(inboxPath);
       },
     );

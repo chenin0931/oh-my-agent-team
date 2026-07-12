@@ -16,42 +16,44 @@ import type {
   AgentTask,
   MemberWithUser,
   RuntimeProfile,
-} from "@multica/core/types";
-import { useAuthStore } from "@multica/core/auth";
-import { useWorkspaceId } from "@multica/core/hooks";
+} from "@ohmyagentteam/core/types";
+import { useAuthStore } from "@ohmyagentteam/core/auth";
+import { useWorkspaceId } from "@ohmyagentteam/core/hooks";
 import {
   agentListOptions,
   memberListOptions,
-} from "@multica/core/workspace/queries";
-import { agentTaskSnapshotOptions } from "@multica/core/agents";
+} from "@ohmyagentteam/core/workspace/queries";
+import { agentTaskSnapshotOptions } from "@ohmyagentteam/core/agents";
 import {
   deriveRuntimeHealth,
+  runtimeDisplayName,
   runtimeProfileListOptions,
   runtimeUsageOptions,
-} from "@multica/core/runtimes";
-import { useWorkspacePaths } from "@multica/core/paths";
+} from "@ohmyagentteam/core/runtimes";
+import { useWorkspacePaths } from "@ohmyagentteam/core/paths";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@multica/ui/components/ui/dropdown-menu";
+} from "@ohmyagentteam/ui/components/ui/dropdown-menu";
 import {
   ListGrid,
   ListGridCell,
   ListGridHeader,
   ListGridHeaderCell,
   ListGridRow,
-} from "@multica/ui/components/ui/list-grid";
+} from "@ohmyagentteam/ui/components/ui/list-grid";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@multica/ui/components/ui/tooltip";
+} from "@ohmyagentteam/ui/components/ui/tooltip";
 import { useRowLink } from "../../navigation";
 import { ActorAvatar } from "../../common/actor-avatar";
 import { useViewingTimezone } from "../../common/use-viewing-timezone";
 import { ProviderLogo } from "./provider-logo";
+import { runtimeLogoProvider } from "./runtime-logo";
 import { HealthIcon, useHealthLabel } from "./shared";
 import { DeleteRuntimeDialog } from "./delete-runtime-dialog";
 import { DeleteRuntimeProfileDialog } from "./delete-runtime-profile-dialog";
@@ -182,12 +184,23 @@ export function buildWorkloadIndex(
 // Cells
 // ---------------------------------------------------------------------------
 
-function RuntimeNameCell({ runtime }: { runtime: AgentRuntime }) {
-  const { base: baseName } = splitRuntimeName(runtime.name);
+function RuntimeNameCell({
+  runtime,
+  profile,
+}: {
+  runtime: AgentRuntime;
+  profile: RuntimeProfile | null;
+}) {
+  const { base: baseName } = splitRuntimeName(
+    runtimeDisplayName(runtime, profile),
+  );
   return (
     <ListGridCell className="gap-2">
       <div className="flex h-8 w-8 shrink-0 items-center justify-center">
-        <ProviderLogo provider={runtime.provider} className="h-5 w-5" />
+        <ProviderLogo
+          provider={runtimeLogoProvider(runtime, profile)}
+          className="h-5 w-5"
+        />
       </div>
       <div className="flex min-w-0 flex-1 items-center gap-1.5">
         <span className="block min-w-0 shrink truncate text-sm font-medium">
@@ -435,7 +448,7 @@ export function CliCell({ runtime }: { runtime: AgentRuntime }) {
   const meta = runtime.metadata as Record<string, unknown> | null;
   // `version` is the agent's own underlying CLI tool version — distinct per
   // provider (e.g. "2.1.5 (Claude Code)", "codex-cli 0.118.0", "0.42.0").
-  // The separate `cli_version` is the shared multica daemon CLI, identical
+  // The separate `cli_version` is the shared omat daemon CLI, identical
   // for every runtime on one machine; surfacing it here made all agents
   // show the same number (#3838). The daemon CLI version and its update
   // prompt belong to the machine — they live in the machine meta strip and
@@ -575,7 +588,7 @@ export function RuntimeList({
 }: {
   runtimes: AgentRuntime[];
   // Kept on the API surface for callers, but unused here: the CLI column
-  // shows each agent's own tool version, while the multica daemon CLI
+  // shows each agent's own tool version, while the omat daemon CLI
   // update prompt lives at the machine/detail level (UpdateSection), so the
   // table no longer derives per-row update state. Left to avoid scope creep
   // on the page-level wrapper that still computes the set.
@@ -695,7 +708,7 @@ export function RuntimeList({
                 ? rowLink(wsPaths.runtimeDetail(row.runtime.id))
                 : {})}
             >
-              <RuntimeNameCell runtime={row.runtime} />
+              <RuntimeNameCell runtime={row.runtime} profile={row.profile} />
               <HealthCell
                 runtime={row.runtime}
                 workload={row.workload}

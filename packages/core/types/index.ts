@@ -1,4 +1,16 @@
-export type { Issue, IssueStatus, IssuePriority, IssueAssigneeType, IssueMetadata, IssueMetadataValue, IssueReaction } from "./issue";
+export type { Issue, IssueType, IssueStatus, IssuePriority, IssueAssigneeType, IssueMetadata, IssueMetadataValue, IssueReaction, QuickCreateIssueStatus } from "./issue";
+export type {
+  Epic,
+  EpicLifecycle,
+  EpicHealth,
+  EpicOwnerType,
+  ListEpicsResponse,
+  ListEpicsParams,
+  CreateEpicRequest,
+  UpdateEpicRequest,
+  EpicWorkItemsResponse,
+  QuickCreateCreatedItem,
+} from "./epic";
 export type {
   Agent,
   AgentStatus,
@@ -97,6 +109,8 @@ export type {
   CreateProjectRequest,
   UpdateProjectRequest,
   ListProjectsResponse,
+  ProjectActivityItem,
+  ProjectActivityResponse,
   ProjectResource,
   ProjectResourceType,
   ProjectResourceRef,

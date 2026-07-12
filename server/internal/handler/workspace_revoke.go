@@ -5,8 +5,8 @@ import (
 	"log/slog"
 
 	"github.com/jackc/pgx/v5/pgtype"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
-	"github.com/multica-ai/multica/server/pkg/protocol"
+	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
+	"github.com/chenin0931/oh-my-agent-team/server/pkg/protocol"
 )
 
 // revokeAndRemoveMember converges all server-side state that should follow a
@@ -120,7 +120,7 @@ func (h *Handler) revokeAndRemoveMember(ctx context.Context, workspaceID, userID
 	// but pruning stops a stale binding from lingering across a remove/re-add.
 	if err := qtx.DeleteChannelUserBindingsByWorkspaceMember(ctx, db.DeleteChannelUserBindingsByWorkspaceMemberParams{
 		WorkspaceID:   workspaceID,
-		MulticaUserID: userID,
+		OmatUserID: userID,
 	}); err != nil {
 		return empty, err
 	}
@@ -137,6 +137,34 @@ func (h *Handler) revokeAndRemoveMember(ctx context.Context, workspaceID, userID
 		TargetID:    userID,
 	}); err != nil {
 		return empty, err
+	}
+
+	// Squads are human-owned collaboration assets. Transfer every squad owned
+	// by the departing member before deleting membership so the workspace never
+	// contains an unmanageable team. Prefer another owner/admin; the query falls
+	// back to the earliest remaining member for small peer workspaces.
+	ownedSquads, err := qtx.CountSquadsByOwner(ctx, db.CountSquadsByOwnerParams{
+		WorkspaceID: workspaceID,
+		OwnerID:     userID,
+	})
+	if err != nil {
+		return empty, err
+	}
+	if ownedSquads > 0 {
+		successorID, err := qtx.GetWorkspaceOwnershipSuccessor(ctx, db.GetWorkspaceOwnershipSuccessorParams{
+			WorkspaceID: workspaceID,
+			UserID:      userID,
+		})
+		if err != nil {
+			return empty, err
+		}
+		if _, err := qtx.TransferSquadsToOwner(ctx, db.TransferSquadsToOwnerParams{
+			WorkspaceID: workspaceID,
+			OwnerID:     userID,
+			OwnerID_2:   successorID,
+		}); err != nil {
+			return empty, err
+		}
 	}
 
 	// Member row deletion lives inside the same tx so a successful revoke is

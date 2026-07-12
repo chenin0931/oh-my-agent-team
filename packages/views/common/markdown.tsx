@@ -5,12 +5,13 @@ import {
   Markdown as MarkdownBase,
   type MarkdownProps as MarkdownBaseProps,
   type RenderMode,
-} from "@multica/ui/markdown";
-import { useConfigStore } from "@multica/core/config";
-import type { Attachment as AttachmentRecord } from "@multica/core/types";
-import { useWorkspacePaths } from "@multica/core/paths";
+} from "@ohmyagentteam/ui/markdown";
+import { useConfigStore } from "@ohmyagentteam/core/config";
+import type { Attachment as AttachmentRecord } from "@ohmyagentteam/core/types";
+import { useWorkspacePaths } from "@ohmyagentteam/core/paths";
 import { IssueMentionCard } from "../issues/components/issue-mention-card";
 import { ProjectChip } from "../projects/components/project-chip";
+import { EpicMentionCard } from "../epics/components/epic-mention-card";
 import { AppLink } from "../navigation";
 import {
   Attachment as AttachmentRenderer,
@@ -58,6 +59,9 @@ function defaultRenderMention({
   }
   if (type === "project") {
     return <ProjectMentionCard projectId={id} />;
+  }
+  if (type === "epic") {
+    return <EpicMentionCard epicId={id} />;
   }
   return null;
 }

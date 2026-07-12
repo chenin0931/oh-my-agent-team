@@ -17,25 +17,25 @@ import {
   useCreateProjectResource,
   useDeleteProjectResource,
   useUpdateProjectResource,
-} from "@multica/core/projects";
-import { useWorkspaceId } from "@multica/core/hooks";
-import { useCurrentWorkspace } from "@multica/core/paths";
+} from "@ohmyagentteam/core/projects";
+import { useWorkspaceId } from "@ohmyagentteam/core/hooks";
+import { useCurrentWorkspace } from "@ohmyagentteam/core/paths";
 import type {
   GithubRepoResourceRef,
   LocalDirectoryResourceRef,
   ProjectResource,
-} from "@multica/core/types";
-import { Button } from "@multica/ui/components/ui/button";
+} from "@ohmyagentteam/core/types";
+import { Button } from "@ohmyagentteam/ui/components/ui/button";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@multica/ui/components/ui/popover";
+} from "@ohmyagentteam/ui/components/ui/popover";
 import {
   Tooltip,
   TooltipTrigger,
   TooltipContent,
-} from "@multica/ui/components/ui/tooltip";
+} from "@ohmyagentteam/ui/components/ui/tooltip";
 import {
   isDesktopShell,
   pickDirectory,
@@ -49,7 +49,7 @@ import { useT } from "../../i18n";
 //
 // Type-dispatched at the row + add-flow level. Add a new resource_type by:
 //   (1) extending the server validator
-//   (2) extending ProjectResourceType in @multica/core/types
+//   (2) extending ProjectResourceType in @ohmyagentteam/core/types
 //   (3) adding a render case in ResourceRow and an add-control here
 function isGithubRef(r: ProjectResource): r is ProjectResource & {
   resource_ref: GithubRepoResourceRef;

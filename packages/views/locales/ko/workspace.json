@@ -17,18 +17,116 @@
   "new_page": {
     "back": "뒤로",
     "log_out": "로그아웃",
-    "title": "Multica에 오신 것을 환영합니다",
+    "title": "OhMyAgentTeam에 오신 것을 환영합니다",
     "description": "하나의 워크스페이스에서 사람과 AI 팀원이 같은 맥락을 공유하며 이슈를 맡고, 댓글을 남기고, 함께 작업합니다.",
     "invite_hint": "워크스페이스가 준비되면 팀원을 초대할 수 있습니다."
   },
   "creation_disabled": {
     "title": "워크스페이스 생성이 비활성화되었습니다",
-    "description": "이 Multica instance에서는 새 워크스페이스를 만들 수 없습니다. 관리자에게 기존 워크스페이스 초대를 요청하세요."
+    "description": "이 OhMyAgentTeam instance에서는 새 워크스페이스를 만들 수 없습니다. 관리자에게 기존 워크스페이스 초대를 요청하세요."
   },
   "no_access": {
     "title": "워크스페이스를 사용할 수 없습니다",
     "description": "존재하지 않는 워크스페이스이거나 접근 권한이 없습니다.",
     "go_to_workspaces": "내 워크스페이스로 이동",
     "sign_in_different": "다른 계정으로 로그인"
+  },
+  "product_tour": {
+    "skip": "건너뛰기",
+    "back": "이전",
+    "next": "다음",
+    "finish": "협업 시작",
+    "go_to_slide": "{{count}}번 화면으로 이동",
+    "slides": {
+      "network": {
+        "eyebrow": "협업 네트워크",
+        "title": "사람과 에이전트를 하나의 팀으로",
+        "description": "OhMyAgentTeam에서는 사람, 자신의 에이전트, 다른 구성원의 에이전트가 같은 업무 맥락을 공유하며 협업합니다.",
+        "bullet_1": "사람은 목표, 판단, 최종 결정을 맡습니다.",
+        "bullet_2": "에이전트는 계획, 실행, 댓글, 결과물을 맡습니다."
+      },
+      "projects": {
+        "eyebrow": "프로젝트와 작업 항목",
+        "title": "프로젝트는 목표를, 작업 항목은 실행을 담당합니다",
+        "description": "프로젝트는 비즈니스 목표와 전체 진행률을 모으고, 작업 항목은 담당자를 지정하고 이동하고 완료하는 실행 단위입니다.",
+        "bullet_1": "하나의 프로젝트에 여러 작업 항목을 담을 수 있습니다.",
+        "bullet_2": "소속이 정해지지 않은 업무는 프로젝트 미지정 상태로 둘 수 있습니다."
+      },
+      "planning": {
+        "eyebrow": "에이전트 계획",
+        "title": "목표를 말하면 에이전트가 분해하고 배정합니다",
+        "description": "상단에 목표를 입력하면 계획 에이전트가 독립적으로 담당할 업무로 나누고 가장 적합한 사람, 에이전트, 스쿼드에 배정합니다.",
+        "bullet_1": "한 번의 요청으로 여러 작업 항목을 만들 수 있습니다.",
+        "bullet_2": "모든 계획 결과는 검토를 위해 Backlog에서 시작합니다."
+      },
+      "workflow": {
+        "eyebrow": "통제된 실행",
+        "title": "Todo에 들어가야 에이전트가 일을 시작합니다",
+        "description": "상태는 진행률인 동시에 실행 스위치입니다. Backlog는 실행하지 않으며 담당 작업을 Todo로 이동해야 시작합니다.",
+        "bullet_1": "구독하거나 활동을 보는 것만으로 실행되지 않습니다.",
+        "bullet_2": "과정, 댓글, 결과는 작업 항목 활동에 남습니다."
+      },
+      "human": {
+        "eyebrow": "사람 중심 협업",
+        "title": "사람이 결정하고 에이전트가 조언합니다",
+        "description": "사람에게 배정된 업무는 액션 센터에 도착합니다. 그 사람의 조언자 에이전트는 작업을 통제하지 않고 각자의 제안을 남깁니다.",
+        "bullet_1": "상태와 최종 결정 권한은 사람이 유지합니다.",
+        "bullet_2": "조언자 에이전트는 댓글과 구독만 하며 자동 실행하지 않습니다."
+      },
+      "runtime": {
+        "eyebrow": "실행 능력",
+        "title": "도구를 연결하고 에이전트 팀을 구성하세요",
+        "description": "실행 능력은 Codex, Claude Code, WorkBuddy와 호환 CLI를 연결하고, Agent는 역할과 전문성을 정의하며, 스쿼드는 여러 Agent를 하나의 협업 단위로 묶습니다.",
+        "bullet_1": "하나의 런타임에서 여러 전문 에이전트를 운영할 수 있습니다.",
+        "bullet_2": "에이전트와 스쿼드 모두 작업 항목 담당자가 될 수 있습니다."
+      }
+    },
+    "visual": {
+      "project_title": "신제품 출시 계획",
+      "project_summary": "작업 항목 4개 · 2개 완료",
+      "project_item_1": "제품 범위 정의",
+      "project_item_2": "구매 계획 확인",
+      "project_item_3": "출시 캠페인 준비",
+      "complete": "완료",
+      "planning_prompt": "고객 라운드테이블을 계획하고 적합한 사람과 에이전트에 배정하기",
+      "analyzing": "업무를 분해하고 담당자를 찾는 중",
+      "plan_item_1": "행사 일정 설계",
+      "plan_item_2": "초대 콘텐츠 준비",
+      "plan_item_3": "행사장 확인",
+      "product_agent": "제품 기획 에이전트",
+      "growth_agent": "그로스 에이전트",
+      "research_agent": "리서치 에이전트",
+      "you": "나",
+      "backlog": "Backlog",
+      "status": {
+        "backlog": "Backlog",
+        "todo": "Todo",
+        "in_progress": "진행 중",
+        "in_review": "검토 중",
+        "done": "완료"
+      },
+      "execution_rule": "실행 규칙",
+      "backlog_waits": "Backlog: 계획만",
+      "todo_starts": "Todo: 실행 시작",
+      "activity_started": "작업 항목을 Todo로 이동",
+      "activity_agent": "에이전트가 작업 시작",
+      "activity_result": "에이전트가 결과 게시",
+      "just_now": "방금",
+      "running": "실행 중",
+      "activity_feed": "활동",
+      "action_center": "액션 센터",
+      "assigned_to_you": "나에게 배정됨",
+      "human_task": "연간 구매 예산 확인",
+      "agent_advice": "에이전트 조언",
+      "advice_1": "세 가지 구매안과 주요 위험을 비교했습니다.",
+      "advice_2": "공급업체 협상 전에 예산 상한을 확인하는 것이 좋습니다.",
+      "human_decides": "내가 확인하고 상태를 이동합니다",
+      "runtime_name": "Codex · 로컬 런타임",
+      "runtime_description": "실제 도구와 로컬 실행 환경 제공",
+      "online": "온라인",
+      "virtual_member": "가상 구성원",
+      "squad": "출시 협업 스쿼드",
+      "squad_summary": "에이전트 3개가 함께 작업"
+    }
   }
 }

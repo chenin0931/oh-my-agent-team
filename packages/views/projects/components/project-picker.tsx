@@ -2,16 +2,16 @@
 
 import { Check, FolderKanban, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { projectListOptions } from "@multica/core/projects/queries";
-import { useWorkspaceId } from "@multica/core/hooks";
-import type { UpdateIssueRequest } from "@multica/core/types";
+import { projectListOptions } from "@ohmyagentteam/core/projects/queries";
+import { useWorkspaceId } from "@ohmyagentteam/core/hooks";
+import type { UpdateIssueRequest } from "@ohmyagentteam/core/types";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
-} from "@multica/ui/components/ui/dropdown-menu";
+} from "@ohmyagentteam/ui/components/ui/dropdown-menu";
 import { ProjectIcon } from "./project-icon";
 import { useT } from "../../i18n";
 
@@ -32,7 +32,9 @@ export function ProjectPicker({
 }) {
   const { t } = useT("projects");
   const wsId = useWorkspaceId();
-  const { data: projects = [] } = useQuery(projectListOptions(wsId));
+  const { data: projects = [], isLoading } = useQuery(
+    projectListOptions(wsId),
+  );
   const current = projects.find((p) => p.id === projectId);
 
   return (
@@ -46,7 +48,13 @@ export function ProjectPicker({
         ) : (
           <FolderKanban className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
         )}
-        <span className="truncate">{current ? current.title : t(($) => $.picker.no_project)}</span>
+        <span className="truncate">
+          {current
+            ? current.title
+            : isLoading && projectId
+              ? t(($) => $.picker.loading)
+              : t(($) => $.picker.no_project)}
+        </span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align={align} className="w-52">
         {projects.map((p) => (
@@ -64,7 +72,9 @@ export function ProjectPicker({
           </DropdownMenuItem>
         )}
         {projects.length === 0 && (
-          <div className="px-2 py-1.5 text-xs text-muted-foreground">{t(($) => $.picker.empty)}</div>
+          <div className="px-2 py-1.5 text-xs text-muted-foreground">
+            {isLoading ? t(($) => $.picker.loading) : t(($) => $.picker.empty)}
+          </div>
         )}
       </DropdownMenuContent>
     </DropdownMenu>

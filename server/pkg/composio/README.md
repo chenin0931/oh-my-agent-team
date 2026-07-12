@@ -4,7 +4,7 @@ A small, standalone Go SDK for the [Composio v3.1 REST API](https://docs.composi
 
 This package is intentionally self-contained — its only third-party dependency
 is [`github.com/go-resty/resty/v2`](https://github.com/go-resty/resty). It does
-not import any other Multica package, so it can be reused by other services or
+not import any other OhMyAgentTeam package, so it can be reused by other services or
 extracted into its own module unchanged.
 
 ## Scope (MVP)
@@ -32,7 +32,7 @@ import (
     "context"
     "os"
 
-    "github.com/multica-ai/multica/server/pkg/composio"
+    "github.com/chenin0931/oh-my-agent-team/server/pkg/composio"
 )
 
 client, err := composio.NewClient(composio.Options{
@@ -43,22 +43,22 @@ if err != nil { /* ... */ }
 // 1. Send a user to the hosted Connect Link
 link, err := client.CreateLink(ctx, composio.CreateLinkRequest{
     AuthConfigID: "ac_xxxxxxxx",          // configured in the Composio dashboard
-    UserID:       multicaUserID.String(), // your own user id
-    CallbackURL:  "https://app.multica.ai/api/integrations/composio/callback",
+    UserID:       omatUserID.String(), // your own user id
+    CallbackURL:  "https://app.ohmyagentteam.com/api/integrations/composio/callback",
 })
 // → http.Redirect(w, r, link.RedirectURL, http.StatusFound)
 
 // 2. After Composio creates the account, fetch what the user has connected
 accounts, err := client.ListConnectedAccounts(ctx, composio.ListConnectedAccountsRequest{
-    UserIDs:  []string{multicaUserID.String()},
+    UserIDs:  []string{omatUserID.String()},
     Statuses: []string{"ACTIVE"},
 })
 
 // 3. Open an MCP session for the agent runtime
 session, err := client.CreateSession(ctx, composio.CreateSessionRequest{
-    UserID: multicaUserID.String(),
+    UserID: omatUserID.String(),
     ManageConnections: &composio.ManageConnections{
-        CallbackURL: "https://app.multica.ai/settings/integrations",
+        CallbackURL: "https://app.ohmyagentteam.com/settings/integrations",
     },
 })
 mcpURL  := session.MCP.URL
@@ -131,7 +131,7 @@ Current coverage: **82.2 %**.
 
 ## Design notes
 
-- **Standalone.** Zero coupling to Multica internals — depend on this package
+- **Standalone.** Zero coupling to OhMyAgentTeam internals — depend on this package
   from `server/internal/integrations/composio` (Stage 2 integration glue) or
   anywhere else without circular-import risk.
 - **`x-api-key`, not Bearer.** Composio's v3.1 REST API authenticates with an

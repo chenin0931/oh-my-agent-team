@@ -418,6 +418,7 @@ describe("handleInboxNew", () => {
       slug: "",
       itemId: "item-1",
       issueKey: "issue-1",
+      targetType: "issue",
       title: "Mentioned you",
       body: "in a comment",
     });

@@ -21,10 +21,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/multica-ai/multica/server/internal/events"
-	"github.com/multica-ai/multica/server/internal/middleware"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
-	"github.com/multica-ai/multica/server/pkg/protocol"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/events"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/middleware"
+	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
+	"github.com/chenin0931/oh-my-agent-team/server/pkg/protocol"
 )
 
 func TestExtractIdentifiers(t *testing.T) {
@@ -797,7 +797,7 @@ func fireBareWebhook(t *testing.T, secret string, installationID int64, prNumber
 }
 
 // TestWebhook_MergedPR_OnlyClosesIdentifiersWithClosingKeyword is the repro
-// from GitHub issue multica-ai/multica#3264: a PR that mentions three issues
+// from GitHub issue chenin0931/oh-my-agent-team#3264: a PR that mentions three issues
 // must only auto-complete the one declared with a closing keyword. Follow-up
 // / unblocks references are linked but stay in their previous status.
 func TestWebhook_MergedPR_OnlyClosesIdentifiersWithClosingKeyword(t *testing.T) {
@@ -2087,7 +2087,7 @@ RETURNING id
 	mkUser := func(t *testing.T, label string) string {
 		t.Helper()
 		var id string
-		email := fmt.Sprintf("github-routes-%s-%s@multica.ai", slug, label)
+		email := fmt.Sprintf("github-routes-%s-%s@ohmyagentteam.com", slug, label)
 		if err := testPool.QueryRow(ctx, `
 INSERT INTO "user" (name, email) VALUES ($1, $2) RETURNING id
 `, "GHR "+label, email).Scan(&id); err != nil {

@@ -4,27 +4,27 @@ import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Globe, Info, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
-import { ApiError } from "@multica/core/api";
-import type { Agent, AgentRuntime, MemberWithUser } from "@multica/core/types";
+import { ApiError } from "@ohmyagentteam/core/api";
+import type { Agent, AgentRuntime, MemberWithUser } from "@ohmyagentteam/core/types";
 import {
   useDeleteRuntime,
   useArchiveAgentsAndDeleteRuntime,
-} from "@multica/core/runtimes/mutations";
+} from "@ohmyagentteam/core/runtimes/mutations";
 import {
   agentListOptions,
   memberListOptions,
-} from "@multica/core/workspace/queries";
+} from "@ohmyagentteam/core/workspace/queries";
 import {
   type AgentPresenceDetail,
   useWorkspacePresenceMap,
-} from "@multica/core/agents";
-import { useAuthStore } from "@multica/core/auth";
+} from "@ohmyagentteam/core/agents";
+import { useAuthStore } from "@ohmyagentteam/core/auth";
 import {
   AlertDialog,
   AlertDialogContent,
-} from "@multica/ui/components/ui/alert-dialog";
-import { Button } from "@multica/ui/components/ui/button";
-import { Checkbox } from "@multica/ui/components/ui/checkbox";
+} from "@ohmyagentteam/ui/components/ui/alert-dialog";
+import { Button } from "@ohmyagentteam/ui/components/ui/button";
+import { Checkbox } from "@ohmyagentteam/ui/components/ui/checkbox";
 import { ActorAvatar } from "../../common/actor-avatar";
 import { availabilityConfig, workloadConfig } from "../../agents/presence";
 import { useT } from "../../i18n";

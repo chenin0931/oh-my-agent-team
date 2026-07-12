@@ -19,11 +19,11 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/multica-ai/multica/server/internal/analytics"
-	"github.com/multica-ai/multica/server/internal/auth"
-	"github.com/multica-ai/multica/server/internal/logger"
-	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/analytics"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/auth"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/logger"
+	obsmetrics "github.com/chenin0931/oh-my-agent-team/server/internal/metrics"
+	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
 )
 
 // SignupError represents signup restriction errors
@@ -38,7 +38,7 @@ func (e SignupError) Error() string {
 var ErrSignupProhibited = SignupError{Message: "user registration is disabled on this self-hosted instance"}
 var ErrEmailNotAllowed = SignupError{Message: "email address or domain not allowed on this instance"}
 
-const devVerificationCodeEnv = "MULTICA_DEV_VERIFICATION_CODE"
+const devVerificationCodeEnv = "OMAT_DEV_VERIFICATION_CODE"
 
 // supportedLanguages mirrors `SUPPORTED_LOCALES` in packages/core/i18n/types.ts.
 // Keep both lists in sync when adding a locale — the user-controlled `language`
@@ -58,13 +58,10 @@ type UserResponse struct {
 	AvatarURL *string `json:"avatar_url"`
 	Language  *string `json:"language"`
 	// Pinned IANA tz; nil = no preference (use browser-detected tz).
-	Timezone                *string         `json:"timezone"`
-	OnboardedAt             *string         `json:"onboarded_at"`
-	OnboardingQuestionnaire json.RawMessage `json:"onboarding_questionnaire"`
-	StarterContentState     *string         `json:"starter_content_state"`
-	ProfileDescription      string          `json:"profile_description"`
-	CreatedAt               string          `json:"created_at"`
-	UpdatedAt               string          `json:"updated_at"`
+	Timezone           *string `json:"timezone"`
+	ProfileDescription string  `json:"profile_description"`
+	CreatedAt          string  `json:"created_at"`
+	UpdatedAt          string  `json:"updated_at"`
 }
 
 // MaxProfileDescriptionLen caps the user-supplied profile_description body.
@@ -74,26 +71,16 @@ type UserResponse struct {
 const MaxProfileDescriptionLen = 2000
 
 func userToResponse(u db.User) UserResponse {
-	// JSONB column is []byte with DEFAULT '{}', so it's never nil at the DB
-	// level. Defensive coalesce just in case a future ALTER makes the column
-	// nullable and some row comes back with no default applied.
-	q := u.OnboardingQuestionnaire
-	if len(q) == 0 {
-		q = []byte("{}")
-	}
 	return UserResponse{
-		ID:                      uuidToString(u.ID),
-		Name:                    u.Name,
-		Email:                   u.Email,
-		AvatarURL:               textToPtr(u.AvatarUrl),
-		Language:                textToPtr(u.Language),
-		Timezone:                textToPtr(u.Timezone),
-		OnboardedAt:             timestampToPtr(u.OnboardedAt),
-		OnboardingQuestionnaire: json.RawMessage(q),
-		StarterContentState:     textToPtr(u.StarterContentState),
-		ProfileDescription:      u.ProfileDescription,
-		CreatedAt:               timestampToString(u.CreatedAt),
-		UpdatedAt:               timestampToString(u.UpdatedAt),
+		ID:                 uuidToString(u.ID),
+		Name:               u.Name,
+		Email:              u.Email,
+		AvatarURL:          textToPtr(u.AvatarUrl),
+		Language:           textToPtr(u.Language),
+		Timezone:           textToPtr(u.Timezone),
+		ProfileDescription: u.ProfileDescription,
+		CreatedAt:          timestampToString(u.CreatedAt),
+		UpdatedAt:          timestampToString(u.UpdatedAt),
 	}
 }
 
@@ -208,7 +195,7 @@ func (h *Handler) findOrCreateUser(ctx context.Context, email string) (user db.U
 const signupSourceMaxLen = 512
 
 func signupSourceFromRequest(r *http.Request) string {
-	c, err := r.Cookie("multica_signup_source")
+	c, err := r.Cookie("omat_signup_source")
 	if err != nil || c == nil {
 		return ""
 	}

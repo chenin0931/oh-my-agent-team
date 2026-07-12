@@ -16,7 +16,14 @@
     "delete": "삭제",
     "no_matches": "일치하는 프로젝트가 없습니다",
     "selected_other": "{{count}}개 선택됨",
-    "clear_selection": "선택 해제"
+    "clear_selection": "선택 해제",
+    "empty_description": "프로젝트는 공동의 결과 목표입니다. 관련 작업 항목, 사람과 Agent를 한곳에 모읍니다.",
+    "empty_project": "프로젝트",
+    "empty_project_hint": "목표와 공유 맥락",
+    "empty_work_items": "작업 항목",
+    "empty_work_items_hint": "목표를 진행하는 구체적인 작업",
+    "empty_unassigned_hint": "작업 항목은 프로젝트에 속하지 않은 상태로 두었다가 나중에 정리할 수도 있습니다.",
+    "view_work_items": "모든 작업 항목 보기"
   },
   "table": {
     "name": "이름",
@@ -25,7 +32,8 @@
     "progress": "진행률",
     "lead": "리드",
     "created": "생성일",
-    "issues": "이슈 수"
+    "issues": "작업 항목",
+    "work_items_summary": "작업 항목 {{count}}개 · {{done}}개 완료"
   },
   "status": {
     "planned": "계획됨",
@@ -69,13 +77,72 @@
     "section_description": "설명",
     "description_placeholder": "설명 추가...",
     "description_hint": "이 프로젝트의 모든 작업에서 컨텍스트로 에이전트에게 공유됩니다.",
-    "empty_issues_title": "연결된 이슈가 없습니다",
-    "empty_issues_hint": "새 이슈를 만들거나 기존 이슈를 이 프로젝트에 할당하세요.",
-    "empty_issues_new_button": "새 이슈",
-    "no_issues_yet": "아직 이슈가 없습니다",
+    "empty_issues_title": "이 프로젝트에 작업 항목이 없습니다",
+    "empty_issues_hint": "작업 항목을 만들거나 기존 작업 항목을 이 프로젝트에 지정하세요.",
+    "empty_issues_new_button": "새 작업 항목",
+    "no_issues_yet": "이 프로젝트에 작업 항목이 없습니다",
     "toast_link_copied": "링크를 복사했습니다",
     "toast_project_deleted": "프로젝트를 삭제했습니다",
     "toast_move_issue_failed": "이슈를 이동하지 못했습니다"
+  },
+  "workspace": {
+    "tabs": {
+      "overview": "개요",
+      "backlog": "백로그",
+      "board": "보드",
+      "roadmap": "로드맵",
+      "activity": "활동"
+    },
+    "overview": {
+      "progress": "진행률",
+      "description": "설명",
+      "no_description": "프로젝트 설명이 아직 없습니다."
+    },
+    "backlog": {
+      "title": "프로젝트 백로그",
+      "summary": "Epic {{epics}}개 · Issue {{issues}}개 · 하위 작업 {{subtasks}}개",
+      "epic": "Epic",
+      "issue": "Issue",
+      "add_issue": "Issue 추가",
+      "add_subtask": "하위 작업 추가",
+      "ungrouped": "Epic이 없는 Issue",
+      "empty": "백로그 작업이 아직 없습니다."
+    },
+    "activity": {
+      "title": "최근 프로젝트 활동",
+      "empty": "프로젝트 활동이 아직 없습니다.",
+      "actions": {
+        "created": "작업 항목을 만들었습니다",
+        "status_changed": "상태를 변경했습니다",
+        "priority_changed": "우선순위를 변경했습니다",
+        "assignee_changed": "담당자를 변경했습니다",
+        "start_date_changed": "시작일을 변경했습니다",
+        "due_date_changed": "마감일을 변경했습니다",
+        "title_changed": "작업 항목 이름을 변경했습니다",
+        "description_updated": "설명을 업데이트했습니다",
+        "squad_leader_evaluated": "Squad 리더가 작업을 평가했습니다",
+        "comment_created": "댓글을 추가했습니다",
+        "task_queued": "Agent 작업이 대기열에 추가되었습니다",
+        "task_dispatched": "Agent 작업이 할당되었습니다",
+        "task_running": "Agent가 작업 중입니다",
+        "task_waiting_local_directory": "로컬 디렉터리를 기다리는 중입니다",
+        "task_deferred": "Agent 작업이 연기되었습니다",
+        "task_completed": "Agent 작업이 완료되었습니다",
+        "task_failed": "Agent 작업이 실패했습니다",
+        "task_cancelled": "Agent 작업이 취소되었습니다",
+        "updated": "작업 항목을 업데이트했습니다"
+      }
+    },
+    "roadmap": {
+      "title": "Epic 로드맵",
+      "summary": "Epic {{epics}}개 · Issue {{done}}/{{total}}개 완료",
+      "epic": "Epic",
+      "timeline": "타임라인 및 진행률",
+      "start_not_set": "시작일 없음",
+      "due_not_set": "마감일 없음",
+      "done": "{{done}}/{{total}} 완료",
+      "empty": "Epic을 만들면 로드맵이 시작됩니다."
+    }
   },
   "resources": {
     "section_header": "리소스",
@@ -121,12 +188,70 @@
     "cancel": "취소"
   },
   "picker": {
+    "loading": "프로젝트 불러오는 중…",
     "no_project": "프로젝트 없음",
     "remove": "프로젝트에서 제거",
     "empty": "아직 프로젝트가 없습니다"
   },
   "chip": {
     "fallback_label": "프로젝트"
+  },
+  "epic": {
+    "title": "Epic",
+    "planning_container": "계획 컨테이너",
+    "create": "새 Epic",
+    "create_title": "Epic 만들기",
+    "create_description": "실행 가능한 작업으로 나누기 전에 결과를 정의하세요.",
+    "title_placeholder": "달성할 결과",
+    "description": "목표와 범위",
+    "description_placeholder": "이 Epic이 달성할 결과와 범위를 설명하세요.",
+    "success_criteria": "성공 기준",
+    "success_placeholder": "완료를 판단할 수 있는 결과를 적으세요.",
+    "project": "프로젝트",
+    "owner": "계획 책임자",
+    "unassigned": "미할당",
+    "lifecycle": "수명 주기",
+    "health": "상태",
+    "health_none": "평가 안 됨",
+    "overview": "개요",
+    "work_items": "작업 항목",
+    "updates": "업데이트",
+    "progress": "진행률",
+    "completion": "이슈 {{total}}개 중 {{done}}개 완료",
+    "blocked": "{{count}}개 차단됨",
+    "status_distribution": "상태 분포",
+    "no_description": "목표와 범위가 없습니다.",
+    "no_success": "성공 기준이 없습니다.",
+    "no_work_items": "이 Epic에 작업 항목이 없습니다.",
+    "add_issue": "백로그 이슈 만들기",
+    "attach_existing": "기존 이슈 추가",
+    "detach": "Epic에서 제거",
+    "start_date": "시작일",
+    "target_date": "목표일",
+    "priority": "중요도",
+    "advisors": "계획 어드바이저",
+    "choose_agent": "Agent 선택",
+    "advisor_prompt": "Agent가 무엇을 분석해야 하나요?",
+    "analyze": "Agent에게 분석 요청",
+    "advisor_queued": "Agent 분석을 요청했습니다",
+    "subscribers": "구독자",
+    "subscribe": "구독",
+    "unsubscribe": "구독 해제",
+    "labels": "레이블",
+    "attachments": "첨부 파일",
+    "delete": "Epic 삭제",
+    "delete_confirm": "이 Epic을 삭제할까요? 작업 항목은 프로젝트에 남습니다.",
+    "created": "Epic을 만들었습니다",
+    "create_failed": "Epic을 만들지 못했습니다",
+    "update_failed": "Epic을 업데이트하지 못했습니다",
+    "load_failed": "Epic을 불러오지 못했습니다",
+    "load_failed_description": "삭제되었거나 현재 서비스에 연결할 수 없을 수 있습니다.",
+    "retry": "다시 시도",
+    "comment_placeholder": "계획 업데이트를 공유하거나 Agent를 @멘션하세요...",
+    "send": "업데이트 게시",
+    "no_updates": "계획 업데이트가 없습니다.",
+    "statuses": {"planned": "계획됨", "in_progress": "진행 중", "paused": "일시 중지", "completed": "완료", "cancelled": "취소"},
+    "healths": {"on_track": "정상", "at_risk": "위험", "off_track": "지연"}
   },
   "toolbar": {
     "result_count_title": "일치하는 프로젝트 / 전체 프로젝트",

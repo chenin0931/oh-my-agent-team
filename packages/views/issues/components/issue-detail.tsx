@@ -25,30 +25,29 @@ import {
   Users,
 } from "lucide-react";
 import { BreadcrumbHeader, type BreadcrumbSegment } from "../../layout/breadcrumb-header";
-import { Skeleton } from "@multica/ui/components/ui/skeleton";
-import { Button } from "@multica/ui/components/ui/button";
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@multica/ui/components/ui/resizable";
-import { Sheet, SheetContent } from "@multica/ui/components/ui/sheet";
-import { useIsMobile } from "@multica/ui/hooks/use-mobile";
+import { Skeleton } from "@ohmyagentteam/ui/components/ui/skeleton";
+import { Button } from "@ohmyagentteam/ui/components/ui/button";
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@ohmyagentteam/ui/components/ui/resizable";
+import { useIsMobile } from "@ohmyagentteam/ui/hooks/use-mobile";
 import { ContentEditor, type ContentEditorRef, TitleEditor, useFileDropZone, FileDropOverlay } from "../../editor";
-import { FileUploadButton } from "@multica/ui/components/common/file-upload-button";
+import { FileUploadButton } from "@ohmyagentteam/ui/components/common/file-upload-button";
 import {
   Tooltip,
   TooltipTrigger,
   TooltipContent,
-} from "@multica/ui/components/ui/tooltip";
-import { Popover, PopoverTrigger, PopoverContent } from "@multica/ui/components/ui/popover";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@multica/ui/components/ui/dialog";
-import { Checkbox } from "@multica/ui/components/ui/checkbox";
-import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@multica/ui/components/ui/command";
-import { AvatarGroup, AvatarGroupCount } from "@multica/ui/components/ui/avatar";
+} from "@ohmyagentteam/ui/components/ui/tooltip";
+import { Popover, PopoverTrigger, PopoverContent } from "@ohmyagentteam/ui/components/ui/popover";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@ohmyagentteam/ui/components/ui/dialog";
+import { Checkbox } from "@ohmyagentteam/ui/components/ui/checkbox";
+import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@ohmyagentteam/ui/components/ui/command";
+import { AvatarGroup, AvatarGroupCount } from "@ohmyagentteam/ui/components/ui/avatar";
 import { ActorAvatar } from "../../common/actor-avatar";
 import { PropRow } from "../../common/prop-row";
-import type { Attachment, Issue, IssueStatus, IssuePriority, TimelineEntry, UpdateIssueRequest } from "@multica/core/types";
-import { contentReferencesAttachment } from "@multica/core/types";
-import { STATUS_CONFIG, PRIORITY_CONFIG } from "@multica/core/issues/config";
-import { formatDateOnly } from "@multica/core/issues/date";
-import { useUpdateIssue } from "@multica/core/issues/mutations";
+import type { Attachment, Issue, IssueStatus, IssuePriority, TimelineEntry, UpdateIssueRequest } from "@ohmyagentteam/core/types";
+import { contentReferencesAttachment } from "@ohmyagentteam/core/types";
+import { STATUS_CONFIG, PRIORITY_CONFIG } from "@ohmyagentteam/core/issues/config";
+import { formatDateOnly } from "@ohmyagentteam/core/issues/date";
+import { useUpdateIssue } from "@ohmyagentteam/core/issues/mutations";
 import { toast } from "sonner";
 import { StatusIcon, PriorityIcon, StatusPicker, PriorityPicker, StagePicker, StartDatePicker, DueDatePicker, AssigneePicker, LabelPicker } from ".";
 import { maxSiblingStage } from "./pickers/stage-picker";
@@ -60,31 +59,33 @@ import { CommentInput } from "./comment-input";
 import { ResolvedThreadBar } from "./resolved-thread-bar";
 import { collectThreadReplies, deriveThreadResolution } from "./thread-utils";
 import { IssueAgentHeaderChip } from "./issue-agent-header-chip";
+import { WorkItemAgentPanel } from "./work-item-agent-panel";
 import { ExecutionLogSection } from "./execution-log-section";
 import { PullRequestList } from "./pull-request-list";
-import { useGitHubSettings } from "@multica/core/github";
+import { useGitHubSettings } from "@ohmyagentteam/core/github";
 import { useQuery } from "@tanstack/react-query";
-import { useAuthStore } from "@multica/core/auth";
-import { useWorkspacePaths } from "@multica/core/paths";
-import { useActorName } from "@multica/core/workspace/hooks";
-import { useWorkspaceId } from "@multica/core/hooks";
-import { useRecentContextStore } from "@multica/core/chat";
-import { issueListOptions, issueDetailOptions, childIssuesOptions, issueUsageOptions, issueAttachmentsOptions } from "@multica/core/issues/queries";
-import { projectDetailOptions } from "@multica/core/projects/queries";
+import { useAuthStore } from "@ohmyagentteam/core/auth";
+import { useWorkspacePaths } from "@ohmyagentteam/core/paths";
+import { useActorName } from "@ohmyagentteam/core/workspace/hooks";
+import { useWorkspaceId } from "@ohmyagentteam/core/hooks";
+import { useRecentContextStore } from "@ohmyagentteam/core/chat";
+import { issueListOptions, issueDetailOptions, childIssuesOptions, issueUsageOptions, issueAttachmentsOptions } from "@ohmyagentteam/core/issues/queries";
+import { projectDetailOptions } from "@ohmyagentteam/core/projects/queries";
+import { epicDetailOptions } from "@ohmyagentteam/core/epics/queries";
 import { ProjectIcon } from "../../projects/components/project-icon";
-import { issueLabelsOptions } from "@multica/core/labels";
-import { memberListOptions, agentListOptions } from "@multica/core/workspace/queries";
-import { useRecentIssuesStore } from "@multica/core/issues/stores";
-import { useIssueSelectionStore } from "@multica/core/issues/stores/selection-store";
+import { issueLabelsOptions } from "@ohmyagentteam/core/labels";
+import { memberListOptions, agentListOptions } from "@ohmyagentteam/core/workspace/queries";
+import { useRecentIssuesStore } from "@ohmyagentteam/core/issues/stores";
+import { useIssueSelectionStore } from "@ohmyagentteam/core/issues/stores/selection-store";
 import { BatchActionToolbar } from "./batch-action-toolbar";
 import { useIssueTimeline } from "../hooks/use-issue-timeline";
 import { useIssueReactions } from "../hooks/use-issue-reactions";
 import { useIssueSubscribers } from "../hooks/use-issue-subscribers";
-import { ReactionBar } from "@multica/ui/components/common/reaction-bar";
-import { useFileUpload } from "@multica/core/hooks/use-file-upload";
-import { api } from "@multica/core/api";
+import { ReactionBar } from "@ohmyagentteam/ui/components/common/reaction-bar";
+import { useFileUpload } from "@ohmyagentteam/core/hooks/use-file-upload";
+import { api } from "@ohmyagentteam/core/api";
 import { useTimeAgo } from "../../i18n";
-import { cn } from "@multica/ui/lib/utils";
+import { cn } from "@ohmyagentteam/ui/lib/utils";
 
 import { ProgressRing } from "./progress-ring";
 import { matchesPinyin } from "../../editor/extensions/pinyin-match";
@@ -682,7 +683,7 @@ function SubIssueRow({ child }: { child: Issue }) {
 // Props
 // ---------------------------------------------------------------------------
 
-interface IssueDetailProps {
+export interface IssueDetailProps {
   issueId: string;
   onDelete?: () => void;
   /** Called after the issue is marked as done via the toolbar button. */
@@ -697,7 +698,7 @@ interface IssueDetailProps {
 // IssueDetail
 // ---------------------------------------------------------------------------
 
-export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = true, layoutId = "multica_issue_detail_layout", highlightCommentId }: IssueDetailProps) {
+export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = true, layoutId = "omat_issue_detail_layout", highlightCommentId }: IssueDetailProps) {
   const { t } = useT("issues");
   const timeAgo = useTimeAgo();
   const id = issueId;
@@ -735,14 +736,8 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
     beginToggle: beginDesktopSidebarToggle,
     handleResize: handleDesktopSidebarResize,
   } = useAnimatedRightSidebarState(desktopSidebarInitialOpen);
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-
-  useEffect(() => {
-    if (isMobile) {
-      setMobileSidebarOpen(false);
-    }
-  }, [isMobile]);
-  const sidebarOpen = isMobile ? mobileSidebarOpen : desktopSidebarOpen;
+  const [mobileCollaborationTab, setMobileCollaborationTab] = useState<"content" | "activity" | "properties">("content");
+  const sidebarOpen = isMobile ? mobileCollaborationTab === "properties" : desktopSidebarOpen;
   const [propertiesOpen, setPropertiesOpen] = useState(true);
   const [detailsOpen, setDetailsOpen] = useState(true);
   const [parentIssueOpen, setParentIssueOpen] = useState(true);
@@ -818,6 +813,7 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
   // "show all" choice, and so the choice survives the block losing its
   // trailing position when a new comment lands after it.
   const [showOlderActivityIds, setShowOlderActivityIds] = useState<Set<string>>(() => new Set());
+  const [activityFilter, setActivityFilter] = useState<"all" | "comments" | "agent" | "system" | "runs">("all");
   const toggleActivityBlock = useCallback((id: string, currentlyExpanded: boolean) => {
     if (currentlyExpanded) {
       setCollapsedActivityIds((prev) => {
@@ -1024,9 +1020,26 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
   // changes (timeline events) or expandedResolved flips (user toggles a
   // resolved thread). Kept in a useMemo so Virtuoso's data identity is stable
   // across unrelated re-renders.
+  const filteredTimelineGroups = useMemo(() => {
+    if (activityFilter === "all") return timelineView.groups;
+    return timelineView.groups.flatMap((group) => {
+      if (group.type === "comment") {
+        const isAgent = group.entries[0]?.actor_type === "agent";
+        if (activityFilter === "agent" && isAgent) return [group];
+        if (activityFilter === "comments" && !isAgent) return [group];
+        return [];
+      }
+      const entries = group.entries.filter((entry) => {
+        const isRun = entry.action?.startsWith("task_") || entry.action === "squad_leader_evaluated";
+        return activityFilter === "runs" ? isRun : activityFilter === "system" ? !isRun : false;
+      });
+      return entries.length > 0 ? [{ ...group, entries }] : [];
+    });
+  }, [activityFilter, timelineView.groups]);
+
   const items = useMemo<TimelineItem[]>(
-    () => flattenGroups(timelineView.groups, expandedResolved),
-    [timelineView.groups, expandedResolved],
+    () => flattenGroups(filteredTimelineGroups, expandedResolved),
+    [filteredTimelineGroups, expandedResolved],
   );
 
   // In-page find (Cmd/Ctrl+F). `items.length` is the content signal that
@@ -1111,6 +1124,11 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
   const { data: breadcrumbProject = null } = useQuery({
     ...projectDetailOptions(wsId, issueProjectId ?? ""),
     enabled: !!issueProjectId,
+  });
+  const issueEpicId = issue?.epic_id;
+  const { data: breadcrumbEpic = null } = useQuery({
+    ...epicDetailOptions(wsId, issueEpicId ?? ""),
+    enabled: !!issueEpicId,
   });
   const { data: childIssues = [] } = useQuery({
     ...childIssuesOptions(wsId, id),
@@ -1336,7 +1354,7 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
 
   const handleToggleSidebar = useCallback(() => {
     if (isMobile) {
-      setMobileSidebarOpen((open) => !open);
+      setMobileCollaborationTab((tab) => tab === "properties" ? "content" : "properties");
       return;
     }
 
@@ -1638,6 +1656,7 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
       {/* Execution log — active runs + collapsed past runs. Self-contained;
           owns its own collapse state and WS subscriptions. Hides itself
           when there are no runs to show. */}
+      <WorkItemAgentPanel issue={issue} subscribers={subscribers} canDecompose={canModerateComments} />
       <ExecutionLogSection issueId={id} />
 
       {/* Token usage */}
@@ -1769,28 +1788,29 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
     );
   };
 
-  // Breadcrumb shows the single most-direct container, never a fabricated chain.
-  // project_id and parent_issue_id are orthogonal (a sub-issue can live in a
-  // different project than its parent), so we never render both: parent wins,
-  // else project, else nothing. The project is still shown in the properties
-  // panel. The workspace name is intentionally absent — "all issues" is a view,
-  // not a container.
-  const breadcrumbSegments: BreadcrumbSegment[] = parentIssue
-    ? [{ href: paths.issueDetail(parentIssue.id), label: parentIssue.identifier }]
-    : breadcrumbProject
-      ? [
-          {
-            href: paths.projectDetail(breadcrumbProject.id),
-            className: "flex items-center gap-1 min-w-0 max-w-72",
-            label: (
-              <>
-                <ProjectIcon project={breadcrumbProject} size="sm" />
-                <span className="min-w-0 truncate">{breadcrumbProject.title}</span>
-              </>
-            ),
-          },
-        ]
-      : [];
+  const breadcrumbSegments: BreadcrumbSegment[] = [];
+  if (breadcrumbProject) {
+    breadcrumbSegments.push({
+      href: paths.projectDetail(breadcrumbProject.id),
+      className: "flex items-center gap-1 min-w-0 max-w-56",
+      label: (
+        <>
+          <ProjectIcon project={breadcrumbProject} size="sm" />
+          <span className="min-w-0 truncate">{breadcrumbProject.title}</span>
+        </>
+      ),
+    });
+  }
+  if (breadcrumbEpic) {
+    breadcrumbSegments.push({
+      href: paths.epicDetail(breadcrumbEpic.id),
+      className: "min-w-0 max-w-56",
+      label: <span className="truncate">{breadcrumbEpic.identifier} {breadcrumbEpic.title}</span>,
+    });
+  }
+  if (parentIssue) {
+    breadcrumbSegments.push({ href: paths.issueDetail(parentIssue.id), label: parentIssue.identifier });
+  }
 
   const detailContent = (
     <div className="relative flex h-full min-w-0 flex-1 flex-col">
@@ -1903,12 +1923,13 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
           data-tab-scroll-root
           className="relative flex-1 overflow-y-auto"
         >
-        <div className="mx-auto w-full max-w-4xl px-8 py-8">
+        <div className="mx-auto w-full max-w-[1440px] px-8 py-8">
+          <div className={cn(isMobile && mobileCollaborationTab === "activity" && "hidden")}>
           <TitleEditor
             key={`title-${id}`}
             defaultValue={issue.title}
             placeholder={t(($) => $.detail.title_placeholder)}
-            className="w-full text-2xl font-bold leading-snug tracking-tight"
+            className="w-full text-2xl font-bold leading-snug"
             onBlur={(value) => {
               const trimmed = value.trim();
               if (trimmed && trimmed !== issue.title) handleUpdateField({ title: trimmed });
@@ -1939,6 +1960,10 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
               })()}
             </AppLink>
           )}
+          </div>
+
+          <div className="2xl:grid 2xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.72fr)] 2xl:gap-10">
+          <div className={cn("min-w-0", isMobile && mobileCollaborationTab === "activity" && "hidden")}>
 
           <div {...descDropZoneProps} className="relative mt-5 rounded-lg">
             <ContentEditor
@@ -1993,6 +2018,21 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
               />
             </div>
             {descDragOver && <FileDropOverlay />}
+          </div>
+
+          <div className="mt-8">
+            <h2 className="mb-2 text-sm font-semibold">
+              {t(($) => $.detail.acceptance_criteria_section)}
+            </h2>
+            <ContentEditor
+              key={`acceptance-${id}`}
+              defaultValue={issue.acceptance_criteria || ""}
+              placeholder={t(($) => $.detail.acceptance_criteria_placeholder)}
+              onUpdate={(md) => handleUpdateField({ acceptance_criteria: md || null })}
+              debounceMs={1500}
+              flushPendingOnUnmount
+              currentIssueId={id}
+            />
           </div>
 
           {/* Sub-issues — Linear-style */}
@@ -2096,13 +2136,36 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
             );
           })()}
 
-          <div className="my-8 border-t" />
+          </div>
+
+          <div className={cn(
+            "min-w-0",
+            "2xl:border-l 2xl:pl-10",
+            isMobile && mobileCollaborationTab === "content" && "hidden",
+          )}>
+
+          <div className="my-8 border-t 2xl:mt-0 2xl:border-t-0" />
 
           {/* Activity / Comments */}
           <div>
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <h2 className="text-base font-semibold">{t(($) => $.detail.activity_section)}</h2>
+                <div className="flex items-center rounded-md bg-muted p-0.5">
+                  {(["all", "comments", "agent", "system", "runs"] as const).map((filter) => (
+                    <button
+                      key={filter}
+                      type="button"
+                      onClick={() => setActivityFilter(filter)}
+                      className={cn(
+                        "rounded px-2 py-1 text-xs text-muted-foreground transition-colors",
+                        activityFilter === filter && "bg-background text-foreground shadow-sm",
+                      )}
+                    >
+                      {t(($) => $.detail.activity_filters[filter])}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -2230,20 +2293,37 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
               <CommentInput key={id} issueId={id} onSubmit={submitComment} />
             </div>
           </div>
+          </div>
+          </div>
         </div>
         </div>
       </div>
   );
 
   if (isMobile) {
+    const tabs = ["content", "activity", "properties"] as const;
     return (
-      <div className="flex flex-1 min-h-0">
-        {detailContent}
-        <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
-          <SheetContent side="right" showCloseButton={false} className="w-[320px] overflow-y-auto p-4">
-            {sidebarContent}
-          </SheetContent>
-        </Sheet>
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div className="grid grid-cols-3 border-b bg-background p-1">
+          {tabs.map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setMobileCollaborationTab(tab)}
+              className={cn(
+                "rounded-md px-2 py-2 text-xs font-medium text-muted-foreground",
+                mobileCollaborationTab === tab && "bg-muted text-foreground",
+              )}
+            >
+              {t(($) => $.detail.mobile_tabs[tab])}
+            </button>
+          ))}
+        </div>
+        <div className="flex min-h-0 flex-1">
+          {mobileCollaborationTab === "properties" ? (
+            <div className="flex-1 overflow-y-auto p-4">{sidebarContent}</div>
+          ) : detailContent}
+        </div>
       </div>
     );
   }

@@ -33,6 +33,7 @@ import { ProjectHeaderCard } from "@/components/project/project-header-card";
 import { ProjectPropertiesSection } from "@/components/project/project-properties-section";
 import { ProjectRelatedIssues } from "@/components/project/project-related-issues";
 import { ProjectResourcesSection } from "@/components/project/project-resources-section";
+import { ProjectEpics } from "@/components/project/project-epics";
 import {
   projectDetailOptions,
   projectResourcesOptions,
@@ -65,6 +66,7 @@ export default function ProjectDetail() {
       qc.invalidateQueries({
         queryKey: [...issueKeys.list(wsId), "byProject", id],
       }),
+      qc.invalidateQueries({ queryKey: ["epics", wsId] }),
     ]);
   }, [detail, qc, wsId, id]);
 
@@ -229,6 +231,8 @@ export default function ProjectDetail() {
                 });
             }}
           />
+          <View className="h-3" />
+          <ProjectEpics projectId={id} />
           <View className="h-3" />
           <ProjectRelatedIssues projectId={id} />
         </ScrollView>

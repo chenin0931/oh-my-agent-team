@@ -4,33 +4,49 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useDefaultLayout } from "react-resizable-panels";
 import {
   Cloud,
+  Bot,
+  CheckCircle2,
+  CircleGauge,
+  ListTodo,
   Monitor,
   Pencil,
   Plus,
   Search,
   Server,
 } from "lucide-react";
+import type { AgentRuntime } from "@ohmyagentteam/core/types";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useAuthStore } from "@multica/core/auth";
-import { useWorkspaceId } from "@multica/core/hooks";
-import { agentTaskSnapshotOptions } from "@multica/core/agents";
-import { runtimeListOptions, runtimeKeys } from "@multica/core/runtimes/queries";
-import { useUpdatableRuntimeIds } from "@multica/core/runtimes/hooks";
-import { useWSEvent } from "@multica/core/realtime";
-import { agentListOptions } from "@multica/core/workspace/queries";
-import { memberListOptions } from "@multica/core/workspace/queries";
-import { Button } from "@multica/ui/components/ui/button";
-import { Input } from "@multica/ui/components/ui/input";
+import { useAuthStore } from "@ohmyagentteam/core/auth";
+import { useWorkspaceId } from "@ohmyagentteam/core/hooks";
+import { agentTaskSnapshotOptions } from "@ohmyagentteam/core/agents";
+import { runtimeListOptions, runtimeKeys } from "@ohmyagentteam/core/runtimes/queries";
+import { useUpdatableRuntimeIds } from "@ohmyagentteam/core/runtimes/hooks";
+import { useWSEvent } from "@ohmyagentteam/core/realtime";
+import { useConfigStore } from "@ohmyagentteam/core/config";
+import { agentListOptions } from "@ohmyagentteam/core/workspace/queries";
+import { memberListOptions } from "@ohmyagentteam/core/workspace/queries";
+import { Button } from "@ohmyagentteam/ui/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@ohmyagentteam/ui/components/ui/dialog";
+import { Input } from "@ohmyagentteam/ui/components/ui/input";
 import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
-} from "@multica/ui/components/ui/resizable";
-import { Skeleton } from "@multica/ui/components/ui/skeleton";
-import { useIsMobile } from "@multica/ui/hooks/use-mobile";
-import { cn } from "@multica/ui/lib/utils";
+} from "@ohmyagentteam/ui/components/ui/resizable";
+import { Skeleton } from "@ohmyagentteam/ui/components/ui/skeleton";
+import { useIsMobile } from "@ohmyagentteam/ui/hooks/use-mobile";
+import { cn } from "@ohmyagentteam/ui/lib/utils";
 import { PageHeader } from "../../layout/page-header";
-import { ConnectRemoteDialog } from "./connect-remote-dialog";
+import {
+  ConnectRemoteDialog,
+  daemonCommands,
+} from "./connect-remote-dialog";
 import { CloudRuntimeDialog } from "./cloud-runtime-dialog";
 import { RuntimeProfilesDialog } from "./runtime-profiles-dialog";
 import { RenameMachineDialog } from "./rename-machine-dialog";
@@ -124,7 +140,7 @@ export function RuntimesPage({
     [],
   );
   const { defaultLayout, onLayoutChanged } = useDefaultLayout({
-    id: "multica_runtimes_layout",
+    id: "omat_runtimes_layout",
   });
   const isMobile = useIsMobile();
 
@@ -280,6 +296,24 @@ export function RuntimesPage({
         onAddRuntime={() => setShowProfilesDialog(true)}
       />
 
+      <ExecutionToolStarter
+        runtimes={visibleRuntimes}
+        onConnect={() => setShowConnectDialog(true)}
+      />
+
+      {!showEmpty && (
+        <RuntimeCapacityPulse
+          machineTotal={machines.length}
+          machineOnline={machineCounts.online}
+          runtimeTotal={visibleRuntimes.length}
+          runtimeOnline={visibleRuntimes.filter((runtime) => runtime.status === "online").length}
+          agentTotal={agents.filter((agent) => !agent.archived_at).length}
+          agentBound={agents.filter((agent) => !agent.archived_at && !!agent.runtime_id).length}
+          running={snapshot.filter((task) => task.status === "running").length}
+          queued={snapshot.filter((task) => task.status === "queued" || task.status === "dispatched" || task.status === "waiting_local_directory").length}
+        />
+      )}
+
       {showEmpty ? (
         <div className="flex flex-1 items-center justify-center p-6">
           <EmptyState onConnectRemote={() => setShowConnectDialog(true)} />
@@ -386,6 +420,230 @@ export function RuntimesPage({
   );
 }
 
+type StarterToolKey = "codex" | "claude" | "codebuddy";
+
+const STARTER_TOOLS: Array<{
+  key: StarterToolKey;
+  name: string;
+  command: string;
+  launch: string;
+}> = [
+  {
+    key: "codex",
+    name: "Codex",
+    command: "npm install -g @openai/codex",
+    launch: "codex",
+  },
+  {
+    key: "claude",
+    name: "Claude Code",
+    command: "npm install -g @anthropic-ai/claude-code",
+    launch: "claude",
+  },
+  {
+    key: "codebuddy",
+    name: "WorkBuddy",
+    command: "npm install -g @tencent-ai/codebuddy-code",
+    launch: "codebuddy",
+  },
+];
+
+function ExecutionToolStarter({
+  runtimes,
+  onConnect,
+}: {
+  runtimes: AgentRuntime[];
+  onConnect: () => void;
+}) {
+  const { t } = useT("runtimes");
+  const daemonServerUrl = useConfigStore((state) => state.daemonServerUrl);
+  const daemonAppUrl = useConfigStore((state) => state.daemonAppUrl);
+  const setupCommand = daemonCommands(daemonServerUrl, daemonAppUrl).setupCmd;
+  const [selected, setSelected] = useState<StarterToolKey | null>(null);
+  const tool = STARTER_TOOLS.find((item) => item.key === selected) ?? null;
+
+  return (
+    <>
+      <section className="shrink-0 border-b bg-background px-5 py-3">
+        <div className="mb-2 flex items-end justify-between gap-4">
+          <div>
+            <h2 className="font-serif text-[15px] font-medium">
+              {t(($) => $.execution_tools.title)}
+            </h2>
+            <p className="text-[11px] text-muted-foreground">
+              {t(($) => $.execution_tools.description)}
+            </p>
+          </div>
+          <span className="hidden text-[10px] text-muted-foreground sm:inline">
+            {t(($) => $.execution_tools.click_hint)}
+          </span>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-3">
+          {STARTER_TOOLS.map((item) => {
+            const online = runtimes.some(
+              (runtime) =>
+                runtime.provider.toLowerCase() === item.key &&
+                runtime.status === "online",
+            );
+            return (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => setSelected(item.key)}
+                className="group flex min-h-14 items-center gap-3 rounded-md border bg-background px-3 py-2 text-left transition-colors hover:border-foreground/20 hover:bg-accent/35"
+              >
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-md border bg-background">
+                  <ProviderLogo provider={item.key} className="size-5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium">{item.name}</span>
+                  <span className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <span
+                      className={cn(
+                        "size-1.5 rounded-full",
+                        online ? "bg-success" : "bg-muted-foreground/30",
+                      )}
+                    />
+                    {online
+                      ? t(($) => $.execution_tools.online)
+                      : t(($) => $.execution_tools.not_connected)}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      <Dialog open={!!tool} onOpenChange={(open) => !open && setSelected(null)}>
+        <DialogContent className="sm:max-w-lg">
+          {tool ? (
+            <>
+              <DialogHeader>
+                <div className="mb-2 flex size-10 items-center justify-center rounded-md border bg-background">
+                  <ProviderLogo provider={tool.key} className="size-6" />
+                </div>
+                <DialogTitle className="font-serif text-xl font-medium">
+                  {t(($) => $.execution_tools.guide_title, { name: tool.name })}
+                </DialogTitle>
+                <DialogDescription>
+                  {t(($) => $.execution_tools.guide_description)}
+                </DialogDescription>
+              </DialogHeader>
+              <ol className="mt-2 divide-y border-y">
+                <GuideStep
+                  index={1}
+                  title={t(($) => $.execution_tools.install_title)}
+                  description={t(($) => $.execution_tools.install_description)}
+                  command={tool.command}
+                />
+                <GuideStep
+                  index={2}
+                  title={t(($) => $.execution_tools.login_title)}
+                  description={t(($) => $.execution_tools.login_description, {
+                    name: tool.name,
+                  })}
+                  command={tool.launch}
+                />
+                <GuideStep
+                  index={3}
+                  title={t(($) => $.execution_tools.connect_title)}
+                  description={t(($) => $.execution_tools.connect_description)}
+                  command={setupCommand}
+                />
+              </ol>
+              <div className="flex justify-end">
+                <Button
+                  onClick={() => {
+                    setSelected(null);
+                    onConnect();
+                  }}
+                >
+                  {t(($) => $.execution_tools.open_connect)}
+                </Button>
+              </div>
+            </>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+function GuideStep({
+  index,
+  title,
+  description,
+  command,
+}: {
+  index: number;
+  title: string;
+  description: string;
+  command: string;
+}) {
+  return (
+    <li className="grid grid-cols-[28px_minmax(0,1fr)] gap-2 py-3">
+      <span className="flex size-6 items-center justify-center rounded-full border text-[11px] font-medium">
+        {index}
+      </span>
+      <div className="min-w-0">
+        <p className="flex items-center gap-1.5 text-sm font-medium">
+          {title}
+          <CheckCircle2 className="size-3.5 text-muted-foreground/45" />
+        </p>
+        <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+          {description}
+        </p>
+        <code className="mt-2 block overflow-x-auto rounded bg-muted px-2.5 py-2 font-mono text-[11px]">
+          {command}
+        </code>
+      </div>
+    </li>
+  );
+}
+
+function RuntimeCapacityPulse({
+  machineTotal,
+  machineOnline,
+  runtimeTotal,
+  runtimeOnline,
+  agentTotal,
+  agentBound,
+  running,
+  queued,
+}: {
+  machineTotal: number;
+  machineOnline: number;
+  runtimeTotal: number;
+  runtimeOnline: number;
+  agentTotal: number;
+  agentBound: number;
+  running: number;
+  queued: number;
+}) {
+  const { t } = useT("runtimes");
+  return (
+    <div className="grid shrink-0 grid-cols-2 border-b bg-muted/15 xl:grid-cols-4">
+      <CapacityMetric icon={Monitor} label={t(($) => $.capacity_pulse.machines)} value={`${machineOnline}/${machineTotal}`} hint={t(($) => $.capacity_pulse.online)} healthy={machineTotal > 0 && machineOnline === machineTotal} />
+      <CapacityMetric icon={CircleGauge} label={t(($) => $.capacity_pulse.runtimes)} value={`${runtimeOnline}/${runtimeTotal}`} hint={t(($) => $.capacity_pulse.ready)} healthy={runtimeTotal > 0 && runtimeOnline === runtimeTotal} />
+      <CapacityMetric icon={Bot} label={t(($) => $.capacity_pulse.agents)} value={`${agentBound}/${agentTotal}`} hint={t(($) => $.capacity_pulse.bound)} healthy={agentTotal > 0 && agentBound === agentTotal} />
+      <CapacityMetric icon={ListTodo} label={t(($) => $.capacity_pulse.work)} value={running} hint={t(($) => $.capacity_pulse.work_hint, { queued })} healthy={queued === 0} />
+    </div>
+  );
+}
+
+function CapacityMetric({ icon: Icon, label, value, hint, healthy }: { icon: typeof Monitor; label: string; value: string | number; hint: string; healthy: boolean }) {
+  return (
+    <div className="flex min-w-0 items-center gap-3 border-r px-4 py-2.5">
+      <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-md border bg-background", healthy ? "text-success" : "text-muted-foreground")}><Icon className="size-4" /></span>
+      <div className="min-w-0">
+        <p className="text-[11px] text-muted-foreground">{label}</p>
+        <p className="flex items-baseline gap-1.5"><span className="text-sm font-semibold tabular-nums">{value}</span><span className="truncate text-[10px] text-muted-foreground">{hint}</span></p>
+      </div>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Header bar — minimal: only icon + title + count, matching Skills.
 // Page-level actions (Search, scope, filter) live in the card below.
@@ -411,7 +669,7 @@ function PageHeaderBar({
     <PageHeader className="justify-between px-5">
       <div className="flex items-center gap-2">
         <Server className="h-4 w-4 text-muted-foreground" />
-        <h1 className="text-sm font-medium">{t(($) => $.page.title)}</h1>
+        <h1 className="font-serif text-[15px] font-medium">{t(($) => $.page.title)}</h1>
         {totalCount > 0 && (
           <span className="font-mono text-xs tabular-nums text-muted-foreground/70">
             {totalCount}
@@ -802,7 +1060,7 @@ function MachineDetail({
         <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
             <div className="flex min-w-0 flex-wrap items-center gap-2">
-              <h2 className="truncate text-xl font-semibold tracking-tight">
+              <h2 className="truncate text-xl font-semibold">
                 {machine.title}
               </h2>
               {canRename && onRename && (

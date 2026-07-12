@@ -4,16 +4,48 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/multica-ai/multica/server/internal/events"
-	"github.com/multica-ai/multica/server/internal/handler"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
-	"github.com/multica-ai/multica/server/pkg/protocol"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/events"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/handler"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/util"
+	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
+	"github.com/chenin0931/oh-my-agent-team/server/pkg/protocol"
 )
 
 // registerSubscriberListeners wires up event bus listeners that auto-subscribe
 // relevant users to issues. This ensures creators, assignees, and commenters
 // are automatically tracked as issue subscribers.
 func registerSubscriberListeners(bus *events.Bus, queries *db.Queries) {
+	// epic:* — creator and planning owner subscribe for updates, but this
+	// subscription is notification-only and never enters task dispatch.
+	bus.Subscribe(protocol.EventEpicCreated, func(e events.Event) {
+		payload, ok := e.Payload.(map[string]any)
+		if !ok {
+			return
+		}
+		epic, ok := extractEpicFields(payload["epic"])
+		if !ok {
+			return
+		}
+		addSubscriber(bus, queries, e.WorkspaceID, epic.ID, epic.CreatorType, epic.CreatorID, "creator")
+		if epic.OwnerType != nil && epic.OwnerID != nil &&
+			!(*epic.OwnerType == epic.CreatorType && *epic.OwnerID == epic.CreatorID) {
+			addSubscriber(bus, queries, e.WorkspaceID, epic.ID, *epic.OwnerType, *epic.OwnerID, "owner")
+		}
+	})
+	bus.Subscribe(protocol.EventEpicUpdated, func(e events.Event) {
+		payload, ok := e.Payload.(map[string]any)
+		if !ok {
+			return
+		}
+		epic, ok := extractEpicFields(payload["epic"])
+		if !ok {
+			return
+		}
+		if changed, _ := payload["owner_changed"].(bool); changed && epic.OwnerType != nil && epic.OwnerID != nil {
+			addSubscriber(bus, queries, e.WorkspaceID, epic.ID, *epic.OwnerType, *epic.OwnerID, "owner")
+		}
+	})
+
 	// issue:created — subscribe creator + assignee (if different)
 	bus.Subscribe(protocol.EventIssueCreated, func(e events.Event) {
 		payload, ok := e.Payload.(map[string]any)
@@ -133,21 +165,71 @@ func extractIssueFields(v any) (handler.IssueResponse, bool) {
 	issue := handler.IssueResponse{}
 	issue.ID, _ = m["id"].(string)
 	issue.WorkspaceID, _ = m["workspace_id"].(string)
+	issue.Title, _ = m["title"].(string)
+	issue.Status, _ = m["status"].(string)
+	issue.Priority, _ = m["priority"].(string)
 	issue.CreatorType, _ = m["creator_type"].(string)
 	issue.CreatorID, _ = m["creator_id"].(string)
-	issue.AssigneeType, _ = m["assignee_type"].(*string)
-	issue.AssigneeID, _ = m["assignee_id"].(*string)
-	issue.Description, _ = m["description"].(*string)
+	issue.AssigneeType = optionalStringFromAny(m["assignee_type"])
+	issue.AssigneeID = optionalStringFromAny(m["assignee_id"])
+	issue.Description = optionalStringFromAny(m["description"])
+	issue.StartDate = optionalStringFromAny(m["start_date"])
+	issue.DueDate = optionalStringFromAny(m["due_date"])
 	if issue.ID == "" || issue.CreatorID == "" {
 		return handler.IssueResponse{}, false
 	}
 	return issue, true
 }
 
+func extractEpicFields(v any) (handler.EpicResponse, bool) {
+	if epic, ok := v.(handler.EpicResponse); ok {
+		return epic, true
+	}
+	m, ok := v.(map[string]any)
+	if !ok {
+		return handler.EpicResponse{}, false
+	}
+	epic := handler.EpicResponse{}
+	epic.ID, _ = m["id"].(string)
+	epic.WorkspaceID, _ = m["workspace_id"].(string)
+	epic.ProjectID, _ = m["project_id"].(string)
+	epic.Title, _ = m["title"].(string)
+	epic.Lifecycle, _ = m["lifecycle"].(string)
+	epic.CreatorType, _ = m["creator_type"].(string)
+	epic.CreatorID, _ = m["creator_id"].(string)
+	epic.OwnerType = optionalStringFromAny(m["owner_type"])
+	epic.OwnerID = optionalStringFromAny(m["owner_id"])
+	if epic.ID == "" || epic.ProjectID == "" || epic.CreatorID == "" {
+		return handler.EpicResponse{}, false
+	}
+	return epic, true
+}
+
+func optionalStringFromAny(v any) *string {
+	switch s := v.(type) {
+	case *string:
+		return s
+	case string:
+		return &s
+	default:
+		return nil
+	}
+}
+
 // addSubscriber adds a user as an issue subscriber and publishes a
 // subscriber:added event for real-time frontend sync.
 func addSubscriber(bus *events.Bus, queries *db.Queries, workspaceID, issueID, userType, userID, reason string) {
-	err := queries.AddIssueSubscriber(context.Background(), db.AddIssueSubscriberParams{
+	ctx := context.Background()
+	if !addIssueSubscriber(ctx, bus, queries, workspaceID, issueID, userType, userID, reason) {
+		return
+	}
+	if userType == "agent" {
+		addAgentOwnerSubscriber(ctx, bus, queries, workspaceID, issueID, userID, reason)
+	}
+}
+
+func addIssueSubscriber(ctx context.Context, bus *events.Bus, queries *db.Queries, workspaceID, issueID, userType, userID, reason string) bool {
+	err := queries.AddIssueSubscriber(ctx, db.AddIssueSubscriberParams{
 		IssueID:  parseUUID(issueID),
 		UserType: userType,
 		UserID:   parseUUID(userID),
@@ -161,7 +243,7 @@ func addSubscriber(bus *events.Bus, queries *db.Queries, workspaceID, issueID, u
 			"reason", reason,
 			"error", err,
 		)
-		return
+		return false
 	}
 
 	bus.Publish(events.Event{
@@ -174,4 +256,35 @@ func addSubscriber(bus *events.Bus, queries *db.Queries, workspaceID, issueID, u
 			"reason":    reason,
 		},
 	})
+	return true
+}
+
+func addAgentOwnerSubscriber(ctx context.Context, bus *events.Bus, queries *db.Queries, workspaceID, issueID, agentID, reason string) {
+	agent, err := queries.GetAgentInWorkspace(ctx, db.GetAgentInWorkspaceParams{
+		ID:          parseUUID(agentID),
+		WorkspaceID: parseUUID(workspaceID),
+	})
+	if err != nil {
+		slog.Warn("failed to resolve agent owner for subscriber fanout",
+			"issue_id", issueID,
+			"agent_id", agentID,
+			"workspace_id", workspaceID,
+			"error", err,
+		)
+		return
+	}
+	if !agent.OwnerID.Valid {
+		return
+	}
+	ownerID := util.UUIDToString(agent.OwnerID)
+	if ownerID == "" {
+		return
+	}
+	if _, err := queries.GetMemberByUserAndWorkspace(ctx, db.GetMemberByUserAndWorkspaceParams{
+		UserID:      agent.OwnerID,
+		WorkspaceID: parseUUID(workspaceID),
+	}); err != nil {
+		return
+	}
+	addIssueSubscriber(ctx, bus, queries, workspaceID, issueID, "member", ownerID, reason)
 }

@@ -8,11 +8,11 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/multica-ai/multica/server/internal/analytics"
-	"github.com/multica-ai/multica/server/internal/logger"
-	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
-	"github.com/multica-ai/multica/server/internal/middleware"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/analytics"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/logger"
+	obsmetrics "github.com/chenin0931/oh-my-agent-team/server/internal/metrics"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/middleware"
+	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
 )
 
 // feedbackImageRegex is a coarse check for markdown image syntax ![alt](url).
@@ -35,7 +35,7 @@ type CreateFeedbackRequest struct {
 	Message string `json:"message"`
 	URL     string `json:"url"`
 	// Kind is the coarse category the feedback picker stamps. The metric
-	// label `multica_feedback_submitted_total{kind=...}` reads it via the
+	// label `omat_feedback_submitted_total{kind=...}` reads it via the
 	// fixed allow-list in metrics.NormalizeFeedbackKind ("bug", "feature",
 	// "general", "praise"); anything outside collapses to "other". Empty /
 	// missing falls back to "general" so legacy clients that don't send the

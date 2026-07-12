@@ -9,8 +9,8 @@ import (
 )
 
 // TestCreateIssueAssignedToSquadEnqueuesLeader verifies that creating an
-// issue with assignee_type=squad immediately enqueues a task for the squad
-// leader (mirrors the agent-assignee parking-lot rule: skip backlog only).
+// active issue with assignee_type=squad immediately enqueues a task for the
+// squad leader. Backlog issues are parked until explicitly promoted.
 func TestCreateIssueAssignedToSquadEnqueuesLeader(t *testing.T) {
 	ctx := context.Background()
 
@@ -37,6 +37,7 @@ func TestCreateIssueAssignedToSquadEnqueuesLeader(t *testing.T) {
 	w := httptest.NewRecorder()
 	req := newRequest("POST", "/api/issues?workspace_id="+testWorkspaceID, map[string]any{
 		"title":         "Squad-assigned at creation",
+		"status":        "todo",
 		"assignee_type": "squad",
 		"assignee_id":   squadID,
 	})

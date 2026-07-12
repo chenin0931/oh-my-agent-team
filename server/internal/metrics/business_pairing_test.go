@@ -19,17 +19,15 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/multica-ai/multica/server/internal/analytics"
-	"github.com/multica-ai/multica/server/internal/metrics"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/analytics"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/metrics"
 )
 
 // frontendOnlyEvents are declared in events.go but emitted from the frontend,
 // not from server code. They still need a Prometheus counter (so a future
 // server-side emission point lights up the same label set) but the server
 // has no Capture call site to lint.
-var frontendOnlyEvents = map[string]bool{
-	analytics.EventOnboardingStarted: true,
-}
+var frontendOnlyEvents = map[string]bool{}
 
 // TestEveryAnalyticsEventHasPrometheusCounter asserts that every Event*
 // constant declared in analytics/events.go is dispatched by
@@ -350,10 +348,6 @@ func defaultPropsForEvent(name string) map[string]any {
 		return map[string]any{"signup_source": "test"}
 	case analytics.EventWorkspaceCreated:
 		return map[string]any{"source": "manual"}
-	case analytics.EventOnboardingStarted:
-		return map[string]any{"platform": "web"}
-	case analytics.EventOnboardingCompleted:
-		return map[string]any{"completion_path": "full"}
 	case analytics.EventIssueCreated:
 		return map[string]any{"source": "manual", "platform": "web"}
 	case analytics.EventChatMessageSent:

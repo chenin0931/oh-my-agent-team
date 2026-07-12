@@ -24,9 +24,10 @@
  * `project:created` is not relevant to the per-record hook (no id match).
  */
 import { useQueryClient } from "@tanstack/react-query";
-import type { Issue } from "@multica/core/types";
+import type { Issue } from "@ohmyagentteam/core/types";
 import { issueKeys } from "@/data/queries/issue-keys";
 import { projectKeys } from "@/data/queries/projects";
+import { epicKeys } from "@/data/queries/epics";
 import { useWSSubscriptions } from "@/lib/use-ws-subscriptions";
 import {
   clearProjectDetail,
@@ -56,6 +57,7 @@ export function useProjectRealtime(
           queryKey: projectKeys.resources(wsId, projectId),
         });
         qc.invalidateQueries({ queryKey: issueListKey });
+        qc.invalidateQueries({ queryKey: epicKeys.list(wsId, projectId) });
       };
 
       return [
@@ -69,6 +71,19 @@ export function useProjectRealtime(
           clearProjectDetail(qc, wsId, projectId);
           removeFromProjectsList(qc, wsId, projectId);
           onDeleted?.();
+        }),
+        ws.on("epic:created", (payload) => {
+          if (payload.epic.project_id === projectId) {
+            qc.invalidateQueries({ queryKey: epicKeys.list(wsId, projectId) });
+          }
+        }),
+        ws.on("epic:updated", (payload) => {
+          if (payload.epic.project_id === projectId) {
+            qc.invalidateQueries({ queryKey: epicKeys.list(wsId, projectId) });
+          }
+        }),
+        ws.on("epic:deleted", () => {
+          qc.invalidateQueries({ queryKey: epicKeys.list(wsId, projectId) });
         }),
 
         // Issue events for issues IN this project — patch the byProject

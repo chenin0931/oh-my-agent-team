@@ -51,7 +51,7 @@ describe("chat store — open/closed default", () => {
 
   it("honours an explicit stored 'open' preference", () => {
     const storage = memStorage();
-    storage.setItem("multica:chat:isOpen", "true");
+    storage.setItem("ohmyagentteam:chat:isOpen", "true");
     const store = createChatStore({ storage });
     expect(store.getState().isOpen).toBe(true);
   });
@@ -60,7 +60,7 @@ describe("chat store — open/closed default", () => {
     const storage = memStorage();
     const store = createChatStore({ storage });
     store.getState().setOpen(true);
-    expect(storage.getItem("multica:chat:isOpen")).toBe("true");
+    expect(storage.getItem("ohmyagentteam:chat:isOpen")).toBe("true");
 
     const reloaded = createChatStore({ storage });
     expect(reloaded.getState().isOpen).toBe(true);

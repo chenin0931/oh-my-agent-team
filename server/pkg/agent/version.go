@@ -17,16 +17,22 @@ var MinVersions = map[string]string{
 }
 
 // MinQuickCreateCLIVersion gates the agent-create (quick-create) flow against
-// the multica CLI version reported by the daemon at registration time. The
+// the ohmyagentteam CLI version reported by the daemon at registration time. The
 // quick-create prompt that the agent runs depends on CLI behavior introduced
 // after this version (attachment URL handling, quick-create attachment
-// binding, no-retry semantics on `multica issue create` failure — see PR
+// binding, no-retry semantics on `omat issue create` failure — see PR
 // #1851); older daemons would either double-create issues or mishandle pasted
 // screenshot URLs. Treated as a hard requirement: missing / unparsable / below
 // this threshold all fail closed.
 const MinQuickCreateCLIVersion = "0.2.21"
 
-// MinHandoffCLIVersion is the lowest multica CLI version whose daemon renders
+// MinPlanningQuickCreateCLIVersion gates the Planning Quick Create flow. That
+// mode depends on daemon prompt/context support plus CLI-side enforcement that
+// every created issue is parked in backlog. Older daemons would treat the task
+// as ordinary quick-create and create todo issues, so this is a hard gate.
+const MinPlanningQuickCreateCLIVersion = "0.3.43"
+
+// MinHandoffCLIVersion is the lowest ohmyagentteam CLI version whose daemon renders
 // the assignment handoff note into the run's opening prompt + issue_context.md
 // (MUL-3375). Unlike quick-create this is a SOFT gate: assigning an issue with
 // a note never fails on an old daemon — the assignment still takes effect, the
@@ -61,8 +67,8 @@ func HandoffSupported(cliVersion string) bool {
 // Errors returned by CheckMinCLIVersion. Callers branch on these to surface
 // "needs upgrade" vs "version not reported" with the right user message.
 var (
-	ErrCLIVersionMissing = errors.New("multica CLI version not reported by daemon")
-	ErrCLIVersionTooOld  = errors.New("multica CLI version is below required minimum")
+	ErrCLIVersionMissing = errors.New("ohmyagentteam CLI version not reported by daemon")
+	ErrCLIVersionTooOld  = errors.New("ohmyagentteam CLI version is below required minimum")
 )
 
 // devDescribeRe matches the `git describe --tags --always --dirty` output for
@@ -82,6 +88,18 @@ var devDescribeRe = regexp.MustCompile(`^v?\d+\.\d+\.\d+-\d+-g[0-9a-fA-F]+`)
 // itself is the shared signal, so the modal pre-check and this server gate
 // agree by construction without needing to compare separate env flags.
 func CheckMinCLIVersion(detected string) error {
+	return checkMinCLIVersion(detected, MinQuickCreateCLIVersion)
+}
+
+// CheckPlanningQuickCreateCLIVersion is the Planning Quick Create variant of
+// CheckMinCLIVersion. It shares the parsing and dev-build exemption, but checks
+// the newer minimum required for planning-mode prompt/context semantics and
+// CLI-side backlog enforcement.
+func CheckPlanningQuickCreateCLIVersion(detected string) error {
+	return checkMinCLIVersion(detected, MinPlanningQuickCreateCLIVersion)
+}
+
+func checkMinCLIVersion(detected, minimum string) error {
 	d := strings.TrimSpace(detected)
 	if d == "" {
 		return ErrCLIVersionMissing
@@ -93,7 +111,7 @@ func CheckMinCLIVersion(detected string) error {
 	if err != nil {
 		return ErrCLIVersionMissing
 	}
-	min, err := parseSemver(MinQuickCreateCLIVersion)
+	min, err := parseSemver(minimum)
 	if err != nil {
 		// Misconfiguration in the constant itself — fail closed as missing.
 		return ErrCLIVersionMissing

@@ -9,6 +9,7 @@ import {
   type MyIssuesFilter,
 } from "./queries";
 import { projectKeys } from "../projects/queries";
+import { epicKeys } from "../epics/queries";
 import { inboxKeys } from "../inbox/queries";
 import {
   applyIssueChange,
@@ -203,6 +204,10 @@ export function useCreateIssue() {
         qc.invalidateQueries({ queryKey: issueKeys.children(wsId, newIssue.parent_issue_id) });
         qc.invalidateQueries({ queryKey: issueKeys.childProgress(wsId) });
       }
+      // Epic detail carries denormalized progress and its own work-item list.
+      // Creating through the generic Issue modal must refresh both surfaces
+      // immediately instead of waiting for a reload or reconnect.
+      qc.invalidateQueries({ queryKey: epicKeys.all(wsId) });
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: issueKeys.list(wsId) });
@@ -323,6 +328,7 @@ export function useUpdateIssue() {
       });
       // The server has committed — safe to flush any drift it reported now.
       invalidateStaleListKeys(qc, reconcile.staleKeys);
+      qc.invalidateQueries({ queryKey: epicKeys.all(wsId) });
     },
     onSettled: (_data, _err, vars, ctx) => {
       // The issue's own list + detail caches are reconciled surgically in
@@ -435,6 +441,7 @@ export function useDeleteIssue() {
     onSuccess: (_data, id, ctx) => {
       useRecentContextStore.getState().forgetContext(wsId, { type: "issue", id });
       cleanupDeletedIssueCaches(qc, wsId, id, ctx?.metadata);
+      qc.invalidateQueries({ queryKey: epicKeys.all(wsId) });
     },
     onSettled: (_data, _err, _id, ctx) => {
       qc.invalidateQueries({ queryKey: issueKeys.list(wsId) });
@@ -543,6 +550,9 @@ export function useBatchUpdateIssues() {
         }
       }
     },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: epicKeys.all(wsId) });
+    },
     onSettled: (_data, _err, _vars, ctx) => {
       // Deliberately NOT invalidating issueKeys.list / myAll here: the onMutate
       // pass above is a complete surgical reconcile for the loaded bucketed
@@ -638,6 +648,7 @@ export function useBatchDeleteIssues() {
       }
     },
     onSuccess: (data, ids, ctx) => {
+      qc.invalidateQueries({ queryKey: epicKeys.all(wsId) });
       if (data.deleted === ids.length) {
         const { forgetContext } = useRecentContextStore.getState();
         for (const id of ids) {

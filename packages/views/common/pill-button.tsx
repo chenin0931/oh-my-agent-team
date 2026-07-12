@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@multica/ui/lib/utils";
+import { cn } from "@ohmyagentteam/ui/lib/utils";
 
 export function PillButton({
   children,

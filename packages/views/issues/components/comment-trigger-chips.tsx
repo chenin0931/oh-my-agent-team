@@ -1,17 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import type { CommentTriggerPreviewAgent } from "@multica/core/types";
-import { useAgentPresenceDetail } from "@multica/core/agents";
-import { useCurrentWorkspace } from "@multica/core/paths";
-import { ActorAvatar as ActorAvatarBase } from "@multica/ui/components/common/actor-avatar";
+import type { CommentTriggerPreviewAgent } from "@ohmyagentteam/core/types";
+import { useAgentPresenceDetail } from "@ohmyagentteam/core/agents";
+import { useCurrentWorkspace } from "@ohmyagentteam/core/paths";
+import { ActorAvatar as ActorAvatarBase } from "@ohmyagentteam/ui/components/common/actor-avatar";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@multica/ui/components/ui/popover";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@multica/ui/components/ui/tooltip";
-import { cn } from "@multica/ui/lib/utils";
+} from "@ohmyagentteam/ui/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@ohmyagentteam/ui/components/ui/tooltip";
+import { cn } from "@ohmyagentteam/ui/lib/utils";
 import { AgentStatusDot } from "../../common/actor-avatar";
 import { useT } from "../../i18n";
 

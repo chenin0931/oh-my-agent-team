@@ -2,6 +2,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import { issueKeys } from "./queries";
 import { labelKeys } from "../labels/queries";
 import { projectKeys } from "../projects/queries";
+import { epicKeys } from "../epics/queries";
 import {
   applyIssueChange,
   invalidateIssueDerivatives,
@@ -27,6 +28,7 @@ export function onIssueCreated(
   qc.invalidateQueries({ queryKey: issueKeys.myAll(wsId) });
   qc.invalidateQueries({ queryKey: issueKeys.assigneeGroupsAll(wsId) });
   qc.invalidateQueries({ queryKey: issueKeys.myAssigneeGroupsAll(wsId) });
+  qc.invalidateQueries({ queryKey: epicKeys.all(wsId) });
   if (issue.project_id) {
     qc.invalidateQueries({ queryKey: projectKeys.all(wsId) });
   }
@@ -113,6 +115,7 @@ export function onIssueUpdated(
     statusOrProjectChanged:
       issue.status !== undefined || issue.project_id !== undefined,
   });
+  qc.invalidateQueries({ queryKey: epicKeys.all(wsId) });
 
   // Invalidate old parent's children (issue was removed from it)
   if (oldParentId) {
@@ -214,4 +217,5 @@ export function onIssueDeleted(
   qc.invalidateQueries({ queryKey: issueKeys.assigneeGroupsAll(wsId) });
   qc.invalidateQueries({ queryKey: issueKeys.myAssigneeGroupsAll(wsId) });
   qc.invalidateQueries({ queryKey: projectKeys.all(wsId) });
+  qc.invalidateQueries({ queryKey: epicKeys.all(wsId) });
 }

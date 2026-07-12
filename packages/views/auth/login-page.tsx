@@ -9,20 +9,21 @@ import {
   CardDescription,
   CardContent,
   CardFooter,
-} from "@multica/ui/components/ui/card";
-import { Input } from "@multica/ui/components/ui/input";
-import { Button } from "@multica/ui/components/ui/button";
-import { Label } from "@multica/ui/components/ui/label";
+} from "@ohmyagentteam/ui/components/ui/card";
+import { Input } from "@ohmyagentteam/ui/components/ui/input";
+import { Button } from "@ohmyagentteam/ui/components/ui/button";
+import { Label } from "@ohmyagentteam/ui/components/ui/label";
 import {
   InputOTP,
   InputOTPGroup,
   InputOTPSlot,
-} from "@multica/ui/components/ui/input-otp";
-import { useAuthStore } from "@multica/core/auth";
-import { workspaceKeys } from "@multica/core/workspace/queries";
-import { api } from "@multica/core/api";
-import type { User } from "@multica/core/types";
+} from "@ohmyagentteam/ui/components/ui/input-otp";
+import { useAuthStore } from "@ohmyagentteam/core/auth";
+import { workspaceKeys } from "@ohmyagentteam/core/workspace/queries";
+import { api } from "@ohmyagentteam/core/api";
+import type { User } from "@ohmyagentteam/core/types";
 import { useT } from "../i18n";
+import { BrandMark } from "@ohmyagentteam/ui/components/common/brand-mark";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -115,6 +116,7 @@ export function LoginPage({
   const [loading, setLoading] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const [existingUser, setExistingUser] = useState<User | null>(null);
+  const brandLogo = logo ?? <BrandMark bordered size="lg" />;
   // Tracks how the existing session was detected so handleCliAuthorize
   // uses the matching token source (cookie → issueCliToken, localStorage → direct).
   const authSourceRef = useRef<"cookie" | "localStorage">("cookie");
@@ -137,7 +139,7 @@ export function LoginPage({
       })
       .catch(() => {
         // Cookie auth failed — fall back to localStorage token
-        const token = localStorage.getItem("multica_token");
+        const token = localStorage.getItem("omat_token");
         if (!token) return;
 
         api.setToken(token);
@@ -150,7 +152,7 @@ export function LoginPage({
           })
           .catch(() => {
             api.setToken(null);
-            localStorage.removeItem("multica_token");
+            localStorage.removeItem("omat_token");
           });
       });
   }, [cliCallback]);
@@ -198,7 +200,7 @@ export function LoginPage({
         if (cliCallback) {
           // CLI path: get token directly for the redirect URL
           const { token } = await api.verifyCode(email, value);
-          localStorage.setItem("multica_token", token);
+          localStorage.setItem("omat_token", token);
           api.setToken(token);
           onTokenObtained?.();
           redirectToCliCallback(cliCallback.url, token, cliCallback.state);
@@ -249,7 +251,7 @@ export function LoginPage({
 
       if (authSourceRef.current === "localStorage") {
         // Session was detected via localStorage — reuse that token directly.
-        const stored = localStorage.getItem("multica_token");
+        const stored = localStorage.getItem("omat_token");
         if (!stored) throw new Error("token missing");
         token = stored;
       } else {
@@ -292,11 +294,11 @@ export function LoginPage({
 
   if (step === "cli_confirm" && existingUser) {
     return (
-      <div className="flex min-h-svh items-center justify-center">
-        <Card className="w-full max-w-sm">
+      <div className="flex min-h-svh items-center justify-center bg-background px-5">
+        <Card className="w-full max-w-sm border-0 bg-transparent shadow-none">
           <CardHeader className="text-center">
-            {logo && <div className="mx-auto mb-4">{logo}</div>}
-            <CardTitle className="text-2xl">
+            <div className="mx-auto mb-4">{brandLogo}</div>
+            <CardTitle className="font-serif text-3xl font-medium">
               {t(($) => $.cli.title)}
             </CardTitle>
             <CardDescription>
@@ -336,11 +338,11 @@ export function LoginPage({
 
   if (step === "code") {
     return (
-      <div className="flex min-h-svh items-center justify-center">
-        <Card className="w-full max-w-sm">
+      <div className="flex min-h-svh items-center justify-center bg-background px-5">
+        <Card className="w-full max-w-sm border-0 bg-transparent shadow-none">
           <CardHeader className="text-center">
-            {logo && <div className="mx-auto mb-4">{logo}</div>}
-            <CardTitle className="text-2xl">
+            <div className="mx-auto mb-4">{brandLogo}</div>
+            <CardTitle className="font-serif text-3xl font-medium">
               {t(($) => $.verify.title)}
             </CardTitle>
             <CardDescription>
@@ -407,11 +409,11 @@ export function LoginPage({
   // -------------------------------------------------------------------------
 
   return (
-    <div className="flex min-h-svh items-center justify-center">
-      <Card className="w-full max-w-sm">
+    <div className="flex min-h-svh items-center justify-center bg-background px-5">
+      <Card className="w-full max-w-sm border-0 bg-transparent shadow-none">
         <CardHeader className="text-center">
-          {logo && <div className="mx-auto mb-4">{logo}</div>}
-          <CardTitle className="text-2xl">
+          <div className="mx-auto mb-4">{brandLogo}</div>
+          <CardTitle className="font-serif text-3xl font-medium">
             {t(($) => $.signin.title)}
           </CardTitle>
           <CardDescription>

@@ -47,6 +47,27 @@ export interface ListProjectsResponse {
   total: number;
 }
 
+export interface ProjectActivityItem {
+  id: string;
+  target_type: "epic" | "issue";
+  target_id: string;
+  issue_id: string;
+  issue_identifier: string;
+  issue_title: string;
+  actor_type: "member" | "agent" | "system" | null;
+  actor_id: string | null;
+  kind: "comment" | "agent" | "system" | "run";
+  action: string;
+  body: string | null;
+  details: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface ProjectActivityResponse {
+  items: ProjectActivityItem[];
+  total: number;
+}
+
 // ProjectResource is a typed pointer from a project to an external resource.
 // The resource_ref shape depends on resource_type. New types add a case in
 // validateAndNormalizeResourceRef on the server and a renderer in the UI.

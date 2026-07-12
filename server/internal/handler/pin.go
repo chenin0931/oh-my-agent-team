@@ -5,8 +5,8 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
-	"github.com/multica-ai/multica/server/pkg/protocol"
+	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
+	"github.com/chenin0931/oh-my-agent-team/server/pkg/protocol"
 )
 
 // PinnedItemResponse carries pin metadata only. Title / status / identifier /
@@ -84,8 +84,8 @@ func (h *Handler) CreatePin(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
-	if req.ItemType != "issue" && req.ItemType != "project" {
-		writeError(w, http.StatusBadRequest, "item_type must be 'issue' or 'project'")
+	if req.ItemType != "issue" && req.ItemType != "epic" && req.ItemType != "project" {
+		writeError(w, http.StatusBadRequest, "item_type must be 'issue', 'epic', or 'project'")
 		return
 	}
 	if req.ItemID == "" {
@@ -105,10 +105,19 @@ func (h *Handler) CreatePin(w http.ResponseWriter, r *http.Request) {
 	// Verify the item exists in this workspace
 	switch req.ItemType {
 	case "issue":
-		if _, err := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{
+		item, err := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{
 			ID: itemUUID, WorkspaceID: wsUUID,
-		}); err != nil {
+		})
+		if err != nil || defaultIssueType(item.IssueType) == "epic" {
 			writeError(w, http.StatusNotFound, "issue not found")
+			return
+		}
+	case "epic":
+		item, err := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{
+			ID: itemUUID, WorkspaceID: wsUUID,
+		})
+		if err != nil || defaultIssueType(item.IssueType) != "epic" {
+			writeError(w, http.StatusNotFound, "epic not found")
 			return
 		}
 	case "project":

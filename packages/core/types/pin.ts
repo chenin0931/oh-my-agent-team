@@ -1,4 +1,4 @@
-export type PinnedItemType = "issue" | "project";
+export type PinnedItemType = "issue" | "epic" | "project";
 
 /**
  * Pin metadata only. Title / status / identifier / icon are NOT here —

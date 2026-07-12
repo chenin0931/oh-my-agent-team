@@ -18,33 +18,36 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/multica-ai/multica/server/internal/issueguard"
-	"github.com/multica-ai/multica/server/internal/logger"
-	"github.com/multica-ai/multica/server/internal/middleware"
-	"github.com/multica-ai/multica/server/internal/service"
-	"github.com/multica-ai/multica/server/internal/util"
-	"github.com/multica-ai/multica/server/pkg/agent"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
-	"github.com/multica-ai/multica/server/pkg/protocol"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/issueguard"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/logger"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/middleware"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/service"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/util"
+	"github.com/chenin0931/oh-my-agent-team/server/pkg/agent"
+	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
+	"github.com/chenin0931/oh-my-agent-team/server/pkg/protocol"
 )
 
 // IssueResponse is the JSON response for an issue.
 type IssueResponse struct {
-	ID            string  `json:"id"`
-	WorkspaceID   string  `json:"workspace_id"`
-	Number        int32   `json:"number"`
-	Identifier    string  `json:"identifier"`
-	Title         string  `json:"title"`
-	Description   *string `json:"description"`
-	Status        string  `json:"status"`
-	Priority      string  `json:"priority"`
-	AssigneeType  *string `json:"assignee_type"`
-	AssigneeID    *string `json:"assignee_id"`
-	CreatorType   string  `json:"creator_type"`
-	CreatorID     string  `json:"creator_id"`
-	ParentIssueID *string `json:"parent_issue_id"`
-	ProjectID     *string `json:"project_id"`
-	Position      float64 `json:"position"`
+	ID                 string  `json:"id"`
+	WorkspaceID        string  `json:"workspace_id"`
+	Number             int32   `json:"number"`
+	Identifier         string  `json:"identifier"`
+	IssueType          string  `json:"issue_type"`
+	EpicID             *string `json:"epic_id"`
+	Title              string  `json:"title"`
+	Description        *string `json:"description"`
+	AcceptanceCriteria *string `json:"acceptance_criteria"`
+	Status             string  `json:"status"`
+	Priority           string  `json:"priority"`
+	AssigneeType       *string `json:"assignee_type"`
+	AssigneeID         *string `json:"assignee_id"`
+	CreatorType        string  `json:"creator_type"`
+	CreatorID          string  `json:"creator_id"`
+	ParentIssueID      *string `json:"parent_issue_id"`
+	ProjectID          *string `json:"project_id"`
+	Position           float64 `json:"position"`
 	// Stage groups sub-issues under the same parent into ordered barrier
 	// groups (null = unstaged). See issue_child_done.go for how a closed
 	// stage gates the child-done -> parent wake.
@@ -74,6 +77,7 @@ type IssueResponse struct {
 // up as a 500.
 var validIssueStatuses = []string{"backlog", "todo", "in_progress", "in_review", "done", "blocked", "cancelled"}
 var validIssuePriorities = []string{"urgent", "high", "medium", "low", "none"}
+var validIssueTypes = []string{service.IssueTypeIssue, service.IssueTypeSubtask}
 
 func validateIssueEnum(w http.ResponseWriter, field, value string, allowed []string) bool {
 	for _, a := range allowed {
@@ -85,30 +89,40 @@ func validateIssueEnum(w http.ResponseWriter, field, value string, allowed []str
 	return false
 }
 
+func defaultIssueType(issueType string) string {
+	if issueType == "" {
+		return service.IssueTypeIssue
+	}
+	return issueType
+}
+
 func issueToResponse(i db.Issue, issuePrefix string) IssueResponse {
 	identifier := issuePrefix + "-" + strconv.Itoa(int(i.Number))
 	return IssueResponse{
-		ID:            uuidToString(i.ID),
-		WorkspaceID:   uuidToString(i.WorkspaceID),
-		Number:        i.Number,
-		Identifier:    identifier,
-		Title:         i.Title,
-		Description:   textToPtr(i.Description),
-		Status:        i.Status,
-		Priority:      i.Priority,
-		AssigneeType:  textToPtr(i.AssigneeType),
-		AssigneeID:    uuidToPtr(i.AssigneeID),
-		CreatorType:   i.CreatorType,
-		CreatorID:     uuidToString(i.CreatorID),
-		ParentIssueID: uuidToPtr(i.ParentIssueID),
-		ProjectID:     uuidToPtr(i.ProjectID),
-		Position:      i.Position,
-		Stage:         int4ToPtr(i.Stage),
-		StartDate:     dateToPtr(i.StartDate),
-		DueDate:       dateToPtr(i.DueDate),
-		CreatedAt:     timestampToString(i.CreatedAt),
-		UpdatedAt:     timestampToString(i.UpdatedAt),
-		Metadata:      parseIssueMetadata(i.Metadata),
+		ID:                 uuidToString(i.ID),
+		WorkspaceID:        uuidToString(i.WorkspaceID),
+		Number:             i.Number,
+		Identifier:         identifier,
+		IssueType:          defaultIssueType(i.IssueType),
+		EpicID:             uuidToPtr(i.EpicID),
+		Title:              i.Title,
+		Description:        textToPtr(i.Description),
+		AcceptanceCriteria: textToPtr(i.AcceptanceCriteria),
+		Status:             i.Status,
+		Priority:           i.Priority,
+		AssigneeType:       textToPtr(i.AssigneeType),
+		AssigneeID:         uuidToPtr(i.AssigneeID),
+		CreatorType:        i.CreatorType,
+		CreatorID:          uuidToString(i.CreatorID),
+		ParentIssueID:      uuidToPtr(i.ParentIssueID),
+		ProjectID:          uuidToPtr(i.ProjectID),
+		Position:           i.Position,
+		Stage:              int4ToPtr(i.Stage),
+		StartDate:          dateToPtr(i.StartDate),
+		DueDate:            dateToPtr(i.DueDate),
+		CreatedAt:          timestampToString(i.CreatedAt),
+		UpdatedAt:          timestampToString(i.UpdatedAt),
+		Metadata:           parseIssueMetadata(i.Metadata),
 	}
 }
 
@@ -116,27 +130,30 @@ func issueToResponse(i db.Issue, issuePrefix string) IssueResponse {
 func issueListRowToResponse(i db.ListIssuesRow, issuePrefix string) IssueResponse {
 	identifier := issuePrefix + "-" + strconv.Itoa(int(i.Number))
 	return IssueResponse{
-		ID:            uuidToString(i.ID),
-		WorkspaceID:   uuidToString(i.WorkspaceID),
-		Number:        i.Number,
-		Identifier:    identifier,
-		Title:         i.Title,
-		Description:   textToPtr(i.Description),
-		Status:        i.Status,
-		Priority:      i.Priority,
-		AssigneeType:  textToPtr(i.AssigneeType),
-		AssigneeID:    uuidToPtr(i.AssigneeID),
-		CreatorType:   i.CreatorType,
-		CreatorID:     uuidToString(i.CreatorID),
-		ParentIssueID: uuidToPtr(i.ParentIssueID),
-		ProjectID:     uuidToPtr(i.ProjectID),
-		Position:      i.Position,
-		Stage:         int4ToPtr(i.Stage),
-		StartDate:     dateToPtr(i.StartDate),
-		DueDate:       dateToPtr(i.DueDate),
-		CreatedAt:     timestampToString(i.CreatedAt),
-		UpdatedAt:     timestampToString(i.UpdatedAt),
-		Metadata:      parseIssueMetadata(i.Metadata),
+		ID:                 uuidToString(i.ID),
+		WorkspaceID:        uuidToString(i.WorkspaceID),
+		Number:             i.Number,
+		Identifier:         identifier,
+		IssueType:          defaultIssueType(i.IssueType),
+		EpicID:             uuidToPtr(i.EpicID),
+		Title:              i.Title,
+		Description:        textToPtr(i.Description),
+		AcceptanceCriteria: textToPtr(i.AcceptanceCriteria),
+		Status:             i.Status,
+		Priority:           i.Priority,
+		AssigneeType:       textToPtr(i.AssigneeType),
+		AssigneeID:         uuidToPtr(i.AssigneeID),
+		CreatorType:        i.CreatorType,
+		CreatorID:          uuidToString(i.CreatorID),
+		ParentIssueID:      uuidToPtr(i.ParentIssueID),
+		ProjectID:          uuidToPtr(i.ProjectID),
+		Position:           i.Position,
+		Stage:              int4ToPtr(i.Stage),
+		StartDate:          dateToPtr(i.StartDate),
+		DueDate:            dateToPtr(i.DueDate),
+		CreatedAt:          timestampToString(i.CreatedAt),
+		UpdatedAt:          timestampToString(i.UpdatedAt),
+		Metadata:           parseIssueMetadata(i.Metadata),
 	}
 }
 
@@ -174,27 +191,30 @@ func (h *Handler) labelsByIssue(ctx context.Context, wsUUID pgtype.UUID, issueID
 func openIssueRowToResponse(i db.ListOpenIssuesRow, issuePrefix string) IssueResponse {
 	identifier := issuePrefix + "-" + strconv.Itoa(int(i.Number))
 	return IssueResponse{
-		ID:            uuidToString(i.ID),
-		WorkspaceID:   uuidToString(i.WorkspaceID),
-		Number:        i.Number,
-		Identifier:    identifier,
-		Title:         i.Title,
-		Description:   textToPtr(i.Description),
-		Status:        i.Status,
-		Priority:      i.Priority,
-		AssigneeType:  textToPtr(i.AssigneeType),
-		AssigneeID:    uuidToPtr(i.AssigneeID),
-		CreatorType:   i.CreatorType,
-		CreatorID:     uuidToString(i.CreatorID),
-		ParentIssueID: uuidToPtr(i.ParentIssueID),
-		ProjectID:     uuidToPtr(i.ProjectID),
-		Position:      i.Position,
-		Stage:         int4ToPtr(i.Stage),
-		StartDate:     dateToPtr(i.StartDate),
-		DueDate:       dateToPtr(i.DueDate),
-		CreatedAt:     timestampToString(i.CreatedAt),
-		UpdatedAt:     timestampToString(i.UpdatedAt),
-		Metadata:      parseIssueMetadata(i.Metadata),
+		ID:                 uuidToString(i.ID),
+		WorkspaceID:        uuidToString(i.WorkspaceID),
+		Number:             i.Number,
+		Identifier:         identifier,
+		IssueType:          defaultIssueType(i.IssueType),
+		EpicID:             uuidToPtr(i.EpicID),
+		Title:              i.Title,
+		Description:        textToPtr(i.Description),
+		AcceptanceCriteria: textToPtr(i.AcceptanceCriteria),
+		Status:             i.Status,
+		Priority:           i.Priority,
+		AssigneeType:       textToPtr(i.AssigneeType),
+		AssigneeID:         uuidToPtr(i.AssigneeID),
+		CreatorType:        i.CreatorType,
+		CreatorID:          uuidToString(i.CreatorID),
+		ParentIssueID:      uuidToPtr(i.ParentIssueID),
+		ProjectID:          uuidToPtr(i.ProjectID),
+		Position:           i.Position,
+		Stage:              int4ToPtr(i.Stage),
+		StartDate:          dateToPtr(i.StartDate),
+		DueDate:            dateToPtr(i.DueDate),
+		CreatedAt:          timestampToString(i.CreatedAt),
+		UpdatedAt:          timestampToString(i.UpdatedAt),
+		Metadata:           parseIssueMetadata(i.Metadata),
 	}
 }
 
@@ -462,7 +482,7 @@ func buildSearchQuery(phrase string, terms []string, queryNum int, hasNum bool, 
 		whereParts = append(whereParts, fmt.Sprintf("i.number = %s", numParam))
 	}
 
-	whereClause := "(" + strings.Join(whereParts, " OR ") + ")"
+	whereClause := "(" + strings.Join(whereParts, " OR ") + ") AND i.issue_type IN ('issue', 'subtask')"
 
 	if !includeClosed {
 		whereClause += " AND i.status NOT IN ('done', 'cancelled')"
@@ -590,7 +610,7 @@ func buildSearchQuery(phrase string, terms []string, queryNum int, hasNum bool, 
 	limitParam := nextArg(nil)  // placeholder
 	offsetParam := nextArg(nil) // placeholder
 
-	query := fmt.Sprintf(`SELECT i.id, i.workspace_id, i.title, i.description, i.status, i.priority,
+	query := fmt.Sprintf(`SELECT i.id, i.workspace_id, i.issue_type, i.epic_id, i.title, i.description, i.status, i.priority,
 		i.assignee_type, i.assignee_id, i.creator_type, i.creator_id,
 		i.parent_issue_id, i.acceptance_criteria, i.context_refs, i.position,
 		i.start_date, i.due_date, i.created_at, i.updated_at, i.number, i.project_id,
@@ -662,6 +682,8 @@ func (h *Handler) SearchIssues(w http.ResponseWriter, r *http.Request) {
 			if err := rows.Scan(
 				&sr.issue.ID,
 				&sr.issue.WorkspaceID,
+				&sr.issue.IssueType,
+				&sr.issue.EpicID,
 				&sr.issue.Title,
 				&sr.issue.Description,
 				&sr.issue.Status,
@@ -799,6 +821,42 @@ func (h *Handler) ListIssues(w http.ResponseWriter, r *http.Request) {
 		}
 		projectFilter = id
 	}
+	var issueTypeFilter pgtype.Text
+	if t := r.URL.Query().Get("issue_type"); t != "" {
+		if !validateIssueEnum(w, "issue_type", t, validIssueTypes) {
+			return
+		}
+		issueTypeFilter = pgtype.Text{String: t, Valid: true}
+	}
+	var issueTypesFilter []string
+	if rawTypes := r.URL.Query().Get("issue_types"); rawTypes != "" {
+		for _, raw := range strings.Split(rawTypes, ",") {
+			issueType := strings.TrimSpace(raw)
+			if issueType == "" {
+				continue
+			}
+			if !validateIssueEnum(w, "issue_types", issueType, validIssueTypes) {
+				return
+			}
+			issueTypesFilter = append(issueTypesFilter, issueType)
+		}
+	}
+	var epicFilter pgtype.UUID
+	if epic := r.URL.Query().Get("epic_id"); epic != "" {
+		id, ok := parseUUIDOrBadRequest(w, epic, "epic_id")
+		if !ok {
+			return
+		}
+		epicFilter = id
+	}
+	var parentIssueFilter pgtype.UUID
+	if p := r.URL.Query().Get("parent_issue_id"); p != "" {
+		id, ok := parseUUIDOrBadRequest(w, p, "parent_issue_id")
+		if !ok {
+			return
+		}
+		parentIssueFilter = id
+	}
 	// involves_user_id widens the assignee filter to surface issues where the
 	// user is the indirect assignee (their owned agent, or a squad they belong
 	// to / lead / have an agent inside). Direct member-assignment is excluded
@@ -831,6 +889,10 @@ func (h *Handler) ListIssues(w http.ResponseWriter, r *http.Request) {
 			AssigneeIds:    assigneeIdsFilter,
 			CreatorID:      creatorFilter,
 			ProjectID:      projectFilter,
+			IssueType:      issueTypeFilter,
+			IssueTypes:     issueTypesFilter,
+			EpicID:         epicFilter,
+			ParentIssueID:  parentIssueFilter,
 			InvolvesUserID: involvesUserFilter,
 			MetadataFilter: metadataFilter,
 		})
@@ -935,7 +997,7 @@ func (h *Handler) ListIssues(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Build dynamic SQL — same approach as ListGroupedIssues.
-	where := []string{"i.workspace_id = $1"}
+	where := []string{"i.workspace_id = $1", "i.issue_type IN ('issue', 'subtask')"}
 	args := []any{wsUUID}
 	addArg := func(v any) string {
 		args = append(args, v)
@@ -962,6 +1024,18 @@ func (h *Handler) ListIssues(w http.ResponseWriter, r *http.Request) {
 	}
 	if projectFilter.Valid {
 		where = append(where, fmt.Sprintf("i.project_id = %s::uuid", addArg(projectFilter)))
+	}
+	if issueTypeFilter.Valid {
+		where = append(where, fmt.Sprintf("i.issue_type = %s", addArg(issueTypeFilter.String)))
+	}
+	if len(issueTypesFilter) > 0 {
+		where = append(where, fmt.Sprintf("i.issue_type = ANY(%s::text[])", addArg(issueTypesFilter)))
+	}
+	if epicFilter.Valid {
+		where = append(where, fmt.Sprintf("i.epic_id = %s::uuid", addArg(epicFilter)))
+	}
+	if parentIssueFilter.Valid {
+		where = append(where, fmt.Sprintf("i.parent_issue_id = %s::uuid", addArg(parentIssueFilter)))
 	}
 	if scheduledFilter.Valid {
 		where = append(where, "(i.start_date IS NOT NULL OR i.due_date IS NOT NULL)")
@@ -1021,9 +1095,9 @@ func (h *Handler) ListIssues(w http.ResponseWriter, r *http.Request) {
 	offsetRef := addArg(int64(offset))
 	limitRef := addArg(int64(limit))
 
-	query := fmt.Sprintf(`SELECT i.id, i.workspace_id, i.title, i.description, i.status, i.priority,
-       i.assignee_type, i.assignee_id, i.creator_type, i.creator_id,
-       i.parent_issue_id, i.position, i.start_date, i.due_date, i.created_at, i.updated_at, i.number, i.project_id, i.metadata
+	query := fmt.Sprintf(`SELECT i.id, i.workspace_id, i.issue_type, i.epic_id, i.title, i.description, i.acceptance_criteria, i.status, i.priority,
+	   i.assignee_type, i.assignee_id, i.creator_type, i.creator_id,
+       i.parent_issue_id, i.position, i.start_date, i.due_date, i.created_at, i.updated_at, i.number, i.project_id, i.metadata, i.stage
 FROM issue i
 WHERE %s
 ORDER BY %s
@@ -1043,8 +1117,11 @@ LIMIT %s OFFSET %s`, whereSql, orderBy, limitRef, offsetRef)
 		if err := rows.Scan(
 			&row.ID,
 			&row.WorkspaceID,
+			&row.IssueType,
+			&row.EpicID,
 			&row.Title,
 			&row.Description,
+			&row.AcceptanceCriteria,
 			&row.Status,
 			&row.Priority,
 			&row.AssigneeType,
@@ -1060,6 +1137,7 @@ LIMIT %s OFFSET %s`, whereSql, orderBy, limitRef, offsetRef)
 			&row.Number,
 			&row.ProjectID,
 			&row.Metadata,
+			&row.Stage,
 		); err != nil {
 			slog.Warn("ListIssues scan failed", "error", err)
 			writeError(w, http.StatusInternalServerError, "failed to list issues")
@@ -1267,7 +1345,7 @@ func (h *Handler) ListGroupedIssues(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	where := []string{"i.workspace_id = $1"}
+	where := []string{"i.workspace_id = $1", "i.issue_type IN ('issue', 'subtask')"}
 	args := []any{wsUUID}
 	addArg := func(v any) string {
 		args = append(args, v)
@@ -1517,10 +1595,11 @@ func (h *Handler) ListGroupedIssues(w http.ResponseWriter, r *http.Request) {
 	query := fmt.Sprintf(`
 WITH ranked AS (
 	SELECT
-		i.id, i.workspace_id, i.title, i.description, i.status, i.priority,
+		i.id, i.workspace_id, i.issue_type, i.epic_id, i.title, i.description,
+		i.acceptance_criteria, i.status, i.priority,
 		i.assignee_type, i.assignee_id, i.creator_type, i.creator_id,
-		i.parent_issue_id, i.position, i.due_date, i.created_at, i.updated_at,
-		i.number, i.project_id, i.metadata,
+		i.parent_issue_id, i.position, i.start_date, i.due_date, i.created_at, i.updated_at,
+		i.number, i.project_id, i.metadata, i.stage,
 		COUNT(*) OVER (PARTITION BY i.assignee_type, i.assignee_id) AS group_total,
 		ROW_NUMBER() OVER (
 			PARTITION BY i.assignee_type, i.assignee_id
@@ -1530,10 +1609,11 @@ WITH ranked AS (
 	WHERE %s
 )
 SELECT
-	id, workspace_id, title, description, status, priority,
+	id, workspace_id, issue_type, epic_id, title, description,
+	acceptance_criteria, status, priority,
 	assignee_type, assignee_id, creator_type, creator_id,
-	parent_issue_id, position, due_date, created_at, updated_at,
-	number, project_id, metadata, group_total
+	parent_issue_id, position, start_date, due_date, created_at, updated_at,
+	number, project_id, metadata, stage, group_total
 FROM ranked
 WHERE rn > %s AND rn <= %s + %s
 ORDER BY
@@ -1561,8 +1641,11 @@ ORDER BY
 		if err := rows.Scan(
 			&row.ID,
 			&row.WorkspaceID,
+			&row.IssueType,
+			&row.EpicID,
 			&row.Title,
 			&row.Description,
+			&row.AcceptanceCriteria,
 			&row.Status,
 			&row.Priority,
 			&row.AssigneeType,
@@ -1571,12 +1654,14 @@ ORDER BY
 			&row.CreatorID,
 			&row.ParentIssueID,
 			&row.Position,
+			&row.StartDate,
 			&row.DueDate,
 			&row.CreatedAt,
 			&row.UpdatedAt,
 			&row.Number,
 			&row.ProjectID,
 			&row.Metadata,
+			&row.Stage,
 			&row.GroupTotal,
 		); err != nil {
 			slog.Warn("ListGroupedIssues scan failed", "error", err)
@@ -1667,7 +1752,7 @@ func (h *Handler) GetIssue(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) ListChildIssues(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	issue, ok := h.loadIssueForUser(w, r, id)
+	issue, ok := h.loadExecutableIssueForUser(w, r, id)
 	if !ok {
 		return
 	}
@@ -1790,7 +1875,7 @@ func (h *Handler) ChildIssueProgress(w http.ResponseWriter, r *http.Request) {
 // user picks an actor (agent or squad) in the modal and types one line of
 // natural language; the server validates the actor's reachability up front,
 // queues a quick-create task, and returns 202 immediately. The agent
-// translates the prompt into a `multica issue create` invocation in the
+// translates the prompt into a `omat issue create` invocation in the
 // background; success and failure both surface as inbox notifications to
 // the requester.
 //
@@ -1800,7 +1885,7 @@ func (h *Handler) ChildIssueProgress(w http.ResponseWriter, r *http.Request) {
 // the squad, so it can choose to delegate to a squad member as usual.
 //
 // ProjectID is optional and lets the modal target a specific project so
-// the agent's `multica issue create` invocation passes `--project <uuid>`
+// the agent's `omat issue create` invocation passes `--project <uuid>`
 // instead of letting it default. The frontend remembers the user's last
 // pick per workspace, so frequent users skip retyping "in project X".
 //
@@ -1813,6 +1898,8 @@ type QuickCreateIssueRequest struct {
 	AgentID       string   `json:"agent_id,omitempty"`
 	SquadID       string   `json:"squad_id,omitempty"`
 	Prompt        string   `json:"prompt"`
+	Mode          string   `json:"mode,omitempty"`
+	DefaultStatus string   `json:"default_status,omitempty"`
 	ProjectID     string   `json:"project_id,omitempty"`
 	ParentIssueID string   `json:"parent_issue_id,omitempty"`
 	AttachmentIDs []string `json:"attachment_ids,omitempty"`
@@ -1822,6 +1909,165 @@ type QuickCreateIssueRequest struct {
 // correlate the eventual inbox item, even though completion is fully async.
 type QuickCreateIssueResponse struct {
 	TaskID string `json:"task_id"`
+}
+
+type QuickCreateIssueStatusResponse struct {
+	TaskID                string                           `json:"task_id"`
+	Status                string                           `json:"status"`
+	Mode                  string                           `json:"mode,omitempty"`
+	DefaultStatus         string                           `json:"default_status,omitempty"`
+	Epics                 []EpicResponse                   `json:"epics"`
+	Issues                []IssueResponse                  `json:"issues"`
+	CreatedItems          []QuickCreateCreatedItemResponse `json:"created_items"`
+	EpicCount             int                              `json:"epic_count"`
+	IssueCount            int                              `json:"issue_count"`
+	SubtaskCount          int                              `json:"subtask_count"`
+	WorkItemCount         int                              `json:"work_item_count"`
+	AgentAssignmentCount  int                              `json:"agent_assignment_count"`
+	MemberAssignmentCount int                              `json:"member_assignment_count"`
+	SquadAssignmentCount  int                              `json:"squad_assignment_count"`
+	AllBacklog            bool                             `json:"all_backlog"`
+	Terminal              bool                             `json:"terminal"`
+	Error                 *string                          `json:"error,omitempty"`
+}
+
+type QuickCreateCreatedItemResponse struct {
+	ID           string  `json:"id"`
+	Identifier   string  `json:"identifier"`
+	Title        string  `json:"title"`
+	TargetType   string  `json:"target_type"`
+	ItemType     string  `json:"item_type"`
+	Status       string  `json:"status"`
+	AssigneeType *string `json:"assignee_type,omitempty"`
+	AssigneeID   *string `json:"assignee_id,omitempty"`
+}
+
+func (h *Handler) GetQuickCreateIssueStatus(w http.ResponseWriter, r *http.Request) {
+	workspaceID := h.resolveWorkspaceID(r)
+	wsUUID, ok := parseUUIDOrBadRequest(w, workspaceID, "workspace_id")
+	if !ok {
+		return
+	}
+	userID, ok := requireUserID(w, r)
+	if !ok {
+		return
+	}
+	taskID := chi.URLParam(r, "taskId")
+	taskUUID, ok := parseUUIDOrBadRequest(w, taskID, "task_id")
+	if !ok {
+		return
+	}
+
+	task, err := h.Queries.GetAgentTaskInWorkspace(r.Context(), db.GetAgentTaskInWorkspaceParams{
+		ID:          taskUUID,
+		WorkspaceID: wsUUID,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			writeError(w, http.StatusNotFound, "quick-create task not found")
+			return
+		}
+		slog.Warn("quick-create status: get task failed", append(logger.RequestAttrs(r), "task_id", taskID, "error", err)...)
+		writeError(w, http.StatusInternalServerError, "failed to load quick-create task")
+		return
+	}
+
+	var qc service.QuickCreateContext
+	if len(task.Context) == 0 || json.Unmarshal(task.Context, &qc) != nil || qc.Type != service.QuickCreateContextType {
+		writeError(w, http.StatusNotFound, "quick-create task not found")
+		return
+	}
+	if qc.WorkspaceID != workspaceID || qc.RequesterID != userID {
+		writeError(w, http.StatusNotFound, "quick-create task not found")
+		return
+	}
+
+	issues, err := h.Queries.ListIssuesByOrigin(r.Context(), db.ListIssuesByOriginParams{
+		WorkspaceID: wsUUID,
+		OriginType:  pgtype.Text{String: "quick_create", Valid: true},
+		OriginID:    task.ID,
+	})
+	if err != nil {
+		slog.Warn("quick-create status: list created issues failed", append(logger.RequestAttrs(r), "task_id", taskID, "error", err)...)
+		writeError(w, http.StatusInternalServerError, "failed to load quick-create issues")
+		return
+	}
+
+	prefix := h.getIssuePrefix(r.Context(), wsUUID)
+	respEpics := make([]EpicResponse, 0)
+	respIssues := make([]IssueResponse, 0, len(issues))
+	createdItems := make([]QuickCreateCreatedItemResponse, 0, len(issues))
+	allBacklog := len(issues) > 0
+	var epicCount, issueCount, subtaskCount int
+	var agentAssignments, memberAssignments, squadAssignments int
+	for _, issue := range issues {
+		itemType := defaultIssueType(issue.IssueType)
+		targetType := "issue"
+		if itemType == service.IssueTypeEpic {
+			targetType = "epic"
+			epicCount++
+			total, done, blocked, distribution := h.epicMetrics(r, issue)
+			respEpics = append(respEpics, epicToResponse(issue, prefix, total, done, blocked, distribution))
+			if issue.Status != "planned" {
+				allBacklog = false
+			}
+		} else {
+			respIssues = append(respIssues, issueToResponse(issue, prefix))
+			if itemType == service.IssueTypeSubtask {
+				subtaskCount++
+			} else {
+				issueCount++
+			}
+			if issue.Status != "backlog" {
+				allBacklog = false
+			}
+		}
+		createdItems = append(createdItems, QuickCreateCreatedItemResponse{
+			ID: uuidToString(issue.ID), Identifier: prefix + "-" + strconv.Itoa(int(issue.Number)),
+			Title: issue.Title, TargetType: targetType, ItemType: itemType, Status: issue.Status,
+			AssigneeType: textToPtr(issue.AssigneeType), AssigneeID: uuidToPtr(issue.AssigneeID),
+		})
+		if targetType != "epic" && issue.Status != "backlog" {
+			allBacklog = false
+		}
+		if issue.AssigneeType.Valid {
+			switch issue.AssigneeType.String {
+			case "agent":
+				agentAssignments++
+			case "member":
+				memberAssignments++
+			case "squad":
+				squadAssignments++
+			}
+		}
+	}
+
+	terminal := task.Status == "completed" || task.Status == "failed" || task.Status == "cancelled"
+	var errPtr *string
+	if task.Error.Valid && task.Error.String != "" {
+		errMsg := task.Error.String
+		errPtr = &errMsg
+	}
+
+	writeJSON(w, http.StatusOK, QuickCreateIssueStatusResponse{
+		TaskID:                taskID,
+		Status:                task.Status,
+		Mode:                  qc.Mode,
+		DefaultStatus:         qc.DefaultStatus,
+		Epics:                 respEpics,
+		Issues:                respIssues,
+		CreatedItems:          createdItems,
+		EpicCount:             epicCount,
+		IssueCount:            issueCount,
+		SubtaskCount:          subtaskCount,
+		WorkItemCount:         issueCount + subtaskCount,
+		AgentAssignmentCount:  agentAssignments,
+		MemberAssignmentCount: memberAssignments,
+		SquadAssignmentCount:  squadAssignments,
+		AllBacklog:            allBacklog,
+		Terminal:              terminal,
+		Error:                 errPtr,
+	})
 }
 
 func (h *Handler) QuickCreateIssue(w http.ResponseWriter, r *http.Request) {
@@ -1835,11 +2081,34 @@ func (h *Handler) QuickCreateIssue(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "prompt is required")
 		return
 	}
+	mode := strings.TrimSpace(req.Mode)
+	defaultStatus := strings.TrimSpace(req.DefaultStatus)
+	switch mode {
+	case "", service.QuickCreateModePlanning:
+	default:
+		writeError(w, http.StatusBadRequest, "invalid quick-create mode")
+		return
+	}
+	if defaultStatus != "" && defaultStatus != service.QuickCreateDefaultStatusBacklog {
+		writeError(w, http.StatusBadRequest, "invalid default_status")
+		return
+	}
+	if mode == "" && defaultStatus != "" {
+		writeError(w, http.StatusBadRequest, "default_status requires mode=planning")
+		return
+	}
+	if mode == service.QuickCreateModePlanning && defaultStatus == "" {
+		defaultStatus = service.QuickCreateDefaultStatusBacklog
+	}
 
 	hasAgent := strings.TrimSpace(req.AgentID) != ""
 	hasSquad := strings.TrimSpace(req.SquadID) != ""
 	if hasAgent == hasSquad {
 		writeError(w, http.StatusBadRequest, "exactly one of agent_id or squad_id is required")
+		return
+	}
+	if mode == service.QuickCreateModePlanning && !hasAgent {
+		writeError(w, http.StatusBadRequest, "planning quick-create requires agent_id")
 		return
 	}
 
@@ -1938,7 +2207,7 @@ func (h *Handler) QuickCreateIssue(w http.ResponseWriter, r *http.Request) {
 	// twenty seconds later. Dev-built
 	// daemons (git-describe shape) are exempted inside CheckMinCLIVersion
 	// so `make daemon` works without weakening staging or production.
-	if status, payload := h.checkQuickCreateDaemonVersion(r.Context(), agent.RuntimeID); status != 0 {
+	if status, payload := h.checkQuickCreateDaemonVersion(r.Context(), agent.RuntimeID, mode == service.QuickCreateModePlanning); status != 0 {
 		writeJSON(w, status, payload)
 		return
 	}
@@ -1989,7 +2258,21 @@ func (h *Handler) QuickCreateIssue(w http.ResponseWriter, r *http.Request) {
 		parentIssueUUID = pid
 	}
 
-	task, err := h.TaskService.EnqueueQuickCreateTask(r.Context(), wsUUID, requesterUUID, agentUUID, squadUUID, prompt, projectUUID, parentIssueUUID, attachmentIDs)
+	task, err := h.TaskService.EnqueueQuickCreateTaskWithOptions(
+		r.Context(),
+		wsUUID,
+		requesterUUID,
+		agentUUID,
+		squadUUID,
+		prompt,
+		projectUUID,
+		parentIssueUUID,
+		attachmentIDs,
+		service.QuickCreateTaskOptions{
+			Mode:          mode,
+			DefaultStatus: defaultStatus,
+		},
+	)
 	if err != nil {
 		slog.Warn("quick-create enqueue failed", append(logger.RequestAttrs(r), "error", err)...)
 		writeError(w, http.StatusInternalServerError, "failed to enqueue quick-create task")
@@ -2036,7 +2319,7 @@ func (h *Handler) isRuntimeOnline(ctx context.Context, runtimeID pgtype.UUID) bo
 //	  "min_version":     "0.2.21",
 //	  "runtime_id":      "<uuid>"
 //	}
-func (h *Handler) checkQuickCreateDaemonVersion(ctx context.Context, runtimeID pgtype.UUID) (int, map[string]any) {
+func (h *Handler) checkQuickCreateDaemonVersion(ctx context.Context, runtimeID pgtype.UUID, planning bool) (int, map[string]any) {
 	rt, err := h.Queries.GetAgentRuntime(ctx, runtimeID)
 	if err != nil {
 		// Runtime row vanished between the online check and here — treat
@@ -2047,14 +2330,20 @@ func (h *Handler) checkQuickCreateDaemonVersion(ctx context.Context, runtimeID p
 		}
 	}
 	current := readRuntimeCLIVersion(rt.Metadata)
-	switch err := agent.CheckMinCLIVersion(current); {
+	minVersion := agent.MinQuickCreateCLIVersion
+	check := agent.CheckMinCLIVersion
+	if planning {
+		minVersion = agent.MinPlanningQuickCreateCLIVersion
+		check = agent.CheckPlanningQuickCreateCLIVersion
+	}
+	switch err := check(current); {
 	case err == nil:
 		return 0, nil
 	case errors.Is(err, agent.ErrCLIVersionMissing), errors.Is(err, agent.ErrCLIVersionTooOld):
 		return http.StatusUnprocessableEntity, map[string]any{
 			"code":            "daemon_version_unsupported",
 			"current_version": current,
-			"min_version":     agent.MinQuickCreateCLIVersion,
+			"min_version":     minVersion,
 			"runtime_id":      uuidToString(runtimeID),
 		}
 	default:
@@ -2064,14 +2353,14 @@ func (h *Handler) checkQuickCreateDaemonVersion(ctx context.Context, runtimeID p
 		return http.StatusUnprocessableEntity, map[string]any{
 			"code":            "daemon_version_unsupported",
 			"current_version": current,
-			"min_version":     agent.MinQuickCreateCLIVersion,
+			"min_version":     minVersion,
 			"runtime_id":      uuidToString(runtimeID),
 		}
 	}
 }
 
 // readRuntimeCLIVersion pulls metadata.cli_version off a runtime row. The
-// metadata column is JSONB on the wire; the daemon stores the multica CLI
+// metadata column is JSONB on the wire; the daemon stores the ohmyagentteam CLI
 // version under that key during registration (see DaemonRegister).
 func readRuntimeCLIVersion(metadata []byte) string {
 	if len(metadata) == 0 {
@@ -2088,18 +2377,21 @@ func readRuntimeCLIVersion(metadata []byte) string {
 }
 
 type CreateIssueRequest struct {
-	Title         string   `json:"title"`
-	Description   *string  `json:"description"`
-	Status        string   `json:"status"`
-	Priority      string   `json:"priority"`
-	AssigneeType  *string  `json:"assignee_type"`
-	AssigneeID    *string  `json:"assignee_id"`
-	ParentIssueID *string  `json:"parent_issue_id"`
-	ProjectID     *string  `json:"project_id"`
-	Stage         *int32   `json:"stage,omitempty"`
-	StartDate     *string  `json:"start_date"`
-	DueDate       *string  `json:"due_date"`
-	AttachmentIDs []string `json:"attachment_ids,omitempty"`
+	Title              string   `json:"title"`
+	IssueType          string   `json:"issue_type,omitempty"`
+	EpicID             *string  `json:"epic_id"`
+	Description        *string  `json:"description"`
+	AcceptanceCriteria *string  `json:"acceptance_criteria"`
+	Status             string   `json:"status"`
+	Priority           string   `json:"priority"`
+	AssigneeType       *string  `json:"assignee_type"`
+	AssigneeID         *string  `json:"assignee_id"`
+	ParentIssueID      *string  `json:"parent_issue_id"`
+	ProjectID          *string  `json:"project_id"`
+	Stage              *int32   `json:"stage,omitempty"`
+	StartDate          *string  `json:"start_date"`
+	DueDate            *string  `json:"due_date"`
+	AttachmentIDs      []string `json:"attachment_ids,omitempty"`
 	// OriginType / OriginID stamp the new issue with its provenance so
 	// platform-internal flows can deterministically locate it later. Only
 	// trusted callers should set these — currently the daemon CLI passes
@@ -2138,19 +2430,40 @@ func (h *Handler) CreateIssue(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	if h.rejectMemberAssigneeAdvisorMutation(w, r, pgtype.UUID{}, false) {
+		return
+	}
 
 	status := req.Status
 	if status == "" {
-		status = "todo"
+		status = "backlog"
 	}
 	priority := req.Priority
 	if priority == "" {
 		priority = "none"
 	}
+	issueType := req.IssueType
+	if issueType == "" {
+		if req.ParentIssueID != nil && *req.ParentIssueID != "" {
+			issueType = service.IssueTypeSubtask
+		} else {
+			issueType = service.IssueTypeIssue
+		}
+	}
+	if issueType == service.IssueTypeEpic {
+		writeJSON(w, http.StatusConflict, map[string]any{
+			"code":  "epic_planning_container",
+			"error": "epics must be created through /api/epics",
+		})
+		return
+	}
 	if !validateIssueEnum(w, "status", status, validIssueStatuses) {
 		return
 	}
 	if !validateIssueEnum(w, "priority", priority, validIssuePriorities) {
+		return
+	}
+	if !validateIssueEnum(w, "issue_type", issueType, validIssueTypes) {
 		return
 	}
 	if req.Stage != nil && *req.Stage < 1 {
@@ -2177,7 +2490,15 @@ func (h *Handler) CreateIssue(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var parentIssueID pgtype.UUID
+	var epicID pgtype.UUID
 	var projectID pgtype.UUID
+	if req.EpicID != nil && *req.EpicID != "" {
+		id, ok := parseUUIDOrBadRequest(w, *req.EpicID, "epic_id")
+		if !ok {
+			return
+		}
+		epicID = id
+	}
 	if req.ProjectID != nil {
 		id, ok := parseUUIDOrBadRequest(w, *req.ProjectID, "project_id")
 		if !ok {
@@ -2278,24 +2599,27 @@ func (h *Handler) CreateIssue(w http.ResponseWriter, r *http.Request) {
 	}
 
 	res, err := h.IssueService.Create(r.Context(), service.IssueCreateParams{
-		WorkspaceID:    wsUUID,
-		Title:          req.Title,
-		Description:    ptrToText(req.Description),
-		Status:         status,
-		Priority:       priority,
-		AssigneeType:   assigneeType,
-		AssigneeID:     assigneeID,
-		CreatorType:    creatorType,
-		CreatorID:      parseUUID(actualCreatorID),
-		ParentIssueID:  parentIssueID,
-		ProjectID:      projectID,
-		StartDate:      startDate,
-		DueDate:        dueDate,
-		OriginType:     originType,
-		OriginID:       originID,
-		Stage:          ptrToInt4(req.Stage),
-		AttachmentIDs:  attachmentIDs,
-		AllowDuplicate: req.AllowDuplicate,
+		WorkspaceID:        wsUUID,
+		IssueType:          issueType,
+		EpicID:             epicID,
+		Title:              req.Title,
+		Description:        ptrToText(req.Description),
+		AcceptanceCriteria: ptrToText(req.AcceptanceCriteria),
+		Status:             status,
+		Priority:           priority,
+		AssigneeType:       assigneeType,
+		AssigneeID:         assigneeID,
+		CreatorType:        creatorType,
+		CreatorID:          parseUUID(actualCreatorID),
+		ParentIssueID:      parentIssueID,
+		ProjectID:          projectID,
+		StartDate:          startDate,
+		DueDate:            dueDate,
+		OriginType:         originType,
+		OriginID:           originID,
+		Stage:              ptrToInt4(req.Stage),
+		AttachmentIDs:      attachmentIDs,
+		AllowDuplicate:     req.AllowDuplicate,
 	}, service.IssueCreateOpts{
 		ActorID:          actualCreatorID,
 		AnalyticsAgentID: analyticsAgentID,
@@ -2325,6 +2649,10 @@ func (h *Handler) CreateIssue(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "project not found in this workspace")
 		return
 	}
+	if errors.Is(err, service.ErrInvalidIssueHierarchy) {
+		writeError(w, http.StatusBadRequest, "invalid issue hierarchy")
+		return
+	}
 	if err != nil {
 		slog.Warn("create issue failed", append(logger.RequestAttrs(r), "error", err, "workspace_id", workspaceID)...)
 		writeError(w, http.StatusInternalServerError, "failed to create issue: "+err.Error())
@@ -2340,18 +2668,21 @@ func (h *Handler) CreateIssue(w http.ResponseWriter, r *http.Request) {
 }
 
 type UpdateIssueRequest struct {
-	Title         *string  `json:"title"`
-	Description   *string  `json:"description"`
-	Status        *string  `json:"status"`
-	Priority      *string  `json:"priority"`
-	AssigneeType  *string  `json:"assignee_type"`
-	AssigneeID    *string  `json:"assignee_id"`
-	Position      *float64 `json:"position"`
-	StartDate     *string  `json:"start_date"`
-	DueDate       *string  `json:"due_date"`
-	ParentIssueID *string  `json:"parent_issue_id"`
-	ProjectID     *string  `json:"project_id"`
-	Stage         *int32   `json:"stage"`
+	Title              *string  `json:"title"`
+	Description        *string  `json:"description"`
+	AcceptanceCriteria *string  `json:"acceptance_criteria"`
+	IssueType          *string  `json:"issue_type"`
+	EpicID             *string  `json:"epic_id"`
+	Status             *string  `json:"status"`
+	Priority           *string  `json:"priority"`
+	AssigneeType       *string  `json:"assignee_type"`
+	AssigneeID         *string  `json:"assignee_id"`
+	Position           *float64 `json:"position"`
+	StartDate          *string  `json:"start_date"`
+	DueDate            *string  `json:"due_date"`
+	ParentIssueID      *string  `json:"parent_issue_id"`
+	ProjectID          *string  `json:"project_id"`
+	Stage              *int32   `json:"stage"`
 	// AttachmentIDs lets the description editor bind newly uploaded files to
 	// this issue so they surface in `GET /api/issues/:id/attachments` and the
 	// editor's preview Eye keeps working past a refresh. Existing bindings
@@ -2372,12 +2703,15 @@ type UpdateIssueRequest struct {
 
 func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	prevIssue, ok := h.loadIssueForUser(w, r, id)
+	prevIssue, ok := h.loadExecutableIssueForUser(w, r, id)
 	if !ok {
 		return
 	}
 	userID := requestUserID(r)
 	workspaceID := uuidToString(prevIssue.WorkspaceID)
+	if h.rejectMemberAssigneeAdvisorMutation(w, r, prevIssue.ID, false) {
+		return
+	}
 
 	// Read body as raw bytes so we can detect which fields were explicitly sent.
 	bodyBytes, err := io.ReadAll(r.Body)
@@ -2398,14 +2732,16 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 
 	// Pre-fill nullable fields (bare sqlc.narg) with current values
 	params := db.UpdateIssueParams{
-		ID:            prevIssue.ID,
-		AssigneeType:  prevIssue.AssigneeType,
-		AssigneeID:    prevIssue.AssigneeID,
-		StartDate:     prevIssue.StartDate,
-		DueDate:       prevIssue.DueDate,
-		ParentIssueID: prevIssue.ParentIssueID,
-		ProjectID:     prevIssue.ProjectID,
-		Stage:         prevIssue.Stage,
+		ID:                 prevIssue.ID,
+		AcceptanceCriteria: prevIssue.AcceptanceCriteria,
+		EpicID:             prevIssue.EpicID,
+		AssigneeType:       prevIssue.AssigneeType,
+		AssigneeID:         prevIssue.AssigneeID,
+		StartDate:          prevIssue.StartDate,
+		DueDate:            prevIssue.DueDate,
+		ParentIssueID:      prevIssue.ParentIssueID,
+		ProjectID:          prevIssue.ProjectID,
+		Stage:              prevIssue.Stage,
 	}
 
 	// COALESCE fields — only set when explicitly provided
@@ -2414,6 +2750,30 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.Description != nil {
 		params.Description = pgtype.Text{String: *req.Description, Valid: true}
+	}
+	if _, present := rawFields["acceptance_criteria"]; present {
+		if req.AcceptanceCriteria != nil {
+			params.AcceptanceCriteria = pgtype.Text{String: *req.AcceptanceCriteria, Valid: true}
+		} else {
+			params.AcceptanceCriteria = pgtype.Text{Valid: false}
+		}
+	}
+	if _, present := rawFields["issue_type"]; present {
+		if req.IssueType == nil {
+			writeError(w, http.StatusBadRequest, "issue_type cannot be null")
+			return
+		}
+		if *req.IssueType == service.IssueTypeEpic {
+			writeJSON(w, http.StatusConflict, map[string]any{
+				"code":  "epic_planning_container",
+				"error": "work items cannot be converted to epics; use /api/epics",
+			})
+			return
+		}
+		if !validateIssueEnum(w, "issue_type", *req.IssueType, validIssueTypes) {
+			return
+		}
+		params.IssueType = pgtype.Text{String: *req.IssueType, Valid: true}
 	}
 	if req.Status != nil {
 		if !validateIssueEnum(w, "status", *req.Status, validIssueStatuses) {
@@ -2523,6 +2883,17 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 			params.ProjectID = pgtype.UUID{Valid: false}
 		}
 	}
+	if _, ok := rawFields["epic_id"]; ok {
+		if req.EpicID != nil && *req.EpicID != "" {
+			epicUUID, ok := parseUUIDOrBadRequest(w, *req.EpicID, "epic_id")
+			if !ok {
+				return
+			}
+			params.EpicID = epicUUID
+		} else {
+			params.EpicID = pgtype.UUID{Valid: false}
+		}
+	}
 	if _, ok := rawFields["stage"]; ok {
 		if req.Stage != nil {
 			if *req.Stage < 1 {
@@ -2532,6 +2903,86 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 			params.Stage = pgtype.Int4{Int32: *req.Stage, Valid: true}
 		} else {
 			params.Stage = pgtype.Int4{Valid: false} // explicit null = unstage
+		}
+	}
+
+	_, typeTouched := rawFields["issue_type"]
+	_, epicTouched := rawFields["epic_id"]
+	_, parentTouched := rawFields["parent_issue_id"]
+	_, projectTouched := rawFields["project_id"]
+	hierarchyTouched := typeTouched || epicTouched || parentTouched || projectTouched
+	if hierarchyTouched {
+		finalType := defaultIssueType(prevIssue.IssueType)
+		if params.IssueType.Valid {
+			finalType = params.IssueType.String
+		}
+		// Backward compatibility for existing clients that only set/clear
+		// parent_issue_id: setting a parent means subtask; clearing the parent
+		// promotes it back to a normal issue.
+		if parentTouched && !typeTouched {
+			if params.ParentIssueID.Valid {
+				finalType = service.IssueTypeSubtask
+			} else {
+				finalType = service.IssueTypeIssue
+			}
+			params.IssueType = pgtype.Text{String: finalType, Valid: true}
+		}
+
+		if defaultIssueType(prevIssue.IssueType) == service.IssueTypeEpic &&
+			(finalType != service.IssueTypeEpic || params.ProjectID != prevIssue.ProjectID) {
+			count, err := h.Queries.CountIssuesInEpic(r.Context(), db.CountIssuesInEpicParams{
+				WorkspaceID: prevIssue.WorkspaceID,
+				EpicID:      prevIssue.ID,
+			})
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "failed to validate epic hierarchy")
+				return
+			}
+			if count > 0 {
+				writeError(w, http.StatusConflict, "move or remove the epic's issues before changing its project or type")
+				return
+			}
+		}
+
+		switch finalType {
+		case service.IssueTypeEpic:
+			if params.ParentIssueID.Valid || params.EpicID.Valid || !params.ProjectID.Valid {
+				writeError(w, http.StatusBadRequest, "epic requires project_id and cannot have epic_id or parent_issue_id")
+				return
+			}
+		case service.IssueTypeIssue:
+			if params.ParentIssueID.Valid {
+				writeError(w, http.StatusBadRequest, "issue cannot have parent_issue_id")
+				return
+			}
+			if params.EpicID.Valid {
+				epic, err := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{
+					ID: params.EpicID, WorkspaceID: prevIssue.WorkspaceID,
+				})
+				if err != nil || defaultIssueType(epic.IssueType) != service.IssueTypeEpic || !epic.ProjectID.Valid {
+					writeError(w, http.StatusBadRequest, "epic_id must reference an epic in this workspace")
+					return
+				}
+				if params.ProjectID.Valid && params.ProjectID != epic.ProjectID {
+					writeError(w, http.StatusBadRequest, "issue and epic must belong to the same project")
+					return
+				}
+				params.ProjectID = epic.ProjectID
+			}
+		case service.IssueTypeSubtask:
+			if !params.ParentIssueID.Valid {
+				writeError(w, http.StatusBadRequest, "subtask requires parent_issue_id")
+				return
+			}
+			parent, err := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{
+				ID: params.ParentIssueID, WorkspaceID: prevIssue.WorkspaceID,
+			})
+			if err != nil || defaultIssueType(parent.IssueType) != service.IssueTypeIssue {
+				writeError(w, http.StatusBadRequest, "subtask parent must be an issue in this workspace")
+				return
+			}
+			params.ProjectID = parent.ProjectID
+			params.EpicID = parent.EpicID
 		}
 	}
 
@@ -2558,6 +3009,16 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to update issue: "+err.Error())
 		return
 	}
+	if hierarchyTouched && defaultIssueType(issue.IssueType) == service.IssueTypeIssue {
+		if err := h.Queries.SyncSubtaskHierarchy(r.Context(), db.SyncSubtaskHierarchyParams{
+			ParentIssueID: issue.ID,
+			ProjectID:     issue.ProjectID,
+			EpicID:        issue.EpicID,
+			WorkspaceID:   issue.WorkspaceID,
+		}); err != nil {
+			slog.Warn("sync subtask hierarchy failed", append(logger.RequestAttrs(r), "issue_id", id, "error", err)...)
+		}
+	}
 
 	if len(attachmentIDs) > 0 {
 		h.linkAttachmentsByIssueIDs(r.Context(), issue.ID, issue.WorkspaceID, attachmentIDs)
@@ -2575,8 +3036,12 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 	// status/assignee flags gate theirs. Without it the client must diff
 	// project_id against its own cache, which breaks once an optimistic local
 	// move has overwritten the cached value (MUL-3669 / #4548).
-	projectChanged := req.ProjectID != nil && uuidToString(prevIssue.ProjectID) != uuidToString(issue.ProjectID)
+	projectChanged := projectTouched && uuidToString(prevIssue.ProjectID) != uuidToString(issue.ProjectID)
+	issueTypeChanged := typeTouched && defaultIssueType(prevIssue.IssueType) != defaultIssueType(issue.IssueType)
+	epicChanged := epicTouched && uuidToString(prevIssue.EpicID) != uuidToString(issue.EpicID)
+	parentChanged := parentTouched && uuidToString(prevIssue.ParentIssueID) != uuidToString(issue.ParentIssueID)
 	descriptionChanged := req.Description != nil && textToPtr(prevIssue.Description) != resp.Description
+	acceptanceCriteriaChanged := req.AcceptanceCriteria != nil && textToPtr(prevIssue.AcceptanceCriteria) != resp.AcceptanceCriteria
 	titleChanged := req.Title != nil && prevIssue.Title != issue.Title
 	prevStartDate := dateToPtr(prevIssue.StartDate)
 	startDateChanged := prevStartDate != resp.StartDate && (prevStartDate == nil) != (resp.StartDate == nil) ||
@@ -2589,25 +3054,29 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 	actorType, actorID := h.resolveActor(r, userID, workspaceID)
 
 	h.publish(protocol.EventIssueUpdated, workspaceID, actorType, actorID, map[string]any{
-		"issue":               resp,
-		"assignee_changed":    assigneeChanged,
-		"status_changed":      statusChanged,
-		"priority_changed":    priorityChanged,
-		"project_changed":     projectChanged,
-		"start_date_changed":  startDateChanged,
-		"due_date_changed":    dueDateChanged,
-		"description_changed": descriptionChanged,
-		"title_changed":       titleChanged,
-		"prev_title":          prevIssue.Title,
-		"prev_assignee_type":  textToPtr(prevIssue.AssigneeType),
-		"prev_assignee_id":    uuidToPtr(prevIssue.AssigneeID),
-		"prev_status":         prevIssue.Status,
-		"prev_priority":       prevIssue.Priority,
-		"prev_start_date":     prevStartDate,
-		"prev_due_date":       prevDueDate,
-		"prev_description":    textToPtr(prevIssue.Description),
-		"creator_type":        prevIssue.CreatorType,
-		"creator_id":          uuidToString(prevIssue.CreatorID),
+		"issue":                       resp,
+		"assignee_changed":            assigneeChanged,
+		"status_changed":              statusChanged,
+		"priority_changed":            priorityChanged,
+		"project_changed":             projectChanged,
+		"issue_type_changed":          issueTypeChanged,
+		"epic_changed":                epicChanged,
+		"parent_changed":              parentChanged,
+		"acceptance_criteria_changed": acceptanceCriteriaChanged,
+		"start_date_changed":          startDateChanged,
+		"due_date_changed":            dueDateChanged,
+		"description_changed":         descriptionChanged,
+		"title_changed":               titleChanged,
+		"prev_title":                  prevIssue.Title,
+		"prev_assignee_type":          textToPtr(prevIssue.AssigneeType),
+		"prev_assignee_id":            uuidToPtr(prevIssue.AssigneeID),
+		"prev_status":                 prevIssue.Status,
+		"prev_priority":               prevIssue.Priority,
+		"prev_start_date":             prevStartDate,
+		"prev_due_date":               prevDueDate,
+		"prev_description":            textToPtr(prevIssue.Description),
+		"creator_type":                prevIssue.CreatorType,
+		"creator_id":                  uuidToString(prevIssue.CreatorID),
 	})
 
 	// Reconcile the task queue. Whether this write starts an agent run — and
@@ -2634,6 +3103,9 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 		h.issueTriggerWriteProbe(r, actorType, issue),
 	); ok && !req.SuppressRun {
 		h.dispatchIssueRun(r.Context(), issue, trigger, actorType, actorID, req.HandoffNote)
+	}
+	if assigneeChanged && defaultIssueType(issue.IssueType) != service.IssueTypeEpic && issue.AssigneeType.Valid && issue.AssigneeType.String == "member" && issue.AssigneeID.Valid && h.TaskService != nil {
+		h.TaskService.EnqueueMemberAssigneeAdvisors(r.Context(), issue)
 	}
 
 	// Cancel active tasks when the issue is cancelled by a user.
@@ -2734,7 +3206,7 @@ func (h *Handler) validateAssigneePair(ctx context.Context, r *http.Request, wor
 // triggering execution. Moving out of backlog is handled separately in
 // UpdateIssue.
 func (h *Handler) shouldEnqueueAgentTask(ctx context.Context, issue db.Issue) bool {
-	if issue.Status == "backlog" {
+	if issue.Status == "backlog" || defaultIssueType(issue.IssueType) == service.IssueTypeEpic {
 		return false
 	}
 	return h.isAgentAssigneeReady(ctx, issue)
@@ -2829,7 +3301,7 @@ func (h *Handler) isAgentAssigneeReady(ctx context.Context, issue db.Issue) bool
 
 func (h *Handler) DeleteIssue(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	issue, ok := h.loadIssueForUser(w, r, id)
+	issue, ok := h.loadExecutableIssueForUser(w, r, id)
 	if !ok {
 		return
 	}
@@ -2909,14 +3381,16 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 	// real-world cases that hit this path are caller mistakes (status placed
 	// at the top level, "update" misspelled as singular). Telling the truth
 	// here — `{"updated": 0}` — keeps the wire shape stable while making the
-	// count match reality. See multica-ai/multica#1660.
+	// count match reality. See chenin0931/oh-my-agent-team#1660.
 	hasMutation := req.Updates.Title != nil ||
 		req.Updates.Description != nil ||
+		req.Updates.AcceptanceCriteria != nil ||
+		req.Updates.IssueType != nil ||
 		req.Updates.Status != nil ||
 		req.Updates.Priority != nil ||
 		req.Updates.Position != nil
 	if !hasMutation {
-		for _, k := range []string{"assignee_type", "assignee_id", "start_date", "due_date", "parent_issue_id", "project_id", "stage"} {
+		for _, k := range []string{"acceptance_criteria", "issue_type", "epic_id", "assignee_type", "assignee_id", "start_date", "due_date", "parent_issue_id", "project_id", "stage"} {
 			if _, ok := rawUpdates[k]; ok {
 				hasMutation = true
 				break
@@ -2937,10 +3411,25 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	if req.Updates.IssueType != nil {
+		if *req.Updates.IssueType == service.IssueTypeEpic {
+			writeJSON(w, http.StatusConflict, map[string]any{
+				"code":  "epic_planning_container",
+				"error": "work items cannot be converted to epics; use /api/epics",
+			})
+			return
+		}
+		if !validateIssueEnum(w, "issue_type", *req.Updates.IssueType, validIssueTypes) {
+			return
+		}
+	}
 
 	workspaceID := h.resolveWorkspaceID(r)
 	wsUUID, ok := parseUUIDOrBadRequest(w, workspaceID, "workspace_id")
 	if !ok {
+		return
+	}
+	if h.rejectEpicBatchTargets(w, r, wsUUID, req.IssueIDs) {
 		return
 	}
 	updated := 0
@@ -2956,16 +3445,21 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			continue
 		}
+		if defaultIssueType(prevIssue.IssueType) == service.IssueTypeEpic {
+			continue
+		}
 
 		params := db.UpdateIssueParams{
-			ID:            prevIssue.ID,
-			AssigneeType:  prevIssue.AssigneeType,
-			AssigneeID:    prevIssue.AssigneeID,
-			StartDate:     prevIssue.StartDate,
-			DueDate:       prevIssue.DueDate,
-			ParentIssueID: prevIssue.ParentIssueID,
-			ProjectID:     prevIssue.ProjectID,
-			Stage:         prevIssue.Stage,
+			ID:                 prevIssue.ID,
+			AcceptanceCriteria: prevIssue.AcceptanceCriteria,
+			EpicID:             prevIssue.EpicID,
+			AssigneeType:       prevIssue.AssigneeType,
+			AssigneeID:         prevIssue.AssigneeID,
+			StartDate:          prevIssue.StartDate,
+			DueDate:            prevIssue.DueDate,
+			ParentIssueID:      prevIssue.ParentIssueID,
+			ProjectID:          prevIssue.ProjectID,
+			Stage:              prevIssue.Stage,
 		}
 
 		if req.Updates.Title != nil {
@@ -2973,6 +3467,16 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 		}
 		if req.Updates.Description != nil {
 			params.Description = pgtype.Text{String: *req.Updates.Description, Valid: true}
+		}
+		if _, ok := rawUpdates["acceptance_criteria"]; ok {
+			if req.Updates.AcceptanceCriteria != nil {
+				params.AcceptanceCriteria = pgtype.Text{String: *req.Updates.AcceptanceCriteria, Valid: true}
+			} else {
+				params.AcceptanceCriteria = pgtype.Text{Valid: false}
+			}
+		}
+		if req.Updates.IssueType != nil {
+			params.IssueType = pgtype.Text{String: *req.Updates.IssueType, Valid: true}
 		}
 		if req.Updates.Status != nil {
 			params.Status = pgtype.Text{String: *req.Updates.Status, Valid: true}
@@ -3074,6 +3578,17 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 				params.ProjectID = pgtype.UUID{Valid: false}
 			}
 		}
+		if _, ok := rawUpdates["epic_id"]; ok {
+			if req.Updates.EpicID != nil && *req.Updates.EpicID != "" {
+				epicUUID, err := util.ParseUUID(*req.Updates.EpicID)
+				if err != nil {
+					continue
+				}
+				params.EpicID = epicUUID
+			} else {
+				params.EpicID = pgtype.UUID{Valid: false}
+			}
+		}
 		if _, ok := rawUpdates["stage"]; ok {
 			if req.Updates.Stage != nil {
 				if *req.Updates.Stage < 1 {
@@ -3082,6 +3597,69 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 				params.Stage = pgtype.Int4{Int32: *req.Updates.Stage, Valid: true}
 			} else {
 				params.Stage = pgtype.Int4{Valid: false} // explicit null = unstage
+			}
+		}
+
+		_, batchTypeTouched := rawUpdates["issue_type"]
+		_, batchEpicTouched := rawUpdates["epic_id"]
+		_, batchParentTouched := rawUpdates["parent_issue_id"]
+		_, batchProjectTouched := rawUpdates["project_id"]
+		batchHierarchyTouched := batchTypeTouched || batchEpicTouched || batchParentTouched || batchProjectTouched
+		if batchHierarchyTouched {
+			finalType := defaultIssueType(prevIssue.IssueType)
+			if params.IssueType.Valid {
+				finalType = params.IssueType.String
+			}
+			if batchParentTouched && !batchTypeTouched {
+				if params.ParentIssueID.Valid {
+					finalType = service.IssueTypeSubtask
+				} else {
+					finalType = service.IssueTypeIssue
+				}
+				params.IssueType = pgtype.Text{String: finalType, Valid: true}
+			}
+
+			if defaultIssueType(prevIssue.IssueType) == service.IssueTypeEpic &&
+				(finalType != service.IssueTypeEpic || params.ProjectID != prevIssue.ProjectID) {
+				count, err := h.Queries.CountIssuesInEpic(r.Context(), db.CountIssuesInEpicParams{
+					WorkspaceID: prevIssue.WorkspaceID, EpicID: prevIssue.ID,
+				})
+				if err != nil || count > 0 {
+					continue
+				}
+			}
+
+			switch finalType {
+			case service.IssueTypeEpic:
+				if params.ParentIssueID.Valid || params.EpicID.Valid || !params.ProjectID.Valid {
+					continue
+				}
+			case service.IssueTypeIssue:
+				if params.ParentIssueID.Valid {
+					continue
+				}
+				if params.EpicID.Valid {
+					epic, err := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{
+						ID: params.EpicID, WorkspaceID: prevIssue.WorkspaceID,
+					})
+					if err != nil || defaultIssueType(epic.IssueType) != service.IssueTypeEpic || !epic.ProjectID.Valid ||
+						(params.ProjectID.Valid && params.ProjectID != epic.ProjectID) {
+						continue
+					}
+					params.ProjectID = epic.ProjectID
+				}
+			case service.IssueTypeSubtask:
+				if !params.ParentIssueID.Valid {
+					continue
+				}
+				parent, err := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{
+					ID: params.ParentIssueID, WorkspaceID: prevIssue.WorkspaceID,
+				})
+				if err != nil || defaultIssueType(parent.IssueType) != service.IssueTypeIssue {
+					continue
+				}
+				params.ProjectID = parent.ProjectID
+				params.EpicID = parent.EpicID
 			}
 		}
 
@@ -3099,6 +3677,14 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			slog.Warn("batch update issue failed", "issue_id", issueID, "error", err)
 			continue
+		}
+		if batchHierarchyTouched && defaultIssueType(issue.IssueType) == service.IssueTypeIssue {
+			_ = h.Queries.SyncSubtaskHierarchy(r.Context(), db.SyncSubtaskHierarchyParams{
+				ParentIssueID: issue.ID,
+				ProjectID:     issue.ProjectID,
+				EpicID:        issue.EpicID,
+				WorkspaceID:   issue.WorkspaceID,
+			})
 		}
 
 		prefix := h.getIssuePrefix(r.Context(), issue.WorkspaceID)
@@ -3181,6 +3767,9 @@ func (h *Handler) BatchDeleteIssues(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	if h.rejectEpicBatchTargets(w, r, wsUUID, req.IssueIDs) {
+		return
+	}
 	deleted := 0
 	for _, issueID := range req.IssueIDs {
 		issueUUID, err := util.ParseUUID(issueID)
@@ -3192,6 +3781,9 @@ func (h *Handler) BatchDeleteIssues(w http.ResponseWriter, r *http.Request) {
 			WorkspaceID: wsUUID,
 		})
 		if err != nil {
+			continue
+		}
+		if defaultIssueType(issue.IssueType) == service.IssueTypeEpic {
 			continue
 		}
 
@@ -3219,4 +3811,21 @@ func (h *Handler) BatchDeleteIssues(w http.ResponseWriter, r *http.Request) {
 
 	slog.Info("batch delete issues", append(logger.RequestAttrs(r), "count", deleted)...)
 	writeJSON(w, http.StatusOK, map[string]any{"deleted": deleted})
+}
+
+func (h *Handler) rejectEpicBatchTargets(w http.ResponseWriter, r *http.Request, workspaceID pgtype.UUID, issueIDs []string) bool {
+	for _, issueID := range issueIDs {
+		issueUUID, err := util.ParseUUID(issueID)
+		if err != nil {
+			continue
+		}
+		issue, err := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{
+			ID: issueUUID, WorkspaceID: workspaceID,
+		})
+		if err == nil && defaultIssueType(issue.IssueType) == service.IssueTypeEpic {
+			h.writeEpicExecutionConflict(w, r, issue)
+			return true
+		}
+	}
+	return false
 }

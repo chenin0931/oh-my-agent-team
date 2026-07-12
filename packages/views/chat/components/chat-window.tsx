@@ -4,22 +4,22 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useInfiniteQuery, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { Minus, Maximize2, Minimize2, ChevronDown, Plus, Check, Trash2, Pencil, Loader2, Square } from "lucide-react";
-import { Button } from "@multica/ui/components/ui/button";
-import { cn } from "@multica/ui/lib/utils";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@multica/ui/components/ui/tooltip";
+import { Button } from "@ohmyagentteam/ui/components/ui/button";
+import { cn } from "@ohmyagentteam/ui/lib/utils";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@ohmyagentteam/ui/components/ui/tooltip";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@multica/ui/components/ui/popover";
+} from "@ohmyagentteam/ui/components/ui/popover";
 import { toast } from "sonner";
-import { useWorkspaceId } from "@multica/core/hooks";
-import { useAuthStore } from "@multica/core/auth";
-import { agentListOptions, memberListOptions } from "@multica/core/workspace/queries";
-import { canAssignAgent } from "@multica/views/issues/components";
-import { api } from "@multica/core/api";
-import { useAgentPresenceDetail, useWorkspaceAgentAvailability } from "@multica/core/agents";
-import { useFileUpload } from "@multica/core/hooks/use-file-upload";
+import { useWorkspaceId } from "@ohmyagentteam/core/hooks";
+import { useAuthStore } from "@ohmyagentteam/core/auth";
+import { agentListOptions, memberListOptions } from "@ohmyagentteam/core/workspace/queries";
+import { canAssignAgent } from "@ohmyagentteam/views/issues/components";
+import { api } from "@ohmyagentteam/core/api";
+import { useAgentPresenceDetail, useWorkspaceAgentAvailability } from "@ohmyagentteam/core/agents";
+import { useFileUpload } from "@ohmyagentteam/core/hooks/use-file-upload";
 import { ActorAvatar } from "../../common/actor-avatar";
 import {
   PickerEmpty,
@@ -37,21 +37,21 @@ import {
   pendingChatTasksOptions,
   chatKeys,
   isTaskMessageTaskId,
-} from "@multica/core/chat/queries";
+} from "@ohmyagentteam/core/chat/queries";
 import {
   useCreateChatSession,
   useDeleteChatSession,
   useMarkChatSessionRead,
   useUpdateChatSession,
-} from "@multica/core/chat/mutations";
-import { useChatStore } from "@multica/core/chat";
+} from "@ohmyagentteam/core/chat/mutations";
+import { useChatStore } from "@ohmyagentteam/core/chat";
 import { ChatMessageList, ChatMessageSkeleton } from "./chat-message-list";
 import { ChatInput } from "./chat-input";
 import { ChatResizeHandles } from "./chat-resize-handles";
 import { useChatContextItems } from "./use-chat-context-items";
 import { useChatResize } from "./use-chat-resize";
-import { createLogger } from "@multica/core/logger";
-import type { Agent, Attachment, ChatMessage, ChatMessagesPage, ChatPendingTask, ChatSession, PendingChatTasksResponse } from "@multica/core/types";
+import { createLogger } from "@ohmyagentteam/core/logger";
+import type { Agent, Attachment, ChatMessage, ChatMessagesPage, ChatPendingTask, ChatSession, PendingChatTasksResponse } from "@ohmyagentteam/core/types";
 import { useT } from "../../i18n";
 
 const uiLogger = createLogger("chat.ui");

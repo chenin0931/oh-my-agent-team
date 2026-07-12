@@ -2,12 +2,12 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { MessagesSquare, Webhook } from "lucide-react";
-import type { Agent } from "@multica/core/types";
-import { useAuthStore } from "@multica/core/auth";
-import { useWorkspaceId } from "@multica/core/hooks";
-import { larkInstallationsOptions } from "@multica/core/lark";
-import { slackInstallationsOptions } from "@multica/core/slack";
-import { memberListOptions } from "@multica/core/workspace/queries";
+import type { Agent } from "@ohmyagentteam/core/types";
+import { useAuthStore } from "@ohmyagentteam/core/auth";
+import { useWorkspaceId } from "@ohmyagentteam/core/hooks";
+import { larkInstallationsOptions } from "@ohmyagentteam/core/lark";
+import { slackInstallationsOptions } from "@ohmyagentteam/core/slack";
+import { memberListOptions } from "@ohmyagentteam/core/workspace/queries";
 import { LarkAgentBindButton } from "../../../settings/components/lark-tab";
 import { SlackAgentBindButton } from "../../../settings/components/slack-tab";
 import { useT } from "../../../i18n";

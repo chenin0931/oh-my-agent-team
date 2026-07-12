@@ -11,29 +11,30 @@ import {
   type ReactNode,
 } from "react";
 import type { QueryClient } from "@tanstack/react-query";
-import { getCurrentWsId } from "@multica/core/platform";
-import { flattenIssueBuckets, issueKeys } from "@multica/core/issues/queries";
-import { workspaceKeys } from "@multica/core/workspace/queries";
-import { useAuthStore } from "@multica/core/auth";
-import { canAssignAgentToIssue } from "@multica/core/permissions";
-import { api } from "@multica/core/api";
-import { isImeComposing } from "@multica/core/utils";
+import { getCurrentWsId } from "@ohmyagentteam/core/platform";
+import { flattenIssueBuckets, issueKeys } from "@ohmyagentteam/core/issues/queries";
+import { workspaceKeys } from "@ohmyagentteam/core/workspace/queries";
+import { useAuthStore } from "@ohmyagentteam/core/auth";
+import { canAssignAgentToIssue } from "@ohmyagentteam/core/permissions";
+import { api } from "@ohmyagentteam/core/api";
+import { isImeComposing } from "@ohmyagentteam/core/utils";
 import type {
   Issue,
+  Epic,
   ListIssuesCache,
   MemberWithUser,
   Agent,
   Squad,
-} from "@multica/core/types";
-import { ListTodo } from "lucide-react";
+} from "@ohmyagentteam/core/types";
+import { Layers3, ListTodo } from "lucide-react";
 import { ActorAvatar } from "../../common/actor-avatar";
 import { StatusIcon } from "../../issues/components/status-icon";
 import { ProjectIcon } from "../../projects/components/project-icon";
 import { useT } from "../../i18n";
-import { Badge } from "@multica/ui/components/ui/badge";
-import { cn } from "@multica/ui/lib/utils";
-import type { IssueStatus, ProjectStatus } from "@multica/core/types";
-import { PROJECT_STATUS_CONFIG } from "@multica/core/projects/config";
+import { Badge } from "@ohmyagentteam/ui/components/ui/badge";
+import { cn } from "@ohmyagentteam/ui/lib/utils";
+import type { EpicLifecycle, IssueStatus, ProjectStatus } from "@ohmyagentteam/core/types";
+import { PROJECT_STATUS_CONFIG } from "@ohmyagentteam/core/projects/config";
 import type { SuggestionOptions } from "@tiptap/suggestion";
 import { PluginKey } from "@tiptap/pm/state";
 import {
@@ -51,7 +52,7 @@ import { createSuggestionPopupRender, isPickerAcceptKey } from "./suggestion-pop
 export interface MentionItem {
   id: string;
   label: string;
-  type: "member" | "agent" | "squad" | "issue" | "project" | "all";
+  type: "member" | "agent" | "squad" | "epic" | "issue" | "project" | "all";
   /** Optional grouping hint for injected context items. */
   group?: "current" | "recent" | "search";
   /** Secondary text shown beside the label (e.g. issue title) */
@@ -62,6 +63,8 @@ export interface MentionItem {
   icon?: string | null;
   /** Project status snapshot for recent/current project rendering */
   projectStatus?: ProjectStatus;
+  /** Epic lifecycle snapshot for planning-container search rows. */
+  epicLifecycle?: EpicLifecycle;
 }
 
 interface MentionListProps {
@@ -69,6 +72,8 @@ interface MentionListProps {
   query: string;
   command: (item: MentionItem) => void;
   includeProjectSearch?: boolean;
+  includeEpicSearch?: boolean;
+  allowedTypes?: readonly MentionItem["type"][];
 }
 
 export interface MentionListRef {
@@ -98,7 +103,7 @@ function groupItems(items: MentionItem[]): MentionGroup[] {
       recent.push(item);
     } else if (item.group === "search") {
       search.push(item);
-    } else if (item.type === "issue" || item.type === "project") {
+    } else if (item.type === "issue" || item.type === "epic" || item.type === "project") {
       issues.push(item);
     } else {
       users.push(item);
@@ -144,7 +149,14 @@ function mergeMentionItems(
 }
 
 export const MentionList = forwardRef<MentionListRef, MentionListProps>(
-  function MentionList({ items, query, command, includeProjectSearch = false }, ref) {
+  function MentionList({
+    items,
+    query,
+    command,
+    includeProjectSearch = false,
+    includeEpicSearch = true,
+    allowedTypes,
+  }, ref) {
     const { t } = useT("editor");
     // Selection is tracked by item identity, NOT by a positional index. The
     // list is re-bucketed by groupItems() and grows asynchronously (server
@@ -185,7 +197,7 @@ export const MentionList = forwardRef<MentionListRef, MentionListProps>(
         void (async () => {
           try {
             if (includeProjectSearch) {
-              const [issues, projects] = await Promise.all([
+              const [issues, projects, epics] = await Promise.all([
                 api.searchIssues({
                   q,
                   limit: SERVER_CONTEXT_SEARCH_LIMIT,
@@ -198,22 +210,42 @@ export const MentionList = forwardRef<MentionListRef, MentionListProps>(
                   include_closed: true,
                   signal: controller.signal,
                 }),
+                includeEpicSearch
+                  ? api.searchEpics({
+                      q,
+                      limit: SERVER_CONTEXT_SEARCH_LIMIT,
+                      signal: controller.signal,
+                    })
+                  : Promise.resolve({ epics: [], total: 0 }),
               ]);
               if (!cancelled && !controller.signal.aborted) {
                 setServerItems([
                   ...issues.issues.map((issue) => ({ ...issueToMention(issue), group: "search" as const })),
                   ...projects.projects.map((project) => ({ ...projectToMention(project), group: "search" as const })),
+                  ...epics.epics.map((epic) => ({ ...epicToMention(epic), group: "search" as const })),
                 ]);
               }
             } else {
-              const res = await api.searchIssues({
-                q,
-                limit: SERVER_ISSUE_SEARCH_LIMIT,
-                include_closed: true,
-                signal: controller.signal,
-              });
+              const [res, epics] = await Promise.all([
+                api.searchIssues({
+                  q,
+                  limit: SERVER_ISSUE_SEARCH_LIMIT,
+                  include_closed: true,
+                  signal: controller.signal,
+                }),
+                includeEpicSearch
+                  ? api.searchEpics({
+                      q,
+                      limit: SERVER_CONTEXT_SEARCH_LIMIT,
+                      signal: controller.signal,
+                    })
+                  : Promise.resolve({ epics: [], total: 0 }),
+              ]);
               if (!cancelled && !controller.signal.aborted) {
-                setServerItems(res.issues.map(issueToMention));
+                setServerItems([
+                  ...res.issues.map(issueToMention),
+                  ...epics.epics.map(epicToMention),
+                ]);
               }
             }
           } catch {
@@ -232,12 +264,16 @@ export const MentionList = forwardRef<MentionListRef, MentionListProps>(
         clearTimeout(timer);
         controller.abort();
       };
-    }, [includeProjectSearch, normalizedQuery]);
+    }, [includeEpicSearch, includeProjectSearch, normalizedQuery]);
 
     const displayItems = useMemo(() => {
       const currentServerItems = searchedQuery === normalizedQuery ? serverItems : [];
-      return mergeMentionItems(items, currentServerItems).slice(0, MAX_ITEMS);
-    }, [items, normalizedQuery, searchedQuery, serverItems]);
+      const merged = mergeMentionItems(items, currentServerItems);
+      const filtered = allowedTypes
+        ? merged.filter((item) => allowedTypes.includes(item.type))
+        : merged;
+      return filtered.slice(0, MAX_ITEMS);
+    }, [allowedTypes, items, normalizedQuery, searchedQuery, serverItems]);
 
     // The single index space for selection. groupItems() re-buckets displayItems
     // (current → recent → search → users → issues); orderedItems is exactly what
@@ -451,6 +487,34 @@ function MentionRow({
     );
   }
 
+  if (item.type === "epic") {
+    return (
+      <button
+        type="button"
+        ref={buttonRef}
+        className={`flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs transition-colors ${
+          selected ? "bg-accent" : "hover:bg-accent/50"
+        }`}
+        onClick={onSelect}
+      >
+        <span className="flex size-7 shrink-0 items-center justify-center">
+          <Layers3 className="size-3.5 text-muted-foreground" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="flex min-w-0 items-center gap-2">
+            <span className="shrink-0 font-medium text-muted-foreground">{item.label}</span>
+            {item.description && <span className="truncate text-foreground">{item.description}</span>}
+          </span>
+        </span>
+        {item.epicLifecycle && (
+          <span className="shrink-0 capitalize text-muted-foreground">
+            {item.epicLifecycle.replaceAll("_", " ")}
+          </span>
+        )}
+      </button>
+    );
+  }
+
   return (
     <button
       type="button"
@@ -497,6 +561,16 @@ function issueToMention(i: Pick<Issue, "id" | "identifier" | "title" | "status">
   };
 }
 
+function epicToMention(epic: Pick<Epic, "id" | "identifier" | "title" | "lifecycle">): MentionItem {
+  return {
+    id: epic.id,
+    label: epic.identifier,
+    type: "epic",
+    description: epic.title,
+    epicLifecycle: epic.lifecycle,
+  };
+}
+
 function projectToMention(p: { id: string; title: string; description?: string | null; icon?: string | null; status?: ProjectStatus }): MentionItem {
   return {
     id: p.id,
@@ -522,6 +596,7 @@ function matchesMentionQuery(item: MentionItem, query: string): boolean {
 interface MentionSuggestionOptions {
   mode?: "default" | "context";
   getContextItems?: () => MentionItem[];
+  allowedTypes?: readonly MentionItem["type"][];
 }
 
 export function createMentionSuggestion(
@@ -605,7 +680,10 @@ export function createMentionSuggestion(
       )
       .map(issueToMention);
 
-    return [...allItem, ...userItems, ...issueItems];
+    const items = [...allItem, ...userItems, ...issueItems];
+    return options.allowedTypes
+      ? items.filter((item) => options.allowedTypes?.includes(item.type))
+      : items;
   }
 
   return {
@@ -628,6 +706,8 @@ export function createMentionSuggestion(
         query: props.query,
         command: props.command,
         includeProjectSearch: options.mode === "context",
+        includeEpicSearch: options.allowedTypes?.includes("epic") ?? true,
+        allowedTypes: options.allowedTypes,
       }),
       onKeyDown: (ref, props) => ref?.onKeyDown(props) ?? false,
     }),

@@ -2,22 +2,22 @@
 
 import { useEffect, useMemo } from "react";
 import type { QueryKey } from "@tanstack/react-query";
-import type { Issue, IssueAssigneeGroup, Project } from "@multica/core/types";
-import { useWorkspaceId } from "@multica/core/hooks";
-import { BOARD_STATUSES } from "@multica/core/issues/config";
-import { dateOnlyToLocalDate } from "@multica/core/issues/date";
+import type { Issue, IssueAssigneeGroup, Project } from "@ohmyagentteam/core/types";
+import { useWorkspaceId } from "@ohmyagentteam/core/hooks";
+import { BOARD_STATUSES } from "@ohmyagentteam/core/issues/config";
+import { dateOnlyToLocalDate } from "@ohmyagentteam/core/issues/date";
 import type {
   AssigneeGroupedIssuesFilter,
   IssueSortParam,
   MyIssuesFilter,
-} from "@multica/core/issues/queries";
+} from "@ohmyagentteam/core/issues/queries";
 import {
   buildIssueSurfaceQueryPlan,
   type IssueSurfaceQueryPlan,
-} from "@multica/core/issues/surface/query-plan";
-import type { IssueScope } from "@multica/core/issues/surface/scope";
-import type { IssueDateFilter } from "@multica/core/issues/stores/view-store";
-import { useViewStore } from "@multica/core/issues/stores/view-store-context";
+} from "@ohmyagentteam/core/issues/surface/query-plan";
+import type { IssueScope } from "@ohmyagentteam/core/issues/surface/scope";
+import type { IssueDateFilter } from "@ohmyagentteam/core/issues/stores/view-store";
+import { useViewStore } from "@ohmyagentteam/core/issues/stores/view-store-context";
 import type { IssueFilters } from "../utils/filter";
 import type { ChildProgress } from "../components/list-row";
 import type { IssueSurfaceMode } from "./types";

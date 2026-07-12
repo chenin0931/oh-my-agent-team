@@ -1,13 +1,13 @@
 "use client";
 
 import { X } from "lucide-react";
-import { useAuthStore } from "@multica/core/auth";
+import { useAuthStore } from "@ohmyagentteam/core/auth";
 import { DISCORD_URL, DiscordIcon } from "./discord";
 import { useDiscordCardDismissed } from "./use-discord-card-dismissed";
 import { useT } from "../i18n";
 
 /**
- * Dismissible "Join our Discord" promo pinned to the bottom of the left
+ * Dismissible community promo pinned to the bottom of the left
  * sidebar (above the help launcher). Once dismissed it stays hidden for
  * that user on this browser — see {@link useDiscordCardDismissed}.
  */
@@ -26,9 +26,7 @@ export function JoinDiscordCard() {
         rel="noopener noreferrer"
         className="flex items-start gap-2.5 rounded-md border border-sidebar-border bg-sidebar-accent/50 p-2.5 pr-7 transition-colors hover:bg-sidebar-accent"
       >
-        {/* Discord blurple (#5865F2) is the brand mark color — an intentional
-            exception to the semantic-token rule, like the landing social icons. */}
-        <DiscordIcon className="mt-px size-4 shrink-0 text-[#5865F2]" />
+        <DiscordIcon className="mt-px size-4 shrink-0 text-sidebar-foreground" />
         <span className="min-w-0">
           <span className="block text-xs font-medium text-sidebar-foreground">
             {t(($) => $.sidebar.discord_card.title)}

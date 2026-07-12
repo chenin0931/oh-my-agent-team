@@ -18,12 +18,12 @@ import type {
   IssueAssigneeGroup,
   IssueStatus,
   Project,
-} from "@multica/core/types";
-import { useLoadMoreByAssigneeGroup, useLoadMoreByStatus } from "@multica/core/issues/mutations";
-import type { AssigneeGroupedIssuesFilter, IssueSortParam, MyIssuesFilter } from "@multica/core/issues/queries";
-import { useViewStore } from "@multica/core/issues/stores/view-store-context";
-import type { IssueGrouping } from "@multica/core/issues/stores/view-store";
-import { useActorName } from "@multica/core/workspace/hooks";
+} from "@ohmyagentteam/core/types";
+import { useLoadMoreByAssigneeGroup, useLoadMoreByStatus } from "@ohmyagentteam/core/issues/mutations";
+import type { AssigneeGroupedIssuesFilter, IssueSortParam, MyIssuesFilter } from "@ohmyagentteam/core/issues/queries";
+import { useViewStore } from "@ohmyagentteam/core/issues/stores/view-store-context";
+import type { IssueGrouping } from "@ohmyagentteam/core/issues/stores/view-store";
+import { useActorName } from "@ohmyagentteam/core/workspace/hooks";
 import { BoardColumn, BOARD_CARD_WIDTH, type BoardColumnGroup } from "./board-column";
 import { BoardCardContent } from "./board-card";
 import { HiddenColumnsPanel, HiddenColumnRow } from "./hidden-columns-panel";

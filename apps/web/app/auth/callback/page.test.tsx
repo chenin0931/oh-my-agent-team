@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, waitFor } from "@testing-library/react";
-import { paths } from "@multica/core/paths";
+import { paths } from "@ohmyagentteam/core/paths";
 
 const {
   mockPush,
@@ -18,21 +18,13 @@ const {
   mockSetQueryData: vi.fn(),
 }));
 
-const makeUser = (
-  overrides: Partial<{
-    onboarded_at: string | null;
-    onboarding_questionnaire: Record<string, unknown>;
-  }> = {},
-) => ({
+const makeUser = () => ({
   id: "user-1",
   name: "Test",
-  email: "test@multica.ai",
+  email: "test@ohmyagentteam.com",
   avatar_url: null,
-  onboarded_at: null,
-  onboarding_questionnaire: { source: ["search"] },
   created_at: "2026-01-01T00:00:00Z",
   updated_at: "2026-01-01T00:00:00Z",
-  ...overrides,
 });
 
 vi.mock("next/navigation", () => ({
@@ -46,10 +38,10 @@ vi.mock("@tanstack/react-query", () => ({
 
 // Preserve the real sanitizeNextUrl so the "drop unsafe ?next=" behavior is
 // exercised rather than silently diverging from the source of truth.
-vi.mock("@multica/core/auth", async () => {
+vi.mock("@ohmyagentteam/core/auth", async () => {
   const actual =
-    await vi.importActual<typeof import("@multica/core/auth")>(
-      "@multica/core/auth",
+    await vi.importActual<typeof import("@ohmyagentteam/core/auth")>(
+      "@ohmyagentteam/core/auth",
     );
   return {
     ...actual,
@@ -58,14 +50,14 @@ vi.mock("@multica/core/auth", async () => {
   };
 });
 
-vi.mock("@multica/core/workspace/queries", () => ({
+vi.mock("@ohmyagentteam/core/workspace/queries", () => ({
   workspaceKeys: {
     list: () => ["workspaces"],
     myInvitations: () => ["invitations", "mine"],
   },
 }));
 
-vi.mock("@multica/core/api", () => ({
+vi.mock("@ohmyagentteam/core/api", () => ({
   api: {
     listWorkspaces: mockListWorkspaces,
     listMyInvitations: mockListMyInvitations,
@@ -78,15 +70,6 @@ import CallbackPage from "./page";
 describe("CallbackPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Reset the source-backfill dismiss counter so a test that writes
-    // it doesn't leak state into the next test (and the next test
-    // doesn't inherit a cap-reached state from a previous run).
-    for (let i = window.localStorage.length - 1; i >= 0; i--) {
-      const k = window.localStorage.key(i);
-      if (k && k.startsWith("multica.source_backfill.dismiss.")) {
-        window.localStorage.removeItem(k);
-      }
-    }
     // Snapshot keys before deleting — forEach + delete skips entries because
     // the iteration index advances while the underlying list shrinks.
     Array.from(mockSearchParams.keys()).forEach((k) =>
@@ -98,26 +81,25 @@ describe("CallbackPage", () => {
     mockListMyInvitations.mockResolvedValue([]);
   });
 
-  it("unonboarded user honors a safe next= (e.g. /invite/{id}) so invitees aren't trapped", async () => {
+  it("honors a safe next= target", async () => {
     mockSearchParams.set("state", "next:/invite/abc123");
     render(<CallbackPage />);
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith("/invite/abc123");
     });
-    expect(mockPush).not.toHaveBeenCalledWith(paths.onboarding());
     // nextUrl is a fast path — listMyInvitations should not be queried.
     expect(mockListMyInvitations).not.toHaveBeenCalled();
   });
 
-  it("unonboarded user with no next= and no pending invitations lands on /onboarding", async () => {
+  it("user with no workspace or pending invitation lands on workspace creation", async () => {
     render(<CallbackPage />);
     await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith(paths.onboarding());
+      expect(mockPush).toHaveBeenCalledWith(paths.newWorkspace());
     });
     expect(mockListMyInvitations).toHaveBeenCalled();
   });
 
-  it("unonboarded user with pending invitations lands on /invitations", async () => {
+  it("user with no workspace and pending invitations lands on /invitations", async () => {
     mockListMyInvitations.mockResolvedValue([
       {
         id: "inv-1",
@@ -131,13 +113,9 @@ describe("CallbackPage", () => {
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith(paths.invitations());
     });
-    expect(mockPush).not.toHaveBeenCalledWith(paths.onboarding());
   });
 
-  it("onboarded user with workspace lands in that workspace", async () => {
-    mockLoginWithGoogle.mockResolvedValue(
-      makeUser({ onboarded_at: "2026-01-01T00:00:00Z" }),
-    );
+  it("user with a workspace lands in that workspace", async () => {
     mockListWorkspaces.mockResolvedValue([
       {
         id: "ws-1",
@@ -157,15 +135,11 @@ describe("CallbackPage", () => {
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith(paths.workspace("acme").issues());
     });
-    // Already-onboarded users skip the listMyInvitations check; new invites
-    // surface in the sidebar instead of the wall.
+    // Existing workspace members see later invites in the sidebar.
     expect(mockListMyInvitations).not.toHaveBeenCalled();
   });
 
-  it("onboarded user ignores unsafe next= targets and lands on the default destination", async () => {
-    mockLoginWithGoogle.mockResolvedValue(
-      makeUser({ onboarded_at: "2026-01-01T00:00:00Z" }),
-    );
+  it("ignores unsafe next= targets and lands on the default destination", async () => {
     mockSearchParams.set("state", "next:https://evil.example");
 
     render(<CallbackPage />);
@@ -176,10 +150,7 @@ describe("CallbackPage", () => {
     expect(mockPush).not.toHaveBeenCalledWith("https://evil.example");
   });
 
-  it("onboarded user honors a safe next= target (e.g. /invite/{id})", async () => {
-    mockLoginWithGoogle.mockResolvedValue(
-      makeUser({ onboarded_at: "2026-01-01T00:00:00Z" }),
-    );
+  it("honors a safe invitation next= target", async () => {
     mockSearchParams.set("state", "next:/invite/abc123");
 
     render(<CallbackPage />);
@@ -189,16 +160,16 @@ describe("CallbackPage", () => {
     });
   });
 
-  it("falls through to /onboarding when listMyInvitations errors", async () => {
+  it("falls through to workspace creation when invitation lookup errors", async () => {
     mockListMyInvitations.mockRejectedValue(new Error("network"));
     render(<CallbackPage />);
     await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith(paths.onboarding());
+      expect(mockPush).toHaveBeenCalledWith(paths.newWorkspace());
     });
   });
 
   it("redirects to CLI callback with token when state contains valid cli_callback", async () => {
-    const { api: mockedApi } = await import("@multica/core/api");
+    const { api: mockedApi } = await import("@ohmyagentteam/core/api");
     const mockGoogleLogin = mockedApi.googleLogin as ReturnType<typeof vi.fn>;
 
     const hrefSetter = vi.fn();
@@ -251,14 +222,14 @@ describe("CallbackPage", () => {
       expect(mockLoginWithGoogle).toHaveBeenCalled();
     });
     await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith(paths.onboarding());
+      expect(mockPush).toHaveBeenCalledWith(paths.newWorkspace());
     });
   });
 
   it("redirects to CLI callback even when state also contains platform:desktop", async () => {
     // cli_callback takes precedence over platform:desktop — the CLI flow
     // is a specific user intent that should not be derailed by desktop flag.
-    const { api: mockedApi } = await import("@multica/core/api");
+    const { api: mockedApi } = await import("@ohmyagentteam/core/api");
     const mockGoogleLogin = mockedApi.googleLogin as ReturnType<typeof vi.fn>;
 
     const hrefSetter = vi.fn();
@@ -295,33 +266,4 @@ describe("CallbackPage", () => {
     }
   });
 
-  it("onboarded users with missing source land in the workspace; the source-backfill modal is mounted there", async () => {
-    // Source attribution backfill is now an in-workspace modal — see
-    // `<SourceBackfillModal />` mounted inside `DashboardLayout`. The
-    // callback page is intentionally agnostic about it.
-    mockLoginWithGoogle.mockResolvedValue(
-      makeUser({
-        onboarded_at: "2026-01-01T00:00:00Z",
-        onboarding_questionnaire: {},
-      }),
-    );
-    mockListWorkspaces.mockResolvedValue([
-      {
-        id: "ws-1",
-        name: "Acme",
-        slug: "acme",
-        description: null,
-        context: null,
-        settings: {},
-        repos: [],
-        issue_prefix: "ACME",
-        created_at: "",
-        updated_at: "",
-      },
-    ]);
-    render(<CallbackPage />);
-    await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith(paths.workspace("acme").issues());
-    });
-  });
 });

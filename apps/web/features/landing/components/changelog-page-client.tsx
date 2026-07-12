@@ -190,7 +190,7 @@ export function ChangelogPageClient() {
                 aria-label={t.changelog.toc}
                 className="sticky top-28 max-h-[calc(100vh-8rem)] overflow-y-auto pb-8 pr-2"
               >
-                <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#0a0d12]/50">
+                <h3 className="text-[11px] font-semibold uppercase text-[#0a0d12]/50">
                   {t.changelog.toc}
                 </h3>
 
@@ -203,7 +203,7 @@ export function ChangelogPageClient() {
                   <ol className="space-y-5">
                     {groups.map((group) => (
                       <li key={group.key}>
-                        <p className="ml-6 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#0a0d12]/45">
+                        <p className="ml-6 text-[11px] font-semibold uppercase text-[#0a0d12]/45">
                           {monthYearLabel(group.year, group.month, locale)}
                         </p>
 
@@ -260,7 +260,7 @@ export function ChangelogPageClient() {
             </aside>
 
             <div className="mx-auto min-w-0 max-w-[720px] lg:mx-0">
-              <h1 className="font-[family-name:var(--font-serif)] text-[2.6rem] leading-[1.05] tracking-[-0.03em] sm:text-[3.4rem]">
+              <h1 className="font-[family-name:var(--font-serif)] text-[2.6rem] leading-[1.05] sm:text-[3.4rem]">
                 {t.changelog.title}
               </h1>
               <p className="mt-4 text-[15px] leading-7 text-[#0a0d12]/60 sm:text-[16px]">

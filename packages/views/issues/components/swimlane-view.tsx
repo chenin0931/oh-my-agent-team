@@ -25,28 +25,28 @@ import type {
   IssueStatus,
   Project,
   UpdateIssueRequest,
-} from "@multica/core/types";
-import { useViewStore, useViewStoreApi } from "@multica/core/issues/stores/view-store-context";
-import { agentTaskSnapshotOptions } from "@multica/core/agents";
+} from "@ohmyagentteam/core/types";
+import { useViewStore, useViewStoreApi } from "@ohmyagentteam/core/issues/stores/view-store-context";
+import { agentTaskSnapshotOptions } from "@ohmyagentteam/core/agents";
 import { filterIssues, type IssueFilters } from "../utils/filter";
-import type { SwimlaneGrouping } from "@multica/core/issues/stores/view-store";
-import { useWorkspacePaths } from "@multica/core/paths";
-import { useWorkspaceId } from "@multica/core/hooks";
-import { useActorName } from "@multica/core/workspace/hooks";
-import { useLoadMoreByStatus } from "@multica/core/issues/mutations";
-import { childrenByParentsOptions, issueKeys, type IssueSortParam, type MyIssuesFilter } from "@multica/core/issues/queries";
+import type { SwimlaneGrouping } from "@ohmyagentteam/core/issues/stores/view-store";
+import { useWorkspacePaths } from "@ohmyagentteam/core/paths";
+import { useWorkspaceId } from "@ohmyagentteam/core/hooks";
+import { useActorName } from "@ohmyagentteam/core/workspace/hooks";
+import { useLoadMoreByStatus } from "@ohmyagentteam/core/issues/mutations";
+import { childrenByParentsOptions, issueKeys, type IssueSortParam, type MyIssuesFilter } from "@ohmyagentteam/core/issues/queries";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
-} from "@multica/ui/components/ui/dropdown-menu";
+} from "@ohmyagentteam/ui/components/ui/dropdown-menu";
 import { sortIssues } from "../utils/sort";
-import { BOARD_STATUSES, STATUS_CONFIG } from "@multica/core/issues/config";
+import { BOARD_STATUSES, STATUS_CONFIG } from "@ohmyagentteam/core/issues/config";
 import { DraggableBoardCard, BoardCardContent } from "./board-card";
 import { StatusIcon } from "./status-icon";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@multica/ui/components/ui/tooltip";
-import { Button } from "@multica/ui/components/ui/button";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@ohmyagentteam/ui/components/ui/tooltip";
+import { Button } from "@ohmyagentteam/ui/components/ui/button";
 import { StatusHeading } from "./status-heading";
 import { HiddenColumnsPanel, HiddenColumnRow } from "./hidden-columns-panel";
 import { InfiniteScrollSentinel } from "./infinite-scroll-sentinel";

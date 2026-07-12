@@ -1,11 +1,14 @@
-import type { Issue, IssueMetadata, IssueStatus, IssuePriority, IssueAssigneeType } from "./issue";
+import type { Issue, IssueMetadata, IssueStatus, IssuePriority, IssueAssigneeType, IssueType } from "./issue";
 import type { MemberRole } from "./workspace";
 import type { Project } from "./project";
 
 // Issue API
 export interface CreateIssueRequest {
   title: string;
+  issue_type?: Exclude<IssueType, "epic">;
+  epic_id?: string;
   description?: string;
+  acceptance_criteria?: string;
   status?: IssueStatus;
   priority?: IssuePriority;
   assignee_type?: IssueAssigneeType;
@@ -21,7 +24,10 @@ export interface CreateIssueRequest {
 
 export interface UpdateIssueRequest {
   title?: string;
+  issue_type?: IssueType;
+  epic_id?: string | null;
   description?: string;
+  acceptance_criteria?: string | null;
   status?: IssueStatus;
   priority?: IssuePriority;
   assignee_type?: IssueAssigneeType | null;
@@ -78,6 +84,10 @@ export interface ListIssuesParams {
   offset?: number;
   workspace_id?: string;
   status?: IssueStatus;
+  issue_type?: IssueType;
+  issue_types?: IssueType[];
+  epic_id?: string;
+  parent_issue_id?: string;
   priority?: IssuePriority;
   assignee_id?: string;
   assignee_ids?: string[];

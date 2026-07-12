@@ -6,6 +6,8 @@ export const projectKeys = {
   list: (wsId: string) => [...projectKeys.all(wsId), "list"] as const,
   detail: (wsId: string, id: string) =>
     [...projectKeys.all(wsId), "detail", id] as const,
+  activity: (wsId: string, id: string) =>
+    [...projectKeys.all(wsId), "activity", id] as const,
 };
 
 export function projectListOptions(wsId: string) {
@@ -13,6 +15,13 @@ export function projectListOptions(wsId: string) {
     queryKey: projectKeys.list(wsId),
     queryFn: () => api.listProjects(),
     select: (data) => data.projects,
+  });
+}
+
+export function projectActivityOptions(wsId: string, id: string) {
+  return queryOptions({
+    queryKey: projectKeys.activity(wsId, id),
+    queryFn: () => api.listProjectActivity(id, { limit: 100 }),
   });
 }
 

@@ -11,6 +11,43 @@
     "list_load_failed_default": "获取智能体列表时出错。",
     "try_again": "重试"
   },
+  "network": {
+    "page_title": "协作网络",
+    "view_network": "网络",
+    "view_directory": "目录",
+    "metrics": {
+      "people": "真人成员",
+      "agents": "智能体",
+      "squads": "协作小队",
+      "active_work": "活跃工作",
+      "capacity": "在线能力",
+      "shared_agents": "全员可调用",
+      "online_hint": "{{count}} 在线",
+      "working_hint": "{{count}} 工作中"
+    },
+    "people_title": "成员与其智能体",
+    "people_subtitle": "统一查看归属、可用性和整个工作区的任务委派。",
+    "my_team_title": "我的团队",
+    "my_team_description": "查看我拥有的 Agent、小队，以及通过它们委派的工作。",
+    "my_team_empty": "当前工作区中找不到你的成员资料。",
+    "other_teams_title": "其他人的团队",
+    "other_teams_description": "每位真人都清晰拥有自己接入网络的 Agent 与小队。",
+    "other_teams_empty": "当前工作区还没有其他真人成员。",
+    "workload_summary": "{{direct}} 个人任务 · {{delegated}} 委派任务",
+    "no_owned_agents": "尚未拥有智能体",
+    "no_owned_team_assets": "还没有 Agent 或小队",
+    "unowned_agents": "未归属智能体",
+    "squads_title": "协作小队",
+    "no_leader": "暂无队长",
+    "member_count_other": "{{count}} 位成员",
+    "no_squads": "暂无活跃小队",
+    "capacity_title": "执行能力",
+    "agent_count_other": "{{count}} 个智能体",
+    "no_capacity": "尚未连接运行时",
+    "shared": "共享",
+    "squad_asset": "协作小队",
+    "active_issue_count_other": "{{count}} 个活跃工作项"
+  },
   "scope": {
     "mine": "我的",
     "all": "全部",
@@ -40,7 +77,7 @@
   },
   "empty": {
     "title": "还没有智能体",
-    "description": "创建一个智能体，像分配给同事那样把 issue 交给它。本地智能体在你的机器上运行，云智能体在 Multica 运行时上运行。"
+    "description": "创建一个智能体，像分配给同事那样把 issue 交给它。本地智能体在你的机器上运行，云智能体在 OhMyAgentTeam 运行时上运行。"
   },
   "no_matches": {
     "title": "无匹配项",
@@ -250,6 +287,9 @@
     "runtime_search_placeholder": "搜索机器…",
     "runtime_no_results": "没有匹配的机器",
     "runtime_group_online": "{{online}}/{{total}} 在线",
+    "no_runtime_title": "请先接入执行能力",
+    "no_runtime_description": "智能体需要绑定在线 CLI 运行时，才能真正接收并执行工作。",
+    "open_execution_tools": "前往执行能力",
     "duplicate_copy_suffix": "（副本）",
     "create": "创建",
     "creating": "创建中...",

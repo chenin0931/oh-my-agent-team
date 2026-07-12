@@ -20,14 +20,14 @@ import {
   X as XIcon,
   Zap,
 } from "lucide-react";
-import { cn } from "@multica/ui/lib/utils";
-import { copyText } from "@multica/ui/lib/clipboard";
+import { cn } from "@ohmyagentteam/ui/lib/utils";
+import { copyText } from "@ohmyagentteam/ui/lib/clipboard";
 import {
   Dialog,
   DialogContent,
   DialogTitle,
-} from "@multica/ui/components/ui/dialog";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@multica/ui/components/ui/tooltip";
+} from "@ohmyagentteam/ui/components/ui/dialog";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@ohmyagentteam/ui/components/ui/tooltip";
 import {
   Popover,
   PopoverTrigger,
@@ -35,35 +35,35 @@ import {
   PopoverHeader,
   PopoverTitle,
   PopoverDescription,
-} from "@multica/ui/components/ui/popover";
-import { Button } from "@multica/ui/components/ui/button";
+} from "@ohmyagentteam/ui/components/ui/popover";
+import { Button } from "@ohmyagentteam/ui/components/ui/button";
 import {
   Select,
   SelectTrigger,
   SelectValue,
   SelectContent,
   SelectItem,
-} from "@multica/ui/components/ui/select";
-import { TimeInput } from "@multica/ui/components/ui/time-input";
+} from "@ohmyagentteam/ui/components/ui/select";
+import { TimeInput } from "@ohmyagentteam/ui/components/ui/time-input";
 import { TimezonePicker } from "./pickers/timezone-picker";
-import { useCurrentWorkspace } from "@multica/core/paths";
-import { useWorkspaceId } from "@multica/core/hooks";
-import { agentListOptions, squadListOptions } from "@multica/core/workspace/queries";
-import { projectListOptions } from "@multica/core/projects/queries";
+import { useCurrentWorkspace } from "@ohmyagentteam/core/paths";
+import { useWorkspaceId } from "@ohmyagentteam/core/hooks";
+import { agentListOptions, squadListOptions } from "@ohmyagentteam/core/workspace/queries";
+import { projectListOptions } from "@ohmyagentteam/core/projects/queries";
 import {
   useCreateAutopilot,
   useCreateAutopilotTrigger,
   useUpdateAutopilot,
   useUpdateAutopilotTrigger,
-} from "@multica/core/autopilots/mutations";
-import { buildAutopilotWebhookUrl } from "@multica/core/autopilots";
-import { api } from "@multica/core/api";
+} from "@ohmyagentteam/core/autopilots/mutations";
+import { buildAutopilotWebhookUrl } from "@ohmyagentteam/core/autopilots";
+import { api } from "@ohmyagentteam/core/api";
 import type {
   AutopilotAssigneeType,
   AutopilotCollaborator,
   AutopilotExecutionMode,
   AutopilotTrigger,
-} from "@multica/core/types";
+} from "@ohmyagentteam/core/types";
 import { TitleEditor, ContentEditor } from "../../editor";
 import { ActorAvatar } from "../../common/actor-avatar";
 import { ProjectPicker } from "../../projects/components/project-picker";
@@ -82,7 +82,7 @@ import {
 import { WebhookEventFilterSection } from "./webhook-event-filter-section";
 import { useT } from "../../i18n";
 import { formatSchedulePartialFailureToast } from "./autopilot-dialog-toast";
-import type { WebhookEventFilter } from "@multica/core/types";
+import type { WebhookEventFilter } from "@ohmyagentteam/core/types";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -646,14 +646,14 @@ export function AutopilotDialog(props: AutopilotDialogProps) {
                 autoFocus={isCreate}
                 defaultValue={initial.title ?? ""}
                 placeholder={t(($) => $.dialog.title_placeholder)}
-                className="text-2xl font-semibold tracking-tight"
+                className="text-2xl font-semibold"
                 onChange={setTitle}
                 onSubmit={handleSubmit}
               />
             </div>
 
             <div className="px-6 pb-2 shrink-0 flex items-baseline gap-2">
-              <span className="text-[11px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase">
                 {t(($) => $.dialog.runbook_label)}
               </span>
               <span className="text-xs text-muted-foreground/80">
@@ -760,7 +760,7 @@ export function AutopilotDialog(props: AutopilotDialogProps) {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="text-[11px] font-semibold tracking-[0.08em] text-muted-foreground uppercase mb-2">
+    <div className="text-[11px] font-semibold text-muted-foreground uppercase mb-2">
       {children}
     </div>
   );
@@ -1210,7 +1210,7 @@ function WebhookCreatedPanel({
             <span className="inline-flex size-9 items-center justify-center rounded-full bg-primary/15 text-primary">
               <Webhook className="size-4" />
             </span>
-            <h2 className="text-lg font-semibold tracking-tight">
+            <h2 className="text-lg font-semibold">
               {t(($) => $.dialog.webhook_created_title)}
             </h2>
           </div>
@@ -1219,7 +1219,7 @@ function WebhookCreatedPanel({
           </p>
 
           <div>
-            <div className="text-[11px] font-semibold tracking-[0.08em] text-muted-foreground uppercase mb-2">
+            <div className="text-[11px] font-semibold text-muted-foreground uppercase mb-2">
               {t(($) => $.trigger_row.webhook_url_label)}
             </div>
             <div className="flex items-stretch gap-1.5">

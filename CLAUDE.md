@@ -13,7 +13,7 @@ Read it before editing translations in `packages/views/locales/`, naming routes/
 
 ## Project Shape
 
-Multica is an AI-native task management platform for small teams, with agents as first-class assignees that can own issues, comment, and change status.
+OhMyAgentTeam is an AI-native task management platform for small teams, with agents as first-class assignees that can own issues, comment, and change status.
 
 - `server/`: Go backend, Chi router, sqlc, gorilla/websocket.
 - `apps/web/`: Next.js App Router.
@@ -49,7 +49,7 @@ Keep server state and client state separate.
 These are hard constraints:
 
 - `packages/core/`: no `react-dom`, `localStorage` (use `StorageAdapter`), `process.env`, or UI libraries.
-- `packages/ui/`: no `@multica/core` imports and no business logic.
+- `packages/ui/`: no `@ohmyagentteam/core` imports and no business logic.
 - `packages/views/`: no `next/*`, no `react-router-dom`, no stores. Use `NavigationAdapter`, `useNavigation()`, and `<AppLink>`.
 - `apps/web/platform/`: only place for Next.js navigation/platform APIs.
 - `apps/desktop/src/renderer/src/platform/`: only place for `react-router-dom` navigation wiring.
@@ -67,7 +67,7 @@ If the same logic exists in both web and desktop, extract it unless it depends o
 3. Shared UI or business views belong in `packages/views/`.
 4. Shared primitives belong in `packages/ui/`.
 
-Mobile is independent. It may import types and pure functions from `@multica/core`, with `import type` for types, but owns its UI, state, hooks, providers, i18n, React version, build pipeline, and release cadence.
+Mobile is independent. It may import types and pure functions from `@ohmyagentteam/core`, with `import type` for types, but owns its UI, state, hooks, providers, i18n, React version, build pipeline, and release cadence.
 
 ## Commands
 
@@ -155,11 +155,11 @@ Desktop routing has three categories:
 More desktop constraints:
 
 - New pre-workspace desktop flows register a `WindowOverlay` type in `stores/window-overlay-store.ts`; do not add them to `routes.tsx`.
-- `setCurrentWorkspace(slug, uuid)` from `@multica/core/platform` mirrors the active route for headers, storage namespaces, and reconnects; workspace route layouts own setting it.
+- `setCurrentWorkspace(slug, uuid)` from `@ohmyagentteam/core/platform` mirrors the active route for headers, storage namespaces, and reconnects; workspace route layouts own setting it.
 - Code that leaves workspace context must call `setCurrentWorkspace(null, null)` explicitly.
 - Workspace delete must await the server before navigation/cleanup. Workspace leave currently clears/navigates before mutation only to avoid the `member:removed` realtime race; treat that as known debt, not a reusable pattern.
 - Cross-workspace navigation must go through the navigation adapter so it can call `switchWorkspace(slug, targetPath)`.
-- Full-window desktop views outside the dashboard shell must mount `<DragStrip />` from `@multica/views/platform` as the first flex child. Interactive controls in the top 48px need `WebkitAppRegion: "no-drag"`.
+- Full-window desktop views outside the dashboard shell must mount `<DragStrip />` from `@ohmyagentteam/views/platform` as the first flex child. Interactive controls in the top 48px need `WebkitAppRegion: "no-drag"`.
 
 ## Mobile Rules
 
@@ -167,7 +167,7 @@ Read `apps/mobile/CLAUDE.md` before touching `apps/mobile/`. It contains the man
 
 Root-level reminders:
 
-- Mobile shares only `@multica/core` types and pure functions.
+- Mobile shares only `@ohmyagentteam/core` types and pure functions.
 - Mobile must match web/desktop product semantics: counts, permissions, enums/transitions, and data identity.
 - Mobile may differ in UI/interaction when the phone context requires it.
 
@@ -195,8 +195,8 @@ Rules:
 
 - Never test shared component behavior in an app test file.
 - `packages/views/` tests must not mock `next/*` or `react-router-dom`.
-- Mock `@multica/core` stores with the Zustand callable-store shape (`selectorFn` plus `getState`).
-- Mock `@multica/core/api` for API calls.
+- Mock `@ohmyagentteam/core` stores with the Zustand callable-store shape (`selectorFn` plus `getState`).
+- Mock `@ohmyagentteam/core/api` for API calls.
 - E2E tests should use `TestApiClient` for setup/teardown.
 - Prefer writing the failing test in the correct package before implementation when the change is behavioral.
 

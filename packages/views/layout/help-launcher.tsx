@@ -1,21 +1,30 @@
 "use client";
 
-import { ArrowUpRight, BookOpen, CircleHelp, History, MessageCircle } from "lucide-react";
+import {
+  ArrowUpRight,
+  BookOpen,
+  CircleHelp,
+  History,
+  MessageCircle,
+  Presentation,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@multica/ui/components/ui/dropdown-menu";
-import { useModalStore } from "@multica/core/modals";
+} from "@ohmyagentteam/ui/components/ui/dropdown-menu";
+import { useModalStore } from "@ohmyagentteam/core/modals";
+import { useProductTourStore } from "@ohmyagentteam/core/workspace/product-tour-store";
 import { DISCORD_URL, DiscordIcon } from "./discord";
 import { useT } from "../i18n";
 
-const DOCS_URL = "https://multica.ai/docs";
-const CHANGELOG_URL = "https://multica.ai/changelog";
+const DOCS_URL = "https://ohmyagentteam.com/docs";
+const CHANGELOG_URL = "https://ohmyagentteam.com/changelog";
 
 export function HelpLauncher() {
   const { t } = useT("layout");
+  const openProductTour = useProductTourStore((state) => state.open);
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -31,6 +40,10 @@ export function HelpLauncher() {
         sideOffset={8}
         className="min-w-40"
       >
+        <DropdownMenuItem onClick={openProductTour}>
+          <Presentation className="h-3.5 w-3.5" />
+          {t(($) => $.help.product_tour)}
+        </DropdownMenuItem>
         <DropdownMenuItem
           render={
             <a href={DOCS_URL} target="_blank" rel="noopener noreferrer" />

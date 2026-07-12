@@ -1,6 +1,6 @@
 /**
  * Mobile-local zod schemas + fallbacks for endpoints whose responses aren't
- * yet schematised in @multica/core/api/schemas. Lenient by design — see the
+ * yet schematised in @ohmyagentteam/core/api/schemas. Lenient by design — see the
  * leniency rationale at the top of the core file (string enums tolerated,
  * loose() so unknown server fields pass through, defaults so a missing
  * array doesn't take the page down).
@@ -37,8 +37,8 @@ import type {
   TaskMessagePayload,
   User,
   Workspace,
-} from "@multica/core/types";
-import { IssueSchema } from "@multica/core/api/schemas";
+} from "@ohmyagentteam/core/types";
+import { IssueSchema } from "@ohmyagentteam/core/api/schemas";
 
 /** Upload response. Only fields mobile actually consumes — `url` to put
  *  into the markdown link, `filename` for the `[📎 name](url)` form, `id`
@@ -424,7 +424,7 @@ export const EMPTY_ACTIVE_TASKS_RESPONSE: ActiveTasksResponse = { tasks: [] };
 // app on the workspace picker with no entries. With parseWithFallback every
 // drift downgrades to "stale defaults render", and the user can keep working.
 //
-// All five are `.loose()` so additive backend fields (`onboarded_at` style
+// All five are `.loose()` so additive backend fields
 // flags) pass through without breaking parsing. Required identity fields
 // (id, slug, etc.) stay required — a response that genuinely lacks them is
 // unusable and parseWithFallback should fall back to the empty sentinel.
@@ -434,9 +434,6 @@ export const UserSchema: z.ZodType<User> = z.object({
   name: z.string().default(""),
   email: z.string().default(""),
   avatar_url: z.string().nullable().default(null),
-  onboarded_at: z.string().nullable().default(null),
-  onboarding_questionnaire: z.record(z.string(), z.unknown()).default({}),
-  starter_content_state: z.string().nullable().default(null),
   language: z.string().nullable().default(null),
   profile_description: z.string().default(""),
   timezone: z.string().nullable().default(null),
@@ -452,9 +449,6 @@ export const EMPTY_USER: User = {
   name: "",
   email: "",
   avatar_url: null,
-  onboarded_at: null,
-  onboarding_questionnaire: {},
-  starter_content_state: null,
   language: null,
   profile_description: "",
   timezone: null,
@@ -486,7 +480,7 @@ export const PinnedItemSchema: z.ZodType<PinnedItem> = z.object({
   id: z.string(),
   workspace_id: z.string().default(""),
   user_id: z.string().default(""),
-  item_type: z.enum(["issue", "project"]).catch("issue"),
+  item_type: z.enum(["issue", "epic", "project"]).catch("issue"),
   item_id: z.string(),
   position: z.number().default(0),
   created_at: z.string().default(""),
@@ -519,6 +513,8 @@ const InboxItemSchema: z.ZodType<InboxItem> = z.object({
     .enum(["action_required", "attention", "info"])
     .catch("info"),
   issue_id: z.string().nullable().default(null),
+  target_type: z.enum(["issue", "epic"]).nullable().optional().catch(null),
+  target_id: z.string().nullable().optional().catch(null),
   title: z.string().default(""),
   body: z.string().nullable().default(null),
   issue_status: z.string().nullable().default(null) as unknown as z.ZodType<
@@ -605,7 +601,7 @@ export const EMPTY_AGENT_LIST: Agent[] = [];
 
 // Runtime device — the daemon (local or cloud) an agent binds to. Mobile reads
 // it for the presence dot: `status` + `last_seen_at` drive the three-state
-// availability derivation in @multica/core/agents/derive-presence. All other
+// availability derivation in @ohmyagentteam/core/agents/derive-presence. All other
 // fields default safely so a backend that adds optional new metadata
 // (timezone, visibility flags, etc.) doesn't break the parse.
 export const RuntimeSchema: z.ZodType<RuntimeDevice> = z.object({
@@ -650,6 +646,7 @@ export const SquadSchema: z.ZodType<Squad> = z.object({
   avatar_url: z.string().nullable().default(null),
   leader_id: z.string().default(""),
   creator_id: z.string().default(""),
+  owner_id: z.string().default(""),
   created_at: z.string().default(""),
   updated_at: z.string().default(""),
   archived_at: z.string().nullable().default(null),
@@ -663,7 +660,7 @@ export const EMPTY_SQUAD_LIST: Squad[] = [];
 // for parsing; this sentinel lets parseWithFallback yield a structurally-
 // valid Issue when the response drifts. `id: ""` flags drift downstream — the
 // detail screen treats it as "issue not found" and shows the empty state.
-export const EMPTY_ISSUE_FALLBACK: import("@multica/core/types").Issue = {
+export const EMPTY_ISSUE_FALLBACK: import("@ohmyagentteam/core/types").Issue = {
   id: "",
   workspace_id: "",
   number: 0,

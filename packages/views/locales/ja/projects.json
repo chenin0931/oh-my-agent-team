@@ -16,7 +16,14 @@
     "delete": "削除",
     "no_matches": "該当するプロジェクトはありません",
     "selected_other": "{{count}} 件選択中",
-    "clear_selection": "選択を解除"
+    "clear_selection": "選択を解除",
+    "empty_description": "プロジェクトは共通の成果目標です。関連する作業項目、人、Agent を一つにまとめます。",
+    "empty_project": "プロジェクト",
+    "empty_project_hint": "目標と共有コンテキスト",
+    "empty_work_items": "作業項目",
+    "empty_work_items_hint": "目標を進める具体的な作業",
+    "empty_unassigned_hint": "作業項目はプロジェクト未割り当てのまま、後から整理することもできます。",
+    "view_work_items": "すべての作業項目を見る"
   },
   "table": {
     "name": "名前",
@@ -25,7 +32,8 @@
     "progress": "進捗",
     "lead": "リード",
     "created": "作成日",
-    "issues": "Issue 数"
+    "issues": "作業項目",
+    "work_items_summary": "{{count}} 件の作業項目 · {{done}} 件完了"
   },
   "status": {
     "planned": "計画中",
@@ -69,13 +77,72 @@
     "section_description": "説明",
     "description_placeholder": "説明を追加...",
     "description_hint": "このプロジェクトのすべてのタスクで、コンテキストとしてエージェントに共有されます。",
-    "empty_issues_title": "リンクされたイシューはありません",
-    "empty_issues_hint": "新しいイシューを作成するか、既存のイシューをこのプロジェクトに割り当ててください。",
-    "empty_issues_new_button": "新規イシュー",
-    "no_issues_yet": "イシューはまだありません",
+    "empty_issues_title": "このプロジェクトには作業項目がありません",
+    "empty_issues_hint": "作業項目を作成するか、既存の作業項目をこのプロジェクトに割り当ててください。",
+    "empty_issues_new_button": "新しい作業項目",
+    "no_issues_yet": "このプロジェクトには作業項目がありません",
     "toast_link_copied": "リンクをコピーしました",
     "toast_project_deleted": "プロジェクトを削除しました",
     "toast_move_issue_failed": "イシューを移動できませんでした"
+  },
+  "workspace": {
+    "tabs": {
+      "overview": "概要",
+      "backlog": "バックログ",
+      "board": "ボード",
+      "roadmap": "ロードマップ",
+      "activity": "アクティビティ"
+    },
+    "overview": {
+      "progress": "進捗",
+      "description": "説明",
+      "no_description": "プロジェクトの説明はまだありません。"
+    },
+    "backlog": {
+      "title": "プロジェクトバックログ",
+      "summary": "Epic {{epics}} 件 · Issue {{issues}} 件 · サブタスク {{subtasks}} 件",
+      "epic": "Epic",
+      "issue": "Issue",
+      "add_issue": "Issue を追加",
+      "add_subtask": "サブタスクを追加",
+      "ungrouped": "Epic に属さない Issue",
+      "empty": "バックログ項目はまだありません。"
+    },
+    "activity": {
+      "title": "最近のプロジェクトアクティビティ",
+      "empty": "プロジェクトアクティビティはまだありません。",
+      "actions": {
+        "created": "作業項目を作成しました",
+        "status_changed": "ステータスを変更しました",
+        "priority_changed": "優先度を変更しました",
+        "assignee_changed": "担当者を変更しました",
+        "start_date_changed": "開始日を変更しました",
+        "due_date_changed": "期限を変更しました",
+        "title_changed": "作業項目の名前を変更しました",
+        "description_updated": "説明を更新しました",
+        "squad_leader_evaluated": "Squad リーダーが作業を評価しました",
+        "comment_created": "コメントを追加しました",
+        "task_queued": "Agent タスクをキューに追加しました",
+        "task_dispatched": "Agent タスクを割り当てました",
+        "task_running": "Agent が作業中です",
+        "task_waiting_local_directory": "ローカルディレクトリを待機中です",
+        "task_deferred": "Agent タスクを延期しました",
+        "task_completed": "Agent タスクが完了しました",
+        "task_failed": "Agent タスクが失敗しました",
+        "task_cancelled": "Agent タスクをキャンセルしました",
+        "updated": "作業項目を更新しました"
+      }
+    },
+    "roadmap": {
+      "title": "Epic ロードマップ",
+      "summary": "Epic {{epics}} 件 · Issue {{done}}/{{total}} 件完了",
+      "epic": "Epic",
+      "timeline": "タイムラインと進捗",
+      "start_not_set": "開始日未設定",
+      "due_not_set": "期限未設定",
+      "done": "{{done}}/{{total}} 完了",
+      "empty": "Epic を作成するとロードマップが始まります。"
+    }
   },
   "resources": {
     "section_header": "リソース",
@@ -121,12 +188,70 @@
     "cancel": "キャンセル"
   },
   "picker": {
+    "loading": "プロジェクトを読み込み中…",
     "no_project": "プロジェクトなし",
     "remove": "プロジェクトから削除",
     "empty": "プロジェクトはまだありません"
   },
   "chip": {
     "fallback_label": "プロジェクト"
+  },
+  "epic": {
+    "title": "Epic",
+    "planning_container": "計画コンテナ",
+    "create": "新規 Epic",
+    "create_title": "Epic を作成",
+    "create_description": "実行可能な作業へ分解する前に成果を定義します。",
+    "title_placeholder": "達成する成果",
+    "description": "目標と範囲",
+    "description_placeholder": "この Epic が達成する成果と範囲を記述します。",
+    "success_criteria": "成功基準",
+    "success_placeholder": "完了を判断できる結果を記述します。",
+    "project": "プロジェクト",
+    "owner": "計画責任者",
+    "unassigned": "未割り当て",
+    "lifecycle": "ライフサイクル",
+    "health": "健全性",
+    "health_none": "未評価",
+    "overview": "概要",
+    "work_items": "作業項目",
+    "updates": "更新",
+    "progress": "進捗",
+    "completion": "{{total}} 件中 {{done}} 件完了",
+    "blocked": "{{count}} 件ブロック",
+    "status_distribution": "ステータス分布",
+    "no_description": "目標と範囲はまだありません。",
+    "no_success": "成功基準はまだありません。",
+    "no_work_items": "この Epic に作業項目はありません。",
+    "add_issue": "バックログ Issue を作成",
+    "attach_existing": "既存 Issue を追加",
+    "detach": "Epic から外す",
+    "start_date": "開始日",
+    "target_date": "目標日",
+    "priority": "重要度",
+    "advisors": "計画アドバイザー",
+    "choose_agent": "Agent を選択",
+    "advisor_prompt": "Agent に何を分析させますか？",
+    "analyze": "Agent に分析を依頼",
+    "advisor_queued": "Agent の分析を予約しました",
+    "subscribers": "購読者",
+    "subscribe": "購読",
+    "unsubscribe": "購読解除",
+    "labels": "ラベル",
+    "attachments": "添付ファイル",
+    "delete": "Epic を削除",
+    "delete_confirm": "この Epic を削除しますか？作業項目はプロジェクトに残ります。",
+    "created": "Epic を作成しました",
+    "create_failed": "Epic を作成できませんでした",
+    "update_failed": "Epic を更新できませんでした",
+    "load_failed": "Epic を読み込めません",
+    "load_failed_description": "削除されたか、現在サービスに接続できない可能性があります。",
+    "retry": "再試行",
+    "comment_placeholder": "計画更新を共有するか Agent を @メンション...",
+    "send": "更新を投稿",
+    "no_updates": "計画更新はまだありません。",
+    "statuses": {"planned": "計画済み", "in_progress": "進行中", "paused": "一時停止", "completed": "完了", "cancelled": "キャンセル"},
+    "healths": {"on_track": "順調", "at_risk": "リスクあり", "off_track": "遅延"}
   },
   "toolbar": {
     "result_count_title": "該当プロジェクト / すべてのプロジェクト",

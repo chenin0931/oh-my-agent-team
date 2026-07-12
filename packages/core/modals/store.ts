@@ -6,6 +6,7 @@ type ModalType =
   | "create-workspace"
   | "create-issue"
   | "quick-create-issue"
+  | "create-epic"
   | "create-project"
   | "create-squad"
   | "feedback"

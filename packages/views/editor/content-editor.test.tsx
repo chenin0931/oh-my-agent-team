@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { createRef } from "react";
-import type { Attachment } from "@multica/core/types";
-import type { UploadResult } from "@multica/core/hooks/use-file-upload";
+import type { Attachment } from "@ohmyagentteam/core/types";
+import type { UploadResult } from "@ohmyagentteam/core/hooks/use-file-upload";
 
 const mockFocus = vi.hoisted(() => vi.fn());
 const mockSetContent = vi.hoisted(() => vi.fn());
@@ -383,7 +383,7 @@ function makeAttachment(id: string, overrides: Partial<Attachment> = {}): Attach
     filename: `${id}.png`,
     url: `/uploads/${id}.png`,
     download_url: `/api/attachments/${id}/download`,
-    markdown_url: `https://api.multica.test/api/attachments/${id}/download`,
+    markdown_url: `https://api.ohmyagentteam.test/api/attachments/${id}/download`,
     content_type: "image/png",
     size_bytes: 1,
     created_at: "2026-06-10T00:00:00Z",

@@ -24,7 +24,7 @@ func TestBuildQuickCreatePromptRules(t *testing.T) {
 		"verbal routing wrappers about creating the issue",
 		"pure conversational fillers",
 		// cc routing must survive: mention link stays in description so the
-		// auto-subscribe path fires (multica issue create has no --subscriber flag)
+		// auto-subscribe path fires (omat issue create has no --subscriber flag)
 		"CC exception",
 		"auto-subscribes members",
 		// context section is conditional and must not be an apology log
@@ -34,12 +34,15 @@ func TestBuildQuickCreatePromptRules(t *testing.T) {
 		// use custom issue prefixes, so a successful issue creation should
 		// not look failed merely because the identifier does not match one
 		// fixed prefix.
-		"multica issue create --output json",
+		"omat issue create --output json",
 		"JSON response",
 		"identifier",
 		"Do not scrape human output",
 		"do not assume any workspace issue prefix",
 		"Created <identifier-or-id>: <title>",
+		"Created <count> issues",
+		"status**: omit (defaults to `backlog`)",
+		"pass `--status todo`",
 		// hard rules
 		"never invent requirements",
 		"never reduce multi-sentence input",
@@ -51,6 +54,53 @@ func TestBuildQuickCreatePromptRules(t *testing.T) {
 	}
 }
 
+func TestBuildPromptMemberAssigneeAdvisor(t *testing.T) {
+	out := BuildPrompt(Task{
+		IssueID:                  "issue-123",
+		MemberAssigneeAdvisor:    true,
+		QuickCreatePrompt:        "",
+		TriggerCommentID:         "",
+		AutopilotRunID:           "",
+		QuickCreateAttachmentIDs: nil,
+	}, "claude")
+
+	for _, want := range []string{
+		"one-shot advisor",
+		"human member has been assigned issue ID: issue-123",
+		"exactly one advisory comment",
+		"finish with empty output",
+		"Do not change issue status",
+		"create issues or sub-issues",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("advisor prompt missing %q\n--- output ---\n%s", want, out)
+		}
+	}
+	for _, forbidden := range []string{
+		"Start by running `omat issue get issue-123 --output json` to understand your task, then complete it.",
+		"`omat issue status",
+		"`omat issue create",
+	} {
+		if strings.Contains(out, forbidden) {
+			t.Errorf("advisor prompt should not include %q\n--- output ---\n%s", forbidden, out)
+		}
+	}
+}
+
+func TestBuildPromptManualAdvisorIncludesInstruction(t *testing.T) {
+	out := BuildPrompt(Task{
+		IssueID:               "issue-456",
+		MemberAssigneeAdvisor: true,
+		AdvisorInstruction:    "Summarize risks and the next human decision.",
+	}, "claude")
+	if !strings.Contains(out, "Summarize risks and the next human decision.") {
+		t.Fatalf("manual advisor prompt missing instruction:\n%s", out)
+	}
+	if !strings.Contains(out, "Do not change issue status") {
+		t.Fatalf("manual advisor prompt lost comment-only boundary:\n%s", out)
+	}
+}
+
 // TestBuildQuickCreatePromptAssigneeIncludesSquads locks in the MUL-2165
 // fix: the assignee-resolution rules must tell the agent to consult the
 // squad list alongside members and agents. Before this, a quick-create
@@ -59,7 +109,7 @@ func TestBuildQuickCreatePromptRules(t *testing.T) {
 func TestBuildQuickCreatePromptAssigneeIncludesSquads(t *testing.T) {
 	out := buildQuickCreatePrompt(Task{QuickCreatePrompt: "fix the login button color"})
 	mustContain := []string{
-		"multica squad list",
+		"omat squad list",
 		"Squads are first-class assignees",
 		"Treat bare @-routing as an assignee directive",
 		"让 @独立团 review 这个 PR",
@@ -68,6 +118,96 @@ func TestBuildQuickCreatePromptAssigneeIncludesSquads(t *testing.T) {
 	for _, s := range mustContain {
 		if !strings.Contains(out, s) {
 			t.Errorf("buildQuickCreatePrompt assignee block missing %q\n--- output ---\n%s", s, out)
+		}
+	}
+}
+
+func TestBuildQuickCreatePromptSmartAssignsFromAvailableAgents(t *testing.T) {
+	const (
+		frontendID = "11111111-1111-1111-1111-111111111111"
+		backendID  = "22222222-2222-2222-2222-222222222222"
+	)
+	out := buildQuickCreatePrompt(Task{
+		QuickCreatePrompt: "fix the login button color",
+		Agent:             &AgentData{ID: backendID, Name: "Backend Bot"},
+		QuickCreateAvailableAgents: []QuickCreateAvailableAgentData{
+			{
+				ID:          frontendID,
+				Name:        "Frontend Bot",
+				Description: "Owns React UI, visual polish, CSS, and design-system bugs.",
+			},
+			{
+				ID:          backendID,
+				Name:        "Backend Bot",
+				Description: "Owns API, database, auth, and server-side reliability.",
+			},
+		},
+	})
+
+	for _, want := range []string{
+		"Available agents for smart assignment",
+		frontendID,
+		"Frontend Bot",
+		"React UI, visual polish, CSS",
+		"choose the single best-matching agent",
+		"For multiple requested issues, choose independently per issue",
+		"If there is no clear best match, use the picker fallback below",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("buildQuickCreatePrompt smart assignment missing %q\n--- output ---\n%s", want, out)
+		}
+	}
+}
+
+func TestBuildPlanningQuickCreatePromptRules(t *testing.T) {
+	const (
+		plannerID  = "00000000-0000-0000-0000-000000000000"
+		frontendID = "11111111-1111-1111-1111-111111111111"
+		backendID  = "22222222-2222-2222-2222-222222222222"
+	)
+	out := BuildPrompt(Task{
+		QuickCreatePrompt:        "Plan enterprise SSO rollout",
+		QuickCreateMode:          "planning",
+		QuickCreateDefaultStatus: "backlog",
+		Agent:                    &AgentData{ID: plannerID, Name: "Planning Bot"},
+		QuickCreateAvailableAgents: []QuickCreateAvailableAgentData{
+			{ID: frontendID, Name: "Frontend Bot", Description: "Owns React UI and design-system work."},
+			{ID: backendID, Name: "Backend Bot", Description: "Owns APIs, authentication, database, and reliability."},
+		},
+	}, "claude")
+
+	for _, want := range []string{
+		"Planning Quick Create assistant",
+		"This is planning, not execution",
+		"Use the same natural language as the user's request for issue titles and descriptions",
+		"Every `omat issue create` command MUST include `--status backlog`",
+		"Create one Issue per independently ownable work item",
+		"omat epic create",
+		"--type issue",
+		"--type subtask",
+		"--epic-id",
+		"--acceptance-criteria",
+		"Available agents for smart assignment",
+		frontendID,
+		backendID,
+		"Assign to a human member only when the user named that member",
+		"Picker fallback agent",
+		"Original context",
+		"Done signal",
+		"Assignment rationale",
+		"Planned <epic-count> epics, <issue-count> issues, <subtask-count> subtasks",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("planning quick-create prompt missing %q\n--- output ---\n%s", want, out)
+		}
+	}
+	for _, forbidden := range []string{
+		"--type epic",
+		"status**: omit (defaults to `todo`)",
+		"Created <identifier-or-id>: <title>",
+	} {
+		if strings.Contains(out, forbidden) {
+			t.Errorf("planning quick-create prompt should not include %q\n--- output ---\n%s", forbidden, out)
 		}
 	}
 }
@@ -261,7 +401,7 @@ func TestBuildChatPromptAttachmentIDsCanBeBoundToCreatedIssues(t *testing.T) {
 	for _, want := range []string{
 		"Attachments on this message:",
 		"id=019ec09d-6222-722b-bdfa-427b105d80be",
-		"multica attachment download <id>",
+		"omat attachment download <id>",
 		"--attachment-id <id>",
 	} {
 		if !strings.Contains(out, want) {
@@ -277,7 +417,7 @@ func TestBuildChatPromptChannelAwareness(t *testing.T) {
 			ChatChannelType: "slack",
 			ChatMessage:     "你刚刚和 xxx 聊了什么",
 		})
-		for _, want := range []string{"Slack", "NOT in Multica", "multica chat history", "multica chat thread", "Do NOT narrate"} {
+		for _, want := range []string{"Slack", "NOT in OhMyAgentTeam", "omat chat history", "omat chat thread", "Do NOT narrate"} {
 			if !strings.Contains(out, want) {
 				t.Fatalf("slack-backed prompt missing %q\n--- output ---\n%s", want, out)
 			}
@@ -286,14 +426,14 @@ func TestBuildChatPromptChannelAwareness(t *testing.T) {
 
 	t.Run("top-level mention starts with history", func(t *testing.T) {
 		out := buildChatPrompt(Task{ChatSessionID: "s", ChatChannelType: "slack", ChatInThread: false, ChatMessage: "hi"})
-		if !strings.Contains(out, "top level: start with `multica chat history`") {
+		if !strings.Contains(out, "top level: start with `omat chat history`") {
 			t.Fatalf("expected top-level guidance, got:\n%s", out)
 		}
 	})
 
 	t.Run("in-thread mention starts with thread", func(t *testing.T) {
 		out := buildChatPrompt(Task{ChatSessionID: "s", ChatChannelType: "slack", ChatInThread: true, ChatMessage: "hi"})
-		if !strings.Contains(out, "inside a thread: start with `multica chat thread`") {
+		if !strings.Contains(out, "inside a thread: start with `omat chat thread`") {
 			t.Fatalf("expected in-thread guidance, got:\n%s", out)
 		}
 	})
@@ -303,7 +443,7 @@ func TestBuildChatPromptChannelAwareness(t *testing.T) {
 			ChatSessionID: "sess-1",
 			ChatMessage:   "hi",
 		})
-		if strings.Contains(out, "multica chat history") {
+		if strings.Contains(out, "omat chat history") {
 			t.Fatalf("web-only chat prompt should not mention channel history, got:\n%s", out)
 		}
 	})
@@ -421,7 +561,7 @@ func TestBuildChatPromptSlashSkills(t *testing.T) {
 func TestBuildPromptDefaultMentionsRecent(t *testing.T) {
 	out := BuildPrompt(Task{IssueID: "issue-default-1"}, "claude")
 	for _, s := range []string{
-		"multica issue comment list issue-default-1 --recent 10 --output json",
+		"omat issue comment list issue-default-1 --recent 10 --output json",
 		"Next thread cursor:",
 		"--since",
 	} {
@@ -440,7 +580,7 @@ func TestBuildPromptDefaultMentionsRecent(t *testing.T) {
 	if strings.Contains(out, "If you need comment history") {
 		t.Errorf("default BuildPrompt still carries the legacy 'If you need' soft phrasing that conflicts with the mandatory workflow\n--- output ---\n%s", out)
 	}
-	if strings.Contains(out, "multica issue comment list issue-default-1 --output json") {
+	if strings.Contains(out, "omat issue comment list issue-default-1 --output json") {
 		t.Errorf("default BuildPrompt still presents the unbounded flat read as the assignment catch-up command\n--- output ---\n%s", out)
 	}
 }
@@ -494,14 +634,14 @@ func TestBuildPromptNewCommentsHint(t *testing.T) {
 		t.Errorf("hint must discourage blindly reading every new comment, got:\n%s", out)
 	}
 	// Parent thread first: the --thread <trigger> read is the prioritized action.
-	if !strings.Contains(out, "multica issue comment list "+issueID+" --thread thread-root-1 --since "+since+" --output json") {
+	if !strings.Contains(out, "omat issue comment list "+issueID+" --thread thread-root-1 --since "+since+" --output json") {
 		t.Errorf("hint must point at the triggering (parent) thread --since read first, got:\n%s", out)
 	}
 	if !strings.Contains(out, "--tail 30") {
 		t.Errorf("hint must offer the full-thread (--tail 30) option, got:\n%s", out)
 	}
 	// Issue-wide catch-up is demoted to an only-if-needed fallback.
-	if !strings.Contains(out, "multica issue comment list "+issueID+" --since "+since+" --output json") {
+	if !strings.Contains(out, "omat issue comment list "+issueID+" --since "+since+" --output json") {
 		t.Errorf("hint must keep the issue-wide --since catch-up as a fallback, got:\n%s", out)
 	}
 	// The old cursor-heavy paragraph must be gone.
@@ -529,10 +669,10 @@ func TestBuildPromptColdStartThreadRead(t *testing.T) {
 	if strings.Contains(out, "new comment(s) since your last run") {
 		t.Errorf("no since-delta hint should render on cold start, got:\n%s", out)
 	}
-	if !strings.Contains(out, "multica issue comment list "+issueID+" --thread thread-root-1 --tail 30 --output json") {
+	if !strings.Contains(out, "omat issue comment list "+issueID+" --thread thread-root-1 --tail 30 --output json") {
 		t.Errorf("cold start must point at the triggering thread read, got:\n%s", out)
 	}
-	if !strings.Contains(out, "multica issue comment list "+issueID+" --recent 10 --output json") {
+	if !strings.Contains(out, "omat issue comment list "+issueID+" --recent 10 --output json") {
 		t.Errorf("cold start cross-thread fallback should use recent 10, got:\n%s", out)
 	}
 	if strings.Contains(out, "--recent 20") {
@@ -564,7 +704,7 @@ func TestBuildPromptResumedNoDeltaDoesNotForceThreadRead(t *testing.T) {
 		"active thread anchor `thread-root-1` and triggering comment ID `trigger-1`",
 		"If your reply depends on thread context",
 		"do not rely only on resumed session memory",
-		"multica issue comment list " + issueID + " --thread thread-root-1 --tail 30 --output json",
+		"omat issue comment list " + issueID + " --thread thread-root-1 --tail 30 --output json",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("resumed/no-delta prompt missing %q\n--- output ---\n%s", want, out)

@@ -2,12 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { api } from "@multica/core/api";
-import { issueKeys } from "@multica/core/issues/queries";
-import type { CommentTriggerPreviewAgent } from "@multica/core/types";
+import { api } from "@ohmyagentteam/core/api";
+import { issueKeys } from "@ohmyagentteam/core/issues/queries";
+import type { CommentTriggerPreviewAgent } from "@ohmyagentteam/core/types";
 
 const COMMENT_TRIGGER_PREVIEW_DEBOUNCE_MS = 300;
-const MENTION_RE = /\[@?(.+?)\]\(mention:\/\/(member|agent|squad|issue|all)\/([0-9a-fA-F-]+|all)\)/g;
+const MENTION_RE = /\[@?(.+?)\]\(mention:\/\/(member|agent|squad|epic|issue|all)\/([0-9a-fA-F-]+|all)\)/g;
 const NOTE_COMMAND_RE = /^\/note(?:$|\s)/i;
 
 export interface UseCommentTriggerPreviewResult {
@@ -26,7 +26,7 @@ export function commentTriggerPreviewSignature(content: string): string {
   for (const match of content.matchAll(MENTION_RE)) {
     const type = match[2];
     const id = match[3];
-    if (!type || !id || type === "issue") continue;
+    if (!type || !id || type === "issue" || type === "epic") continue;
     const token = `${type}:${id}`;
     if (seen.has(token)) continue;
     seen.add(token);

@@ -11,6 +11,7 @@ import {
   EMPTY_USER,
   InboxUnreadSummarySchema,
   IssueTriggerPreviewSchema,
+  EpicSchema,
   ListIssuesResponseSchema,
   RuntimeHourlyActivityListSchema,
   RuntimeUsageByAgentListSchema,
@@ -92,6 +93,36 @@ describe("IssueSchema (via ListIssuesResponseSchema)", () => {
     const payload = { issues: [issueWithoutStage], total: 1 };
     const parsed = ListIssuesResponseSchema.parse(payload);
     expect(parsed.issues[0]?.stage).toBeNull();
+  });
+});
+
+describe("EpicSchema", () => {
+  it("parses the planning-only Epic DTO and defaults rollups", () => {
+    const parsed = EpicSchema.parse({
+      id: "epic-1",
+      workspace_id: "ws-1",
+      project_id: "project-1",
+      number: 2,
+      identifier: "MUL-2",
+      title: "Launch outcome",
+      description: null,
+      success_criteria: null,
+      lifecycle: "planned",
+      health: null,
+      priority: "high",
+      owner_type: null,
+      owner_id: null,
+      start_date: null,
+      target_date: null,
+      creator_type: "member",
+      creator_id: "user-1",
+      created_at: "2026-07-12T00:00:00Z",
+      updated_at: "2026-07-12T00:00:00Z",
+    });
+    expect(parsed.total_issues).toBe(0);
+    expect(parsed.status_distribution).toEqual({});
+    expect(parsed).not.toHaveProperty("assignee_type");
+    expect(parsed).not.toHaveProperty("status");
   });
 });
 
@@ -332,6 +363,7 @@ describe("SquadListSchema member preview drift", () => {
     const parsed = SquadListSchema.parse([baseSquad]);
     expect(parsed[0]?.member_count).toBe(0);
     expect(parsed[0]?.member_preview).toEqual([]);
+    expect(parsed[0]?.owner_id).toBe("user-1");
   });
 
   it("defaults preview fields on a single squad response", () => {

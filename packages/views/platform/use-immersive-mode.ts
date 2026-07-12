@@ -18,7 +18,7 @@ function getDesktopAPI(): ImmersiveCapableAPI | undefined {
  * is a no-op.
  *
  * `enabled=false` skips the IPC call (and cleanup) entirely, so a caller that
- * conditionally wants traffic lights visible — like onboarding, which has no
+ * conditionally wants traffic lights visible, such as a full-window setup
  * UI in the top-left and benefits from native window chrome — can opt out
  * without unmounting the hook.
  */

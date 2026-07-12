@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/multica-ai/multica/server/internal/realtime"
-	"github.com/multica-ai/multica/server/pkg/protocol"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/realtime"
+	"github.com/chenin0931/oh-my-agent-team/server/pkg/protocol"
 )
 
 func TestNotifyTaskAvailable(t *testing.T) {

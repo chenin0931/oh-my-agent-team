@@ -7,6 +7,7 @@ import {
 } from "react-router-dom";
 import type { RouteObject } from "react-router-dom";
 import { IssueDetailPage } from "./pages/issue-detail-page";
+import { EpicDetailPage } from "./pages/epic-detail-page";
 import { ProjectDetailPage } from "./pages/project-detail-page";
 import { AutopilotDetailPage } from "./pages/autopilot-detail-page";
 import { SkillDetailPage } from "./pages/skill-detail-page";
@@ -14,18 +15,18 @@ import { AgentDetailPage } from "./pages/agent-detail-page";
 import { MemberDetailPage } from "./pages/member-detail-page";
 import { RuntimeDetailPage } from "./pages/runtime-detail-page";
 import { AttachmentPreviewRoute } from "./pages/attachment-preview-page";
-import { IssuesPage } from "@multica/views/issues/components";
-import { ProjectsPage } from "@multica/views/projects/components";
-import { DashboardPage } from "@multica/views/dashboard";
-import { AutopilotsPage } from "@multica/views/autopilots/components";
-import { MyIssuesPage } from "@multica/views/my-issues";
-import { SkillsPage } from "@multica/views/skills";
+import { IssuesPage } from "@ohmyagentteam/views/issues/components";
+import { ProjectsPage } from "@ohmyagentteam/views/projects/components";
+import { DashboardPage } from "@ohmyagentteam/views/dashboard";
+import { AutopilotsPage } from "@ohmyagentteam/views/autopilots/components";
+import { MyIssuesPage } from "@ohmyagentteam/views/my-issues";
+import { SkillsPage } from "@ohmyagentteam/views/skills";
 import { DesktopRuntimesPage } from "./components/desktop-runtimes-page";
 import { DesktopAgentsPage } from "./components/desktop-agents-page";
-import { SquadsPage, SquadDetailPage as SquadDetailPageView } from "@multica/views/squads/components";
-import { InboxPage } from "@multica/views/inbox";
-import { SettingsPage } from "@multica/views/settings";
-import { useT } from "@multica/views/i18n";
+import { SquadsPage, SquadDetailPage as SquadDetailPageView } from "@ohmyagentteam/views/squads/components";
+import { InboxPage } from "@ohmyagentteam/views/inbox";
+import { SettingsPage } from "@ohmyagentteam/views/settings";
+import { useT } from "@ohmyagentteam/views/i18n";
 import { Download, Server } from "lucide-react";
 import { DaemonSettingsTab } from "./components/daemon-settings-tab";
 import { UpdatesSettingsTab } from "./components/updates-settings-tab";
@@ -126,6 +127,11 @@ export const appRoutes: RouteObject[] = [
             path: "issues/:id",
             element: <IssueDetailPage />,
             handle: { title: "Issue" },
+          },
+          {
+            path: "epics/:id",
+            element: <EpicDetailPage />,
+            handle: { title: "Epic" },
           },
           {
             path: "projects",

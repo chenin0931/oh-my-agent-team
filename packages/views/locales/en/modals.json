@@ -145,6 +145,21 @@
     "local_hint": "Agents on other machines won't see this path — they'll fail to start. Use repos for shared work."
   },
   "create_issue": {
+    "issue_types": {
+      "epic": "Epic",
+      "issue": "Issue",
+      "subtask": "Subtask"
+    },
+    "typed": {
+      "sr_manual": "New {{type}}",
+      "manual_breadcrumb": "Create {{type}} manually",
+      "title_placeholder": "{{type}} title",
+      "title_required": "Enter a title to create the {{type}}",
+      "submit": "Create {{type}}",
+      "toast_created": "{{type}} created",
+      "view": "View {{type}}",
+      "toast_failed": "Failed to create {{type}}"
+    },
     "sr_manual": "New Issue",
     "sr_agent": "Quick create issue",
     "manual_breadcrumb": "Create manually",
@@ -194,7 +209,7 @@
       "search_placeholder": "Search agents and squads…",
       "agents_group": "Agents",
       "squads_group": "Squads",
-      "version_missing": "This agent's daemon doesn't report a CLI version. Create with agent needs multica CLI ≥ {{min}}. Upgrade the daemon and reconnect, or switch to manual create.",
+      "version_missing": "This agent's daemon doesn't report a CLI version. Create with agent needs OMAT CLI ≥ {{min}}. Upgrade the daemon and reconnect, or switch to manual create.",
       "version_below": "This agent's daemon CLI is {{current}} — Create with agent needs ≥ {{min}}. Upgrade the daemon, or switch to manual create.",
       "prompt_placeholder": "Tell the agent what to do, e.g. \"let Bohan fix the inbox loading slowness in the Web project\"",
       "submit": "Create",

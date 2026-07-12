@@ -1,10 +1,10 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
 import { createRef, type ReactNode } from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { workspaceKeys } from "@multica/core/workspace/queries";
-import { issueKeys, PAGINATED_STATUSES } from "@multica/core/issues/queries";
-import { I18nProvider } from "@multica/core/i18n/react";
-import type { IssueStatus, ListIssuesCache } from "@multica/core/types";
+import { workspaceKeys } from "@ohmyagentteam/core/workspace/queries";
+import { issueKeys, PAGINATED_STATUSES } from "@ohmyagentteam/core/issues/queries";
+import { I18nProvider } from "@ohmyagentteam/core/i18n/react";
+import type { IssueStatus, ListIssuesCache } from "@ohmyagentteam/core/types";
 import type { QueryClient } from "@tanstack/react-query";
 import enCommon from "../../locales/en/common.json";
 import enAuth from "../../locales/en/auth.json";
@@ -24,14 +24,15 @@ function I18nWrapper({ children }: { children: ReactNode }) {
 }
 
 // Mock the workspace id singleton — items() reads it imperatively.
-vi.mock("@multica/core/platform", () => ({
+vi.mock("@ohmyagentteam/core/platform", () => ({
   getCurrentWsId: () => "ws-1",
 }));
 
 // Mock the API so we control search responses + observe calls.
 const searchIssuesMock = vi.fn();
 const searchProjectsMock = vi.fn();
-vi.mock("@multica/core/api", () => ({
+const searchEpicsMock = vi.fn();
+vi.mock("@ohmyagentteam/core/api", () => ({
   api: {
     get searchIssues() {
       return searchIssuesMock;
@@ -39,13 +40,16 @@ vi.mock("@multica/core/api", () => ({
     get searchProjects() {
       return searchProjectsMock;
     },
+    get searchEpics() {
+      return searchEpicsMock;
+    },
   },
 }));
 
 // Mock the auth store: items() reads `useAuthStore.getState()` imperatively
 // to identify the current user when filtering personal agents.
 const authState = { user: { id: "u1" } as { id: string } | null };
-vi.mock("@multica/core/auth", () => ({
+vi.mock("@ohmyagentteam/core/auth", () => ({
   useAuthStore: { getState: () => authState },
 }));
 
@@ -133,6 +137,7 @@ describe("createMentionSuggestion", () => {
   beforeEach(() => {
     searchIssuesMock.mockReset();
     searchProjectsMock.mockReset();
+    searchEpicsMock.mockReset().mockResolvedValue({ epics: [], total: 0 });
     Element.prototype.scrollIntoView = vi.fn();
   });
 

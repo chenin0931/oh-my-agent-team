@@ -6,11 +6,12 @@ import (
 	"log/slog"
 
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/multica-ai/multica/server/internal/events"
-	"github.com/multica-ai/multica/server/internal/handler"
-	"github.com/multica-ai/multica/server/internal/util"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
-	"github.com/multica-ai/multica/server/pkg/protocol"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/events"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/handler"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/service"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/util"
+	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
+	"github.com/chenin0931/oh-my-agent-team/server/pkg/protocol"
 )
 
 // mention represents a parsed @mention from markdown content (local alias).
@@ -18,7 +19,6 @@ type mention struct {
 	Type string // "member", "agent", "issue", or "all"
 	ID   string // user_id, agent_id, issue_id, or "all"
 }
-
 
 // statusLabels maps DB status values to human-readable labels for notifications.
 var statusLabels = map[string]string{
@@ -78,19 +78,20 @@ var parentBubbleNotifTypes = map[string]bool{
 // notifTypeToGroup maps each InboxItemType to a user-configurable preference
 // group. Types not in this map are always delivered (not configurable).
 var notifTypeToGroup = map[string]string{
-	"issue_assigned":  "assignments",
-	"unassigned":      "assignments",
-	"assignee_changed": "assignments",
-	"status_changed":  "status_changes",
-	"new_comment":     "comments",
-	"mentioned":       "comments",
-	"priority_changed": "updates",
+	"issue_assigned":     "assignments",
+	"epic_owned":         "assignments",
+	"unassigned":         "assignments",
+	"assignee_changed":   "assignments",
+	"status_changed":     "status_changes",
+	"new_comment":        "comments",
+	"mentioned":          "comments",
+	"priority_changed":   "updates",
 	"start_date_changed": "updates",
-	"due_date_changed": "updates",
-	"task_completed":  "agent_activity",
-	"task_failed":     "agent_activity",
-	"agent_blocked":   "agent_activity",
-	"agent_completed": "agent_activity",
+	"due_date_changed":   "updates",
+	"task_completed":     "agent_activity",
+	"task_failed":        "agent_activity",
+	"agent_blocked":      "agent_activity",
+	"agent_completed":    "agent_activity",
 }
 
 // isNotifMuted returns true if the given notification type is muted for a user
@@ -144,7 +145,7 @@ func loadUserPrefs(
 // the issue as "the user no longer needs to triage past failures." When a
 // status change lands on one of these, any pre-existing task_failed inbox
 // rows for the issue are archived so the inbox stays a fresh-signal surface.
-// `in_review` is included because in Multica's agent flow that's the most
+// `in_review` is included because in OhMyAgentTeam's agent flow that's the most
 // reliable "work delivered" handoff — and a status flip back to in_progress
 // will simply produce new task_failed rows that surface normally.
 var terminalStatusForTaskFailedDismiss = map[string]bool{
@@ -288,6 +289,26 @@ func notifyIssueSubscribers(
 	body string,
 	details []byte,
 ) map[string]bool {
+	return notifyTargetSubscribers(ctx, queries, bus, subscriberIssueID, targetIssueID, "issue", issueStatus, workspaceID, e, exclude, notifType, severity, title, body, details)
+}
+
+func notifyTargetSubscribers(
+	ctx context.Context,
+	queries *db.Queries,
+	bus *events.Bus,
+	subscriberIssueID string,
+	targetIssueID string,
+	targetType string,
+	issueStatus string,
+	workspaceID string,
+	e events.Event,
+	exclude map[string]bool,
+	notifType string,
+	severity string,
+	title string,
+	body string,
+	details []byte,
+) map[string]bool {
 	notified := map[string]bool{}
 
 	subs, err := queries.ListIssueSubscribers(ctx, parseUUID(subscriberIssueID))
@@ -336,6 +357,8 @@ func notifyIssueSubscribers(
 			Type:          notifType,
 			Severity:      severity,
 			IssueID:       parseUUID(targetIssueID),
+			TargetType:    pgtype.Text{String: targetType, Valid: true},
+			TargetID:      parseUUID(targetIssueID),
 			Title:         title,
 			Body:          util.StrToText(body),
 			ActorType:     util.StrToText(e.ActorType),
@@ -381,6 +404,26 @@ func notifyDirect(
 	body string,
 	details []byte,
 ) {
+	notifyDirectTarget(ctx, queries, bus, recipientType, recipientID, workspaceID, e, issueID, "issue", issueStatus, notifType, severity, title, body, details)
+}
+
+func notifyDirectTarget(
+	ctx context.Context,
+	queries *db.Queries,
+	bus *events.Bus,
+	recipientType string,
+	recipientID string,
+	workspaceID string,
+	e events.Event,
+	issueID string,
+	targetType string,
+	issueStatus string,
+	notifType string,
+	severity string,
+	title string,
+	body string,
+	details []byte,
+) {
 	// Skip if recipient is the actor
 	if recipientID == e.ActorID {
 		return
@@ -401,6 +444,8 @@ func notifyDirect(
 		Type:          notifType,
 		Severity:      severity,
 		IssueID:       parseUUID(issueID),
+		TargetType:    pgtype.Text{String: targetType, Valid: true},
+		TargetID:      parseUUID(issueID),
 		Title:         title,
 		Body:          util.StrToText(body),
 		ActorType:     util.StrToText(e.ActorType),
@@ -433,6 +478,22 @@ func notifyMentionedMembers(
 	e events.Event,
 	mentions []mention,
 	issueID string,
+	issueTitle string,
+	issueStatus string,
+	title string,
+	skip map[string]bool,
+	details []byte,
+) {
+	notifyMentionedMembersTarget(bus, queries, e, mentions, issueID, "issue", issueTitle, issueStatus, title, skip, details)
+}
+
+func notifyMentionedMembersTarget(
+	bus *events.Bus,
+	queries *db.Queries,
+	e events.Event,
+	mentions []mention,
+	issueID string,
+	targetType string,
 	issueTitle string,
 	issueStatus string,
 	title string,
@@ -513,6 +574,8 @@ func notifyMentionedMembers(
 			Type:          "mentioned",
 			Severity:      "info",
 			IssueID:       parseUUID(issueID),
+			TargetType:    pgtype.Text{String: targetType, Valid: true},
+			TargetID:      parseUUID(issueID),
 			Title:         title,
 			ActorType:     util.StrToText(e.ActorType),
 			ActorID:       optionalUUID(e.ActorID),
@@ -544,13 +607,54 @@ func notifyMentionedMembers(
 func registerNotificationListeners(bus *events.Bus, queries *db.Queries) {
 	ctx := context.Background()
 
+	notifyEpicOwner := func(e events.Event) {
+		payload, ok := e.Payload.(map[string]any)
+		if !ok {
+			return
+		}
+		epic, ok := extractEpicFields(payload["epic"])
+		if !ok || epic.OwnerType == nil || epic.OwnerID == nil || *epic.OwnerType != "member" {
+			return
+		}
+		details, _ := json.Marshal(map[string]any{
+			"target_type": "epic", "project_id": epic.ProjectID,
+			"lifecycle": epic.Lifecycle,
+		})
+		item, err := queries.CreateInboxItem(ctx, db.CreateInboxItemParams{
+			WorkspaceID: parseUUID(e.WorkspaceID), RecipientType: "member",
+			RecipientID: parseUUID(*epic.OwnerID), Type: "epic_owned",
+			Severity: "action_required", IssueID: parseUUID(epic.ID),
+			TargetType: pgtype.Text{String: "epic", Valid: true}, TargetID: parseUUID(epic.ID),
+			Title: epic.Title, Body: util.StrToText("You are responsible for planning and coordinating this epic."),
+			ActorType: util.StrToText(e.ActorType), ActorID: optionalUUID(e.ActorID), Details: details,
+		})
+		if err != nil {
+			slog.Error("epic owner notification creation failed", "epic_id", epic.ID, "owner_id", *epic.OwnerID, "error", err)
+			return
+		}
+		response := inboxItemToResponse(item)
+		response["issue_status"] = epic.Lifecycle
+		bus.Publish(events.Event{Type: protocol.EventInboxNew, WorkspaceID: e.WorkspaceID, ActorType: e.ActorType, ActorID: e.ActorID, Payload: map[string]any{"item": response}})
+	}
+
+	bus.Subscribe(protocol.EventEpicCreated, notifyEpicOwner)
+	bus.Subscribe(protocol.EventEpicUpdated, func(e events.Event) {
+		payload, ok := e.Payload.(map[string]any)
+		if !ok {
+			return
+		}
+		if changed, _ := payload["owner_changed"].(bool); changed {
+			notifyEpicOwner(e)
+		}
+	})
+
 	// issue:created — Direct notification to assignee if assignee != actor
 	bus.Subscribe(protocol.EventIssueCreated, func(e events.Event) {
 		payload, ok := e.Payload.(map[string]any)
 		if !ok {
 			return
 		}
-		issue, ok := payload["issue"].(handler.IssueResponse)
+		issue, ok := extractIssueFields(payload["issue"])
 		if !ok {
 			return
 		}
@@ -561,13 +665,17 @@ func registerNotificationListeners(bus *events.Bus, queries *db.Queries) {
 		// Direct notification to assignee
 		if issue.AssigneeType != nil && issue.AssigneeID != nil {
 			skip[*issue.AssigneeID] = true
+			assignmentDetails, _ := json.Marshal(map[string]string{
+				"new_assignee_type": *issue.AssigneeType,
+				"new_assignee_id":   *issue.AssigneeID,
+			})
 			notifyDirect(ctx, queries, bus,
 				*issue.AssigneeType, *issue.AssigneeID,
 				issue.WorkspaceID, e, issue.ID, issue.Status,
 				"issue_assigned", "action_required",
 				issue.Title,
 				"",
-				emptyDetails,
+				assignmentDetails,
 			)
 		}
 
@@ -585,7 +693,7 @@ func registerNotificationListeners(bus *events.Bus, queries *db.Queries) {
 		if !ok {
 			return
 		}
-		issue, ok := payload["issue"].(handler.IssueResponse)
+		issue, ok := extractIssueFields(payload["issue"])
 		if !ok {
 			return
 		}
@@ -785,6 +893,10 @@ func registerNotificationListeners(bus *events.Bus, queries *db.Queries) {
 
 		issueTitle, _ := payload["issue_title"].(string)
 		issueStatus, _ := payload["issue_status"].(string)
+		targetType, _ := payload["target_type"].(string)
+		if targetType != "epic" {
+			targetType = "issue"
+		}
 
 		commentDetails := emptyDetails
 		if commentID != "" {
@@ -793,16 +905,19 @@ func registerNotificationListeners(bus *events.Bus, queries *db.Queries) {
 			})
 		}
 
-		notifySubscribers(ctx, queries, bus, issueID, issueStatus, e.WorkspaceID, e,
-			nil, "new_comment", "info",
-			issueTitle, commentContent,
-			commentDetails)
+		if targetType == "epic" {
+			notifyTargetSubscribers(ctx, queries, bus, issueID, issueID, "epic", issueStatus, e.WorkspaceID, e,
+				nil, "new_comment", "info", issueTitle, commentContent, commentDetails)
+		} else {
+			notifySubscribers(ctx, queries, bus, issueID, issueStatus, e.WorkspaceID, e,
+				nil, "new_comment", "info", issueTitle, commentContent, commentDetails)
+		}
 
 		// Notify @mentions in comment content.
 		mentions := parseMentions(commentContent)
 		if len(mentions) > 0 {
 			skip := map[string]bool{e.ActorID: true}
-			notifyMentionedMembers(bus, queries, e, mentions, issueID, issueTitle, issueStatus,
+			notifyMentionedMembersTarget(bus, queries, e, mentions, issueID, targetType, issueTitle, issueStatus,
 				issueTitle, skip, commentDetails)
 		}
 	})
@@ -824,7 +939,6 @@ func registerNotificationListeners(bus *events.Bus, queries *db.Queries) {
 		issueID, _ := payload["issue_id"].(string)
 		issueTitle, _ := payload["issue_title"].(string)
 		issueStatus, _ := payload["issue_status"].(string)
-
 		if creatorType == "" || creatorID == "" {
 			return
 		}
@@ -860,6 +974,10 @@ func registerNotificationListeners(bus *events.Bus, queries *db.Queries) {
 		issueID, _ := payload["issue_id"].(string)
 		issueTitle, _ := payload["issue_title"].(string)
 		issueStatus, _ := payload["issue_status"].(string)
+		targetType, _ := payload["target_type"].(string)
+		if targetType != "epic" {
+			targetType = "issue"
+		}
 
 		if commentAuthorType == "" || commentAuthorID == "" {
 			return
@@ -873,9 +991,9 @@ func registerNotificationListeners(bus *events.Bus, queries *db.Queries) {
 		}
 		details, _ := json.Marshal(detailsMap)
 
-		notifyDirect(ctx, queries, bus,
+		notifyDirectTarget(ctx, queries, bus,
 			commentAuthorType, commentAuthorID,
-			e.WorkspaceID, e, issueID, issueStatus,
+			e.WorkspaceID, e, issueID, targetType, issueStatus,
 			"reaction_added", "info",
 			issueTitle, "",
 			details,
@@ -888,6 +1006,12 @@ func registerNotificationListeners(bus *events.Bus, queries *db.Queries) {
 	bus.Subscribe(protocol.EventTaskFailed, func(e events.Event) {
 		payload, ok := e.Payload.(map[string]any)
 		if !ok {
+			return
+		}
+		// Advisor runs are optional, comment-only assistance for a human
+		// assignee. Their failure remains visible in the issue activity feed,
+		// but must not replace the human's actual assignment in Action Center.
+		if taskRole, _ := payload["task_role"].(string); taskRole == service.TaskCollaborationRoleAdvisor {
 			return
 		}
 		agentID, _ := payload["agent_id"].(string)
@@ -931,6 +1055,8 @@ func inboxItemToResponse(item db.InboxItem) map[string]any {
 		"type":           item.Type,
 		"severity":       item.Severity,
 		"issue_id":       util.UUIDToPtr(item.IssueID),
+		"target_type":    util.TextToPtr(item.TargetType),
+		"target_id":      util.UUIDToPtr(item.TargetID),
 		"title":          item.Title,
 		"body":           util.TextToPtr(item.Body),
 		"read":           item.Read,

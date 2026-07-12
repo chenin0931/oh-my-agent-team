@@ -2,36 +2,36 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@multica/core/api";
-import { useAuthStore } from "@multica/core/auth";
-import { useCurrentWorkspace, useWorkspacePaths } from "@multica/core/paths";
-import { useWorkspaceId } from "@multica/core/hooks";
-import { resolvePublicFileUrl } from "@multica/core/workspace/avatar-url";
-import { useFileUpload } from "@multica/core/hooks/use-file-upload";
-import { isImeComposing } from "@multica/core/utils";
+import { api } from "@ohmyagentteam/core/api";
+import { useAuthStore } from "@ohmyagentteam/core/auth";
+import { useCurrentWorkspace, useWorkspacePaths } from "@ohmyagentteam/core/paths";
+import { useWorkspaceId } from "@ohmyagentteam/core/hooks";
+import { resolvePublicFileUrl } from "@ohmyagentteam/core/workspace/avatar-url";
+import { useFileUpload } from "@ohmyagentteam/core/hooks/use-file-upload";
+import { isImeComposing } from "@ohmyagentteam/core/utils";
 import { useTimeAgo } from "../../i18n";
-import { agentListOptions, memberListOptions, squadMemberStatusOptions, workspaceKeys } from "@multica/core/workspace/queries";
-import { runtimeListOptions } from "@multica/core/runtimes";
+import { agentListOptions, memberListOptions, squadMemberStatusOptions, workspaceKeys } from "@ohmyagentteam/core/workspace/queries";
+import { runtimeListOptions } from "@ohmyagentteam/core/runtimes";
 import { CreateAgentDialog } from "../../agents/components/create-agent-dialog";
 import { useNavigation } from "../../navigation";
 import { AppLink } from "../../navigation";
 import { BreadcrumbHeader } from "../../layout/breadcrumb-header";
 import { PageHeader } from "../../layout/page-header";
 import { Users, Plus, Trash2, ArrowUpRight, Crown, Camera, Loader2, Pencil, FileText, Save } from "lucide-react";
-import { Button } from "@multica/ui/components/ui/button";
-import { Input } from "@multica/ui/components/ui/input";
-import { Label } from "@multica/ui/components/ui/label";
-import { Skeleton } from "@multica/ui/components/ui/skeleton";
+import { Button } from "@ohmyagentteam/ui/components/ui/button";
+import { Input } from "@ohmyagentteam/ui/components/ui/input";
+import { Label } from "@ohmyagentteam/ui/components/ui/label";
+import { Skeleton } from "@ohmyagentteam/ui/components/ui/skeleton";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@multica/ui/components/ui/popover";
+} from "@ohmyagentteam/ui/components/ui/popover";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@multica/ui/components/ui/tooltip";
+} from "@ohmyagentteam/ui/components/ui/tooltip";
 import {
   Dialog,
   DialogContent,
@@ -39,7 +39,7 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from "@multica/ui/components/ui/dialog";
+} from "@ohmyagentteam/ui/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,8 +49,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@multica/ui/components/ui/alert-dialog";
-import { ActorAvatar as ActorAvatarBase } from "@multica/ui/components/common/actor-avatar";
+} from "@ohmyagentteam/ui/components/ui/alert-dialog";
+import { ActorAvatar as ActorAvatarBase } from "@ohmyagentteam/ui/components/common/actor-avatar";
 import { ActorAvatar } from "../../common/actor-avatar";
 import { ContentEditor } from "../../editor/content-editor";
 import {
@@ -60,7 +60,7 @@ import {
 } from "../../issues/components/pickers/property-picker";
 import { ChevronDown, UserPlus } from "lucide-react";
 import { toast } from "sonner";
-import type { Squad, SquadMember, SquadMemberStatus, SquadMemberStatusValue, Agent, CreateAgentRequest, MemberWithUser } from "@multica/core/types";
+import type { Squad, SquadMember, SquadMemberStatus, SquadMemberStatusValue, Agent, CreateAgentRequest, MemberWithUser } from "@ohmyagentteam/core/types";
 import { useT } from "../../i18n";
 import { matchesPinyin } from "../../editor/extensions/pinyin-match";
 
@@ -113,12 +113,12 @@ export function SquadDetailPage() {
   }, [wsMembers, currentUser]);
   const isWorkspaceAdmin = myRole === "owner" || myRole === "admin";
   // Per-squad management gate: workspace owner/admin manage every squad; the
-  // creator manages the squads they created. Mirrors canManageSquad in
+  // owner manages the squads they created. Mirrors canManageSquad in
   // server/internal/handler/squad.go so editable controls appear exactly when
   // the API will accept the write, and everyone else gets a read-only view
   // instead of controls that 403 (MUL-4223).
   const canManage =
-    isWorkspaceAdmin || (!!currentUser && squad?.creator_id === currentUser.id);
+    isWorkspaceAdmin || (!!currentUser && squad?.owner_id === currentUser.id);
 
   const { data: runtimes = [], isLoading: runtimesLoading } = useQuery({
     ...runtimeListOptions(wsId),
@@ -130,12 +130,25 @@ export function SquadDetailPage() {
   const [confirmArchive, setConfirmArchive] = useState(false);
 
   const updateSquadMut = useMutation({
-    mutationFn: (data: { name?: string; description?: string; instructions?: string; avatar_url?: string; leader_id?: string }) => api.updateSquad(squadId, data),
+    mutationFn: (data: { name?: string; description?: string; instructions?: string; avatar_url?: string; leader_id?: string; owner_id?: string }) => api.updateSquad(squadId, data),
     onSuccess: () => {
       refetchSquad();
       refetchMembers();
       queryClient.invalidateQueries({ queryKey: workspaceKeys.squads(wsId) });
     },
+    onError: (err) =>
+      toast.error(err instanceof Error && err.message ? err.message : "Failed to update squad"),
+  });
+
+  const transferOwnerMut = useMutation({
+    mutationFn: (ownerId: string) => api.updateSquad(squadId, { owner_id: ownerId }),
+    onSuccess: () => {
+      refetchSquad();
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.squads(wsId) });
+      toast.success(t(($) => $.owner_picker.success));
+    },
+    onError: (err) =>
+      toast.error(err instanceof Error && err.message ? err.message : "Failed to transfer ownership"),
   });
 
   const addMemberMut = useMutation({
@@ -236,7 +249,7 @@ export function SquadDetailPage() {
         leaf={
           <>
             <SquadHeaderAvatar squad={squad} initials={initials} />
-            <h1 className="truncate text-sm font-medium text-foreground">{squad.name}</h1>
+            <h1 className="truncate font-serif text-[15px] font-medium text-foreground">{squad.name}</h1>
           </>
         }
         actions={
@@ -257,8 +270,11 @@ export function SquadDetailPage() {
           squad={squad}
           memberCount={members.length}
           leaderName={getEntityName("agent", squad.leader_id)}
-          creatorName={getEntityName("member", squad.creator_id)}
+          ownerName={getEntityName("member", squad.owner_id)}
+          ownerOptions={wsMembers}
           canManage={canManage}
+          transferringOwner={transferOwnerMut.isPending}
+          onTransferOwner={(ownerId) => transferOwnerMut.mutateAsync(ownerId)}
           uploadingAvatar={updateSquadMut.isPending}
           onUploadAvatar={(url) => updateSquadMut.mutateAsync({ avatar_url: url })}
           onRename={async (next) => { await updateSquadMut.mutateAsync({ name: next.trim() }); }}
@@ -296,8 +312,8 @@ export function SquadDetailPage() {
           with squadId set, so the dialog runs api.addSquadMember after
           api.createAgent and skips the agent-detail navigation. Only
           mounted for users who can manage this squad (workspace owner/admin
-          or the creator); for everyone else the trigger never renders. The
-          newly created agent is owned by the creator, so it is always one
+          or the owner); for everyone else the trigger never renders. The
+          newly created agent is owned by the owner, so it is always one
           they can invoke and add to the squad. */}
       {showCreateAgent && canManage && (
         <CreateAgentDialog
@@ -835,8 +851,11 @@ function SquadDetailInspector({
   squad,
   memberCount,
   leaderName,
-  creatorName,
+  ownerName,
+  ownerOptions,
   canManage,
+  transferringOwner,
+  onTransferOwner,
   uploadingAvatar,
   onUploadAvatar,
   onRename,
@@ -845,11 +864,14 @@ function SquadDetailInspector({
   squad: Squad;
   memberCount: number;
   leaderName: string;
-  creatorName: string;
+  ownerName: string;
+  ownerOptions: MemberWithUser[];
   // When false the identity block renders as static text (no avatar upload,
   // no rename/description popovers) — the viewer can read the squad but not
   // edit it. Mirrors the agent inspector's `canEdit` read-only treatment.
   canManage: boolean;
+  transferringOwner: boolean;
+  onTransferOwner: (ownerId: string) => Promise<unknown>;
   uploadingAvatar: boolean;
   onUploadAvatar: (url: string) => Promise<unknown>;
   onRename: (next: string) => Promise<void>;
@@ -918,11 +940,15 @@ function SquadDetailInspector({
           <InspectorRow label="Members">
             <span className="text-muted-foreground tabular-nums">{memberCount}</span>
           </InspectorRow>
-          <InspectorRow label="Created by">
-            <span className="flex min-w-0 items-center gap-1.5">
-              <ActorAvatar actorType="member" actorId={squad.creator_id} size={14} />
-              <span className="truncate">{creatorName}</span>
-            </span>
+          <InspectorRow label={t(($) => $.page.table.owner)}>
+            <SquadOwnerEditor
+              ownerId={squad.owner_id}
+              ownerName={ownerName}
+              members={ownerOptions}
+              canManage={canManage}
+              pending={transferringOwner}
+              onTransfer={onTransferOwner}
+            />
           </InspectorRow>
           <InspectorRow label="Created">
             <span className="text-muted-foreground">{timeAgo(squad.created_at)}</span>
@@ -941,6 +967,116 @@ function InspectorRow({ label, children }: { label: string; children: ReactNode 
     <>
       <div className="px-2 py-1 text-xs text-muted-foreground">{label}</div>
       <div className="min-w-0 px-2 py-1 text-xs">{children}</div>
+    </>
+  );
+}
+
+function SquadOwnerEditor({
+  ownerId,
+  ownerName,
+  members,
+  canManage,
+  pending,
+  onTransfer,
+}: {
+  ownerId: string;
+  ownerName: string;
+  members: MemberWithUser[];
+  canManage: boolean;
+  pending: boolean;
+  onTransfer: (ownerId: string) => Promise<unknown>;
+}) {
+  const { t } = useT("squads");
+  const [open, setOpen] = useState(false);
+  const [nextOwner, setNextOwner] = useState<MemberWithUser | null>(null);
+
+  const identity = (
+    <span className="flex min-w-0 items-center gap-1.5">
+      <ActorAvatar actorType="member" actorId={ownerId} size={14} />
+      <span className="truncate">{ownerName}</span>
+    </span>
+  );
+
+  if (!canManage) return identity;
+
+  return (
+    <>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger
+          render={
+            <button
+              type="button"
+              disabled={pending}
+              className="group flex min-w-0 items-center gap-1 rounded px-1 py-0.5 text-left hover:bg-accent disabled:opacity-50"
+              aria-label={t(($) => $.owner_picker.change)}
+            >
+              {identity}
+              <ChevronDown className="size-3 shrink-0 text-muted-foreground" />
+            </button>
+          }
+        />
+        <PopoverContent align="start" className="w-64 p-1">
+          <div className="px-2 pb-1 pt-1.5 text-[11px] font-medium text-muted-foreground">
+            {t(($) => $.owner_picker.choose)}
+          </div>
+          <div className="max-h-56 overflow-y-auto">
+            {members.map((member) => (
+              <button
+                key={member.user_id}
+                type="button"
+                disabled={member.user_id === ownerId}
+                onClick={() => {
+                  setOpen(false);
+                  setNextOwner(member);
+                }}
+                className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-xs hover:bg-accent disabled:opacity-45"
+              >
+                <ActorAvatar actorType="member" actorId={member.user_id} size={20} />
+                <span className="min-w-0 flex-1 truncate">{member.name}</span>
+                {member.user_id === ownerId ? (
+                  <span className="text-[10px] text-muted-foreground">
+                    {t(($) => $.owner_picker.current)}
+                  </span>
+                ) : null}
+              </button>
+            ))}
+          </div>
+        </PopoverContent>
+      </Popover>
+
+      <AlertDialog
+        open={!!nextOwner}
+        onOpenChange={(value) => {
+          if (!value && !pending) setNextOwner(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t(($) => $.owner_picker.confirm_title)}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t(($) => $.owner_picker.confirm_description, {
+                name: nextOwner?.name ?? "",
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={pending}>
+              {t(($) => $.owner_picker.cancel)}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={pending || !nextOwner}
+              onClick={async () => {
+                if (!nextOwner) return;
+                await onTransfer(nextOwner.user_id);
+                setNextOwner(null);
+              }}
+            >
+              {pending ? <Loader2 className="size-3.5 animate-spin" /> : null}
+              {t(($) => $.owner_picker.confirm)}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
@@ -1086,7 +1222,7 @@ function SquadOverviewPane({
   getEntityName: (type: string, id: string) => string;
   onAddMemberClick: () => void;
   // Optional — only passed when the current user can manage the squad
-  // (workspace owner/admin or the creator). Hidden otherwise so viewers
+  // (workspace owner/admin or the owner). Hidden otherwise so viewers
   // don't see a button they can't action.
   onCreateAgentClick?: () => void;
   onSetLeader: (agentId: string) => void;

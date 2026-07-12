@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { X, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { Button } from "@multica/ui/components/ui/button";
+import { Button } from "@ohmyagentteam/ui/components/ui/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,14 +13,14 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@multica/ui/components/ui/alert-dialog";
-import type { Issue, UpdateIssueRequest } from "@multica/core/types";
-import { commonIssueFields } from "@multica/core/issues/batch";
-import { useBatchUpdateIssues, useBatchDeleteIssues } from "@multica/core/issues/mutations";
-import { useModalStore } from "@multica/core/modals";
+} from "@ohmyagentteam/ui/components/ui/alert-dialog";
+import type { Issue, UpdateIssueRequest } from "@ohmyagentteam/core/types";
+import { commonIssueFields } from "@ohmyagentteam/core/issues/batch";
+import { useBatchUpdateIssues, useBatchDeleteIssues } from "@ohmyagentteam/core/issues/mutations";
+import { useModalStore } from "@ohmyagentteam/core/modals";
 import { StatusPicker, PriorityPicker, AssigneePicker } from "./pickers";
 import { useT } from "../../i18n";
-import { cn } from "@multica/ui/lib/utils";
+import { cn } from "@ohmyagentteam/ui/lib/utils";
 import { useIssueSurfaceActionsOptional } from "../surface/actions-context";
 import { useIssueSurfaceSelection } from "../surface/selection-context";
 

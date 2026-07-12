@@ -4,7 +4,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/multica-ai/multica/server/pkg/taskfailure"
+	"github.com/chenin0931/oh-my-agent-team/server/pkg/taskfailure"
 )
 
 const (
@@ -20,7 +20,6 @@ const (
 	// PR3 labels (funnel / community / commercial).
 	labelSignupSource = "signup_source"
 	labelPlatform     = "platform"
-	labelPath         = "path"
 	labelCadence      = "cadence"
 	labelTriggerKind  = "trigger_kind"
 	labelReason       = "reason"
@@ -34,54 +33,50 @@ const (
 )
 
 var businessMetricLabels = map[string][]string{
-	"multica_agent_task_enqueued_total":     {labelSource, labelRuntimeMode},
-	"multica_agent_task_dispatched_total":   {labelSource, labelRuntimeMode},
-	"multica_agent_task_started_total":      {labelSource, labelRuntimeMode, labelProvider},
-	"multica_agent_task_terminal_total":     {labelSource, labelRuntimeMode, labelTerminalStatus},
-	"multica_agent_task_failed_total":       {labelSource, labelRuntimeMode, labelFailureReason},
-	"multica_agent_task_queue_wait_seconds": {labelSource, labelRuntimeMode},
-	"multica_agent_task_run_seconds":        {labelSource, labelRuntimeMode, labelTerminalStatus},
-	"multica_agent_task_total_seconds":      {labelSource, labelRuntimeMode, labelTerminalStatus},
-	"multica_agent_task_in_progress":        {labelSource, labelRuntimeMode},
-	"multica_agent_task_iteration_count":    {labelSource, labelTerminalStatus},
-	"multica_llm_tokens_total":              {labelProvider, labelModel, labelTokenType, labelRuntimeMode, labelSource},
-	"multica_llm_cost_usd_total":            {labelProvider, labelModel, labelTokenType, labelRuntimeMode, labelSource},
-	"multica_llm_unpriced_tokens_total":     {labelProvider, labelModelAlias, labelTokenType},
-	"multica_llm_request_total":             {labelProvider, labelModel, labelRuntimeMode},
-	"multica_task_queued_expired_total":     {labelSource, labelRuntimeMode},
-	"multica_task_lease_expired_total":      {labelSource},
+	"omat_agent_task_enqueued_total":     {labelSource, labelRuntimeMode},
+	"omat_agent_task_dispatched_total":   {labelSource, labelRuntimeMode},
+	"omat_agent_task_started_total":      {labelSource, labelRuntimeMode, labelProvider},
+	"omat_agent_task_terminal_total":     {labelSource, labelRuntimeMode, labelTerminalStatus},
+	"omat_agent_task_failed_total":       {labelSource, labelRuntimeMode, labelFailureReason},
+	"omat_agent_task_queue_wait_seconds": {labelSource, labelRuntimeMode},
+	"omat_agent_task_run_seconds":        {labelSource, labelRuntimeMode, labelTerminalStatus},
+	"omat_agent_task_total_seconds":      {labelSource, labelRuntimeMode, labelTerminalStatus},
+	"omat_agent_task_in_progress":        {labelSource, labelRuntimeMode},
+	"omat_agent_task_iteration_count":    {labelSource, labelTerminalStatus},
+	"omat_llm_tokens_total":              {labelProvider, labelModel, labelTokenType, labelRuntimeMode, labelSource},
+	"omat_llm_cost_usd_total":            {labelProvider, labelModel, labelTokenType, labelRuntimeMode, labelSource},
+	"omat_llm_unpriced_tokens_total":     {labelProvider, labelModelAlias, labelTokenType},
+	"omat_llm_request_total":             {labelProvider, labelModel, labelRuntimeMode},
+	"omat_task_queued_expired_total":     {labelSource, labelRuntimeMode},
+	"omat_task_lease_expired_total":      {labelSource},
 
 	// PR3 funnel / community / commercial.
-	"multica_signup_total":                             {labelSignupSource},
-	"multica_workspace_created_total":                  {labelSource},
-	"multica_team_invite_sent_total":                   {},
-	"multica_team_invite_accepted_total":               {},
-	"multica_onboarding_started_total":                 {labelPlatform},
-	"multica_onboarding_questionnaire_submitted_total": {},
-	"multica_onboarding_completed_total":               {labelPath},
-	"multica_cloud_waitlist_joined_total":              {},
-	"multica_issue_created_total":                      {labelSource, labelPlatform},
-	"multica_chat_message_sent_total":                  {labelPlatform},
-	"multica_agent_created_total":                      {labelRuntimeMode, labelSource},
-	"multica_squad_created_total":                      {},
-	"multica_autopilot_created_total":                  {labelCadence},
-	"multica_issue_executed_total":                     {labelSource},
-	"multica_runtime_registered_total":                 {labelRuntimeMode, labelProvider},
-	"multica_runtime_ready_total":                      {labelRuntimeMode, labelProvider},
-	"multica_runtime_ready_seconds":                    {labelRuntimeMode, labelProvider},
-	"multica_runtime_failed_total":                     {labelRuntimeMode, labelProvider, labelFailureReason, labelRecoverable},
-	"multica_runtime_offline_total":                    {labelRuntimeMode, labelProvider},
-	"multica_daemon_ws_message_received_total":         {labelKind},
-	"multica_autopilot_run_started_total":              {labelCadence, labelTriggerKind},
-	"multica_autopilot_run_terminal_total":             {labelCadence, labelTriggerKind, labelTerminalStatus},
-	"multica_autopilot_run_skipped_total":              {labelCadence, labelReason},
-	"multica_webhook_delivery_total":                   {labelProvider, labelStatus},
-	"multica_github_event_received_total":              {labelEventKind, labelAction},
-	"multica_github_pr_review_total":                   {labelResult},
-	"multica_cloudruntime_request_total":               {labelOp, labelStatus},
-	"multica_cloudruntime_request_duration_seconds":    {labelOp},
-	"multica_feedback_submitted_total":                 {labelKind, labelPlatform},
-	"multica_contact_sales_submitted_total":            {labelSource},
+	"omat_signup_total":                          {labelSignupSource},
+	"omat_workspace_created_total":               {labelSource},
+	"omat_team_invite_sent_total":                {},
+	"omat_team_invite_accepted_total":            {},
+	"omat_issue_created_total":                   {labelSource, labelPlatform},
+	"omat_chat_message_sent_total":               {labelPlatform},
+	"omat_agent_created_total":                   {labelRuntimeMode, labelSource},
+	"omat_squad_created_total":                   {},
+	"omat_autopilot_created_total":               {labelCadence},
+	"omat_issue_executed_total":                  {labelSource},
+	"omat_runtime_registered_total":              {labelRuntimeMode, labelProvider},
+	"omat_runtime_ready_total":                   {labelRuntimeMode, labelProvider},
+	"omat_runtime_ready_seconds":                 {labelRuntimeMode, labelProvider},
+	"omat_runtime_failed_total":                  {labelRuntimeMode, labelProvider, labelFailureReason, labelRecoverable},
+	"omat_runtime_offline_total":                 {labelRuntimeMode, labelProvider},
+	"omat_daemon_ws_message_received_total":      {labelKind},
+	"omat_autopilot_run_started_total":           {labelCadence, labelTriggerKind},
+	"omat_autopilot_run_terminal_total":          {labelCadence, labelTriggerKind, labelTerminalStatus},
+	"omat_autopilot_run_skipped_total":           {labelCadence, labelReason},
+	"omat_webhook_delivery_total":                {labelProvider, labelStatus},
+	"omat_github_event_received_total":           {labelEventKind, labelAction},
+	"omat_github_pr_review_total":                {labelResult},
+	"omat_cloudruntime_request_total":            {labelOp, labelStatus},
+	"omat_cloudruntime_request_duration_seconds": {labelOp},
+	"omat_feedback_submitted_total":              {labelKind, labelPlatform},
+	"omat_contact_sales_submitted_total":         {labelSource},
 }
 
 var forbiddenMetricLabels = map[string]struct{}{
@@ -122,7 +117,7 @@ var (
 		"hermes":        "hermes",
 		"kiro":          "kiro",
 		"kimi":          "kimi",
-		"multica_agent": "multica_agent",
+		"omat_agent": "omat_agent",
 		"openclaw":      "openclaw",
 		"opencode":      "opencode",
 		"pi":            "pi",

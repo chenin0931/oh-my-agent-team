@@ -8,9 +8,9 @@ import {
   Search,
   X,
 } from "lucide-react";
-import type { AgentAvailability } from "@multica/core/agents";
-import type { MemberWithUser } from "@multica/core/types";
-import { resolvePublicFileUrl } from "@multica/core/workspace/avatar-url";
+import type { AgentAvailability } from "@ohmyagentteam/core/agents";
+import type { MemberWithUser } from "@ohmyagentteam/core/types";
+import { resolvePublicFileUrl } from "@ohmyagentteam/core/workspace/avatar-url";
 import {
   AGENT_SCOPES,
   type AgentColumnKey,
@@ -18,9 +18,9 @@ import {
   type AgentsScope,
   type AgentSortDirection,
   type AgentSortField,
-} from "@multica/core/agents/stores";
-import { Button } from "@multica/ui/components/ui/button";
-import { Input } from "@multica/ui/components/ui/input";
+} from "@ohmyagentteam/core/agents/stores";
+import { Button } from "@ohmyagentteam/ui/components/ui/button";
+import { Input } from "@ohmyagentteam/ui/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -31,19 +31,19 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-} from "@multica/ui/components/ui/dropdown-menu";
+} from "@ohmyagentteam/ui/components/ui/dropdown-menu";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@multica/ui/components/ui/popover";
-import { Switch } from "@multica/ui/components/ui/switch";
+} from "@ohmyagentteam/ui/components/ui/popover";
+import { Switch } from "@ohmyagentteam/ui/components/ui/switch";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@multica/ui/components/ui/tooltip";
-import { ActorAvatar } from "@multica/ui/components/common/actor-avatar";
+} from "@ohmyagentteam/ui/components/ui/tooltip";
+import { ActorAvatar } from "@ohmyagentteam/ui/components/common/actor-avatar";
 import { FILTER_ITEM_CLASS, HoverCheck } from "../../common/hover-check";
 import { availabilityConfig } from "../presence";
 import { useT } from "../../i18n";

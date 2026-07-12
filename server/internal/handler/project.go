@@ -13,9 +13,9 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/multica-ai/multica/server/internal/logger"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
-	"github.com/multica-ai/multica/server/pkg/protocol"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/logger"
+	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
+	"github.com/chenin0931/oh-my-agent-team/server/pkg/protocol"
 )
 
 type ProjectResponse struct {
@@ -37,6 +37,22 @@ type ProjectResponse struct {
 	// payload to keep parent metadata and child collections separate; clients
 	// that need the list call ListProjectResources directly.
 	ResourceCount int64 `json:"resource_count"`
+}
+
+type ProjectActivityItemResponse struct {
+	ID              string          `json:"id"`
+	TargetType      string          `json:"target_type"`
+	TargetID        string          `json:"target_id"`
+	IssueID         string          `json:"issue_id"`
+	IssueIdentifier string          `json:"issue_identifier"`
+	IssueTitle      string          `json:"issue_title"`
+	ActorType       *string         `json:"actor_type"`
+	ActorID         *string         `json:"actor_id"`
+	Kind            string          `json:"kind"`
+	Action          string          `json:"action"`
+	Body            *string         `json:"body"`
+	Details         json.RawMessage `json:"details"`
+	CreatedAt       string          `json:"created_at"`
 }
 
 func projectToResponse(p db.Project) ProjectResponse {
@@ -182,6 +198,76 @@ func (h *Handler) GetProject(w http.ResponseWriter, r *http.Request) {
 	resp.IssueCount, resp.DoneCount = h.loadProjectIssueStats(r.Context(), project.ID)
 	resp.ResourceCount = h.loadProjectResourceCount(r.Context(), project.ID)
 	writeJSON(w, http.StatusOK, resp)
+}
+
+func (h *Handler) ListProjectActivity(w http.ResponseWriter, r *http.Request) {
+	projectID, ok := parseUUIDOrBadRequest(w, chi.URLParam(r, "id"), "project id")
+	if !ok {
+		return
+	}
+	workspaceID, ok := parseUUIDOrBadRequest(w, h.resolveWorkspaceID(r), "workspace id")
+	if !ok {
+		return
+	}
+	if _, err := h.Queries.GetProjectInWorkspace(r.Context(), db.GetProjectInWorkspaceParams{
+		ID: projectID, WorkspaceID: workspaceID,
+	}); err != nil {
+		writeError(w, http.StatusNotFound, "project not found")
+		return
+	}
+	limit := 50
+	offset := 0
+	if raw := r.URL.Query().Get("limit"); raw != "" {
+		if value, err := strconv.Atoi(raw); err == nil && value > 0 {
+			limit = min(value, 200)
+		}
+	}
+	if raw := r.URL.Query().Get("offset"); raw != "" {
+		if value, err := strconv.Atoi(raw); err == nil && value >= 0 {
+			offset = value
+		}
+	}
+	rows, err := h.Queries.ListProjectActivity(r.Context(), db.ListProjectActivityParams{
+		WorkspaceID: workspaceID,
+		ProjectID:   projectID,
+		RowLimit:    int32(limit),
+		RowOffset:   int32(offset),
+	})
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to list project activity")
+		return
+	}
+	total, err := h.Queries.CountProjectActivity(r.Context(), db.CountProjectActivityParams{
+		WorkspaceID: workspaceID, ProjectID: projectID,
+	})
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to count project activity")
+		return
+	}
+	prefix := h.getIssuePrefix(r.Context(), workspaceID)
+	items := make([]ProjectActivityItemResponse, 0, len(rows))
+	for _, row := range rows {
+		details := json.RawMessage(row.Details)
+		if !json.Valid(details) {
+			details = json.RawMessage(`{}`)
+		}
+		items = append(items, ProjectActivityItemResponse{
+			ID:              uuidToString(row.EventID),
+			TargetType:      row.TargetType,
+			TargetID:        uuidToString(row.IssueID),
+			IssueID:         uuidToString(row.IssueID),
+			IssueIdentifier: fmt.Sprintf("%s-%d", prefix, row.IssueNumber),
+			IssueTitle:      row.IssueTitle,
+			ActorType:       textToPtr(row.ActorType),
+			ActorID:         uuidToPtr(row.ActorID),
+			Kind:            row.Kind,
+			Action:          row.Action,
+			Body:            textToPtr(row.Body),
+			Details:         details,
+			CreatedAt:       timestampToString(row.CreatedAt),
+		})
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"items": items, "total": total})
 }
 
 // validProjectStatuses / validProjectPriorities mirror the CHECK constraints on
@@ -524,12 +610,26 @@ func (h *Handler) DeleteProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	userID := uuidToString(requester.UserID)
+	epics, _ := h.Queries.ListEpicsByProjectForDelete(r.Context(), db.ListEpicsByProjectForDeleteParams{
+		WorkspaceID: project.WorkspaceID,
+		ProjectID:   project.ID,
+	})
+	workItems, _ := h.Queries.ListExecutableIssuesByProjectForDelete(r.Context(), db.ListExecutableIssuesByProjectForDeleteParams{
+		WorkspaceID: project.WorkspaceID,
+		ProjectID:   project.ID,
+	})
 	if err := h.Queries.DeleteProject(r.Context(), db.DeleteProjectParams{
 		ID:          project.ID,
 		WorkspaceID: project.WorkspaceID,
 	}); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to delete project")
 		return
+	}
+	h.publishEpicWorkItemUpdates(r, project.WorkspaceID, workItems, "member", userID, true, true)
+	for _, epic := range epics {
+		h.publish(protocol.EventEpicDeleted, workspaceID, "member", userID, map[string]any{
+			"epic_id": uuidToString(epic.ID),
+		})
 	}
 	h.publish(protocol.EventProjectDeleted, workspaceID, "member", userID, map[string]any{"project_id": uuidToString(project.ID)})
 	w.WriteHeader(http.StatusNoContent)

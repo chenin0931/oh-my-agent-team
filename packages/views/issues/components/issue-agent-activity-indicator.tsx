@@ -6,11 +6,11 @@ import {
   HoverCard,
   HoverCardTrigger,
   HoverCardContent,
-} from "@multica/ui/components/ui/hover-card";
-import { useWorkspaceId } from "@multica/core/hooks";
-import { agentTaskSnapshotOptions } from "@multica/core/agents";
-import type { AgentTask } from "@multica/core/types";
-import { cn } from "@multica/ui/lib/utils";
+} from "@ohmyagentteam/ui/components/ui/hover-card";
+import { useWorkspaceId } from "@ohmyagentteam/core/hooks";
+import { agentTaskSnapshotOptions } from "@ohmyagentteam/core/agents";
+import type { AgentTask } from "@ohmyagentteam/core/types";
+import { cn } from "@ohmyagentteam/ui/lib/utils";
 import { AgentAvatarStack } from "../../agents/components/agent-avatar-stack";
 import { AgentActivityHoverContent } from "../../agents/components/agent-activity-hover-content";
 import { useT } from "../../i18n";

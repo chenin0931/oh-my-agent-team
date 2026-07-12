@@ -343,6 +343,13 @@ INSERT INTO comment (issue_id, workspace_id, author_type, author_id, content, ty
 VALUES ($1, $2, $3, $4, $5, $6, sqlc.narg(parent_id), sqlc.narg(source_task_id))
 RETURNING *;
 
+-- name: HasCommentBySourceTaskID :one
+SELECT EXISTS (
+  SELECT 1
+  FROM comment
+  WHERE source_task_id = $1
+);
+
 -- name: UpdateComment :one
 UPDATE comment SET
     content = $2,

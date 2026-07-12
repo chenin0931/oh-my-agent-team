@@ -5,19 +5,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { setApiInstance } from "@multica/core/api";
-import type { ApiClient } from "@multica/core/api/client";
-import { issueKeys } from "@multica/core/issues/queries";
+import { setApiInstance } from "@ohmyagentteam/core/api";
+import type { ApiClient } from "@ohmyagentteam/core/api/client";
+import { issueKeys } from "@ohmyagentteam/core/issues/queries";
 import {
   getIssueSurfaceViewStore,
   pruneIssueSurfaceViewStates,
-} from "@multica/core/issues/stores/surface-view-store";
-import { ViewStoreProvider } from "@multica/core/issues/stores/view-store-context";
+} from "@ohmyagentteam/core/issues/stores/surface-view-store";
+import { ViewStoreProvider } from "@ohmyagentteam/core/issues/stores/view-store-context";
 import type {
   AgentTask,
   ListIssuesParams,
   ListIssuesResponse,
-} from "@multica/core/types";
+} from "@ohmyagentteam/core/types";
 import { useIssueSurfaceController } from "./use-issue-surface-controller";
 
 const updateIssueMutate = vi.hoisted(() => vi.fn());
@@ -25,11 +25,11 @@ const batchUpdateMutateAsync = vi.hoisted(() => vi.fn());
 const batchDeleteMutateAsync = vi.hoisted(() => vi.fn());
 const openModal = vi.hoisted(() => vi.fn());
 
-vi.mock("@multica/core/hooks", () => ({
+vi.mock("@ohmyagentteam/core/hooks", () => ({
   useWorkspaceId: () => "ws-1",
 }));
 
-vi.mock("@multica/core/issues/mutations", () => ({
+vi.mock("@ohmyagentteam/core/issues/mutations", () => ({
   useUpdateIssue: () => ({ mutate: updateIssueMutate, isPending: false }),
   useBatchUpdateIssues: () => ({
     mutateAsync: batchUpdateMutateAsync,
@@ -41,7 +41,7 @@ vi.mock("@multica/core/issues/mutations", () => ({
   }),
 }));
 
-vi.mock("@multica/core/modals", () => ({
+vi.mock("@ohmyagentteam/core/modals", () => ({
   useModalStore: {
     getState: () => ({ open: openModal }),
   },

@@ -1,22 +1,23 @@
 {
   "nav": {
-    "inbox": "インボックス",
+    "inbox": "アクションセンター",
     "my_issues": "マイイシュー",
-    "issues": "イシュー",
+    "issues": "すべての作業項目",
     "projects": "プロジェクト",
     "autopilots": "オートパイロット",
-    "agents": "エージェント",
+    "agents": "コラボレーションネットワーク",
     "squads": "スクワッド",
     "usage": "使用量",
-    "runtimes": "ランタイム",
+    "runtimes": "実行能力",
     "skills": "スキル",
     "settings": "設定"
   },
   "help": {
     "trigger": "ヘルプ",
+    "product_tour": "プロダクトツアー",
     "docs": "ドキュメント",
     "changelog": "変更ログ",
-    "discord": "Discord",
+    "discord": "コミュニティ",
     "feedback": "フィードバック"
   },
   "workspace_loader": {
@@ -32,15 +33,19 @@
     "invitation_join": "参加",
     "invitation_decline": "辞退",
     "log_out": "ログアウト",
-    "new_issue": "新規イシュー",
+    "new_issue": "新規作業項目",
     "new_issue_shortcut": "C",
     "pinned_label": "ピン留め済み",
+    "personal_group": "マイワーク",
+    "work_group": "計画と実行",
+    "network_group": "コラボレーション",
+    "system_group": "システム",
     "workspace_group": "ワークスペース",
     "configure_group": "設定",
     "unread_overflow": "99+",
     "discord_card": {
-      "title": "Discord に参加",
-      "description": "チームや他のユーザーと交流しましょう。",
+      "title": "コミュニティに参加",
+      "description": "GitHub Discussions で質問やフィードバックを共有できます。",
       "dismiss": "閉じる"
     }
   }

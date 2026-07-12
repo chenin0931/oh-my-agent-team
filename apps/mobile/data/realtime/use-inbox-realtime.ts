@@ -27,6 +27,7 @@ import { inboxKeys } from "@/data/queries/inbox";
 import { useWSSubscriptions } from "@/lib/use-ws-subscriptions";
 import {
   dropInboxItemsByIssue,
+  dropInboxItemsByEpic,
   patchInboxIssueStatus,
 } from "./inbox-ws-updaters";
 
@@ -57,6 +58,9 @@ export function useInboxRealtime() {
         }),
         ws.on("issue:deleted", (payload) => {
           dropInboxItemsByIssue(qc, wsId, payload.issue_id);
+        }),
+        ws.on("epic:deleted", (payload) => {
+          dropInboxItemsByEpic(qc, wsId, payload.epic_id);
         }),
 
         // After a reconnect we don't know what we missed during the

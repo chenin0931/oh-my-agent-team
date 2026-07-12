@@ -2,22 +2,22 @@
 
 import { useMemo } from "react";
 import { useQuery, type QueryKey } from "@tanstack/react-query";
-import type { Issue, IssueAssigneeGroup, Project } from "@multica/core/types";
-import { BOARD_STATUSES } from "@multica/core/issues/config";
-import { projectListOptions } from "@multica/core/projects/queries";
+import type { Issue, IssueAssigneeGroup, Project } from "@ohmyagentteam/core/types";
+import { BOARD_STATUSES } from "@ohmyagentteam/core/issues/config";
+import { projectListOptions } from "@ohmyagentteam/core/projects/queries";
 import {
   childIssueProgressOptions,
   type AssigneeGroupedIssuesFilter,
   type IssueSortParam,
   type MyIssuesFilter,
-} from "@multica/core/issues/queries";
+} from "@ohmyagentteam/core/issues/queries";
 import {
   issueSurfaceAssigneeGroupsOptions,
   issueSurfaceGanttOptions,
   issueSurfaceListOptions,
-} from "@multica/core/issues/surface/repository";
-import type { IssueSurfaceQueryPlan } from "@multica/core/issues/surface/query-plan";
-import type { IssueStatus } from "@multica/core/types";
+} from "@ohmyagentteam/core/issues/surface/repository";
+import type { IssueSurfaceQueryPlan } from "@ohmyagentteam/core/issues/surface/query-plan";
+import type { IssueStatus } from "@ohmyagentteam/core/types";
 import {
   applyIssueFilters,
   filterAssigneeGroups,

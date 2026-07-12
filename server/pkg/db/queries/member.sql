@@ -24,6 +24,17 @@ RETURNING *;
 -- name: DeleteMember :exec
 DELETE FROM member WHERE id = $1;
 
+-- name: GetWorkspaceOwnershipSuccessor :one
+-- Prefer another workspace owner, then an admin, then the earliest remaining
+-- member. The caller only uses the fallback member when the workspace has no
+-- second owner/admin, ensuring resources never become orphaned on removal.
+SELECT user_id FROM member
+WHERE workspace_id = $1 AND user_id <> $2
+ORDER BY
+    CASE role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 ELSE 2 END,
+    created_at ASC
+LIMIT 1;
+
 -- name: ListMembersWithUser :many
 SELECT m.id, m.workspace_id, m.user_id, m.role, m.created_at,
        u.name as user_name, u.email as user_email, u.avatar_url as user_avatar_url

@@ -1,22 +1,23 @@
 {
   "nav": {
-    "inbox": "인박스",
+    "inbox": "작업 센터",
     "my_issues": "내 이슈",
-    "issues": "이슈",
+    "issues": "모든 작업 항목",
     "projects": "프로젝트",
     "autopilots": "오토파일럿",
-    "agents": "에이전트",
+    "agents": "협업 네트워크",
     "squads": "스쿼드",
     "usage": "사용량",
-    "runtimes": "런타임",
+    "runtimes": "실행 용량",
     "skills": "스킬",
     "settings": "설정"
   },
   "help": {
     "trigger": "도움말",
+    "product_tour": "제품 둘러보기",
     "docs": "문서",
     "changelog": "변경 로그",
-    "discord": "Discord",
+    "discord": "커뮤니티",
     "feedback": "피드백"
   },
   "workspace_loader": {
@@ -32,15 +33,19 @@
     "invitation_join": "참가",
     "invitation_decline": "거절",
     "log_out": "로그아웃",
-    "new_issue": "새 이슈",
+    "new_issue": "새 작업 항목",
     "new_issue_shortcut": "C",
     "pinned_label": "고정됨",
+    "personal_group": "내 작업",
+    "work_group": "계획 및 실행",
+    "network_group": "협업",
+    "system_group": "시스템",
     "workspace_group": "워크스페이스",
     "configure_group": "설정",
     "unread_overflow": "99+",
     "discord_card": {
-      "title": "Discord 참여하기",
-      "description": "팀과 다른 사용자들과 교류해 보세요.",
+      "title": "오픈소스 커뮤니티 참여",
+      "description": "GitHub Discussions에서 질문과 피드백을 공유하세요.",
       "dismiss": "닫기"
     }
   }

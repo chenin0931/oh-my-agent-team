@@ -1,21 +1,20 @@
 import { useQuery } from "@tanstack/react-query";
-import { NewWorkspacePage } from "@multica/views/workspace/new-workspace-page";
-import { InvitePage } from "@multica/views/invite";
-import { InvitationsPage } from "@multica/views/invitations";
-import { OnboardingFlow } from "@multica/views/onboarding";
-import { useNavigation } from "@multica/views/navigation";
-import { paths } from "@multica/core/paths";
-import { workspaceListOptions } from "@multica/core/workspace/queries";
+import { NewWorkspacePage } from "@ohmyagentteam/views/workspace/new-workspace-page";
+import { InvitePage } from "@ohmyagentteam/views/invite";
+import { InvitationsPage } from "@ohmyagentteam/views/invitations";
+import { useNavigation } from "@ohmyagentteam/views/navigation";
+import { paths } from "@ohmyagentteam/core/paths";
+import { workspaceListOptions } from "@ohmyagentteam/core/workspace/queries";
 import { useWindowOverlayStore } from "@/stores/window-overlay-store";
 
 /**
  * Window-level transition overlay: renders above the tab system when the
- * user is in a pre-workspace flow (onboarding, create workspace, accept
+ * user is in a pre-workspace flow (create workspace or accept
  * invite).
  *
  * This component is intentionally thin — just a fixed positioning shell
  * that covers the tab system. It does NOT hide traffic lights or provide
- * a drag strip: each contained view (OnboardingFlow, NewWorkspacePage,
+ * a drag strip: each contained view (NewWorkspacePage,
  * InvitePage) renders its own `<DragStrip />` as a flex-child at top so
  * native macOS traffic lights stay visible and the page content can fill
  * the window edge-to-edge. This matches the Linear/Notion/Arc pattern for
@@ -34,7 +33,6 @@ export function WindowOverlay() {
 
 function WindowOverlayInner() {
   const overlay = useWindowOverlayStore((s) => s.overlay);
-  const close = useWindowOverlayStore((s) => s.close);
   const { push } = useNavigation();
   const { data: wsList = [] } = useQuery(workspaceListOptions());
 
@@ -60,29 +58,6 @@ function WindowOverlayInner() {
         />
       )}
       {overlay.type === "invitations" && <InvitationsPage />}
-      {overlay.type === "onboarding" && (
-        <OnboardingFlow
-          onComplete={(ws, issueId) => {
-            close();
-            // Runtime-connected onboarding lands on its single guide
-            // issue. Runtime-less exits still land on the issues list.
-            if (ws && issueId) {
-              push(paths.workspace(ws.slug).issueDetail(issueId));
-            } else if (ws) {
-              push(paths.workspace(ws.slug).issues());
-            } else {
-              push(paths.root());
-            }
-          }}
-          // Restart the bundled daemon when the user hits Refresh on
-          // Step 3. The daemon's PATH probe runs once at boot, so a
-          // newly-installed CLI (Claude / Codex / Cursor) doesn't show
-          // up until the daemon is bounced.
-          onRuntimeRefresh={async () => {
-            await window.daemonAPI?.restart?.();
-          }}
-        />
-      )}
     </div>
   );
 }

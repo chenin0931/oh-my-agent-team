@@ -3,6 +3,14 @@ SELECT * FROM agent
 WHERE workspace_id = $1 AND archived_at IS NULL
 ORDER BY created_at ASC;
 
+-- name: ListReadyAgentsOwnedByUserInWorkspace :many
+SELECT * FROM agent
+WHERE workspace_id = $1
+  AND owner_id = $2
+  AND archived_at IS NULL
+  AND runtime_id IS NOT NULL
+ORDER BY created_at ASC;
+
 -- name: ListAllAgents :many
 SELECT * FROM agent
 WHERE workspace_id = $1
@@ -201,6 +209,21 @@ INSERT INTO agent_task_queue (
 VALUES (
     $1, $2, NULL, 'queued', $3, $4,
     sqlc.narg(originator_user_id),
+    sqlc.narg(runtime_mcp_overlay),
+    sqlc.narg(runtime_connected_apps)
+)
+RETURNING *;
+
+-- name: CreateMemberAssigneeAdvisorTask :one
+-- One-shot comment-only advisory task for agents owned by the human member an
+-- issue was assigned to. The daemon detects this variant via
+-- context.type == "member_assignee_advisor" even though it is issue-linked.
+INSERT INTO agent_task_queue (
+    agent_id, runtime_id, issue_id, status, priority, context, originator_user_id,
+    runtime_mcp_overlay, runtime_connected_apps
+)
+VALUES (
+    $1, $2, $3, 'queued', $4, $5, $6,
     sqlc.narg(runtime_mcp_overlay),
     sqlc.narg(runtime_connected_apps)
 )

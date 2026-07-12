@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/multica-ai/multica/server/pkg/composio"
+	"github.com/chenin0931/oh-my-agent-team/server/pkg/composio"
 )
 
 // newTestServer wires up a httptest.Server with the provided handler and

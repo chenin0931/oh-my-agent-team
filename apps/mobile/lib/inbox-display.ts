@@ -6,7 +6,7 @@
  * the title a user sees in the mobile inbox MUST match what they see on
  * web for the same item. When the web version changes, sync this file.
  */
-import type { InboxItem } from "@multica/core/types";
+import type { InboxItem } from "@ohmyagentteam/core/types";
 
 function singleLine(value: string | null | undefined): string {
   return (value ?? "").replace(/\s+/g, " ").trim();
@@ -49,7 +49,7 @@ export function getInboxDisplayTitle(item: InboxItem): string {
 }
 
 /**
- * Deduplicate inbox items by issue_id (Linear-style: one entry per issue).
+ * Deduplicate inbox items by typed target (one entry per Epic or work item).
  *
  * Mirrors packages/core/inbox/queries.ts deduplicateInboxItems. **MUST stay
  * aligned with that function** — see the inbox dedup incident in this file's
@@ -68,9 +68,39 @@ export function getInboxDisplayTitle(item: InboxItem): string {
  */
 export function deduplicateInboxItems(items: InboxItem[]): InboxItem[] {
   const active = items.filter((i) => !i.archived);
+  const quickCreateIssueKeys = new Map<
+    string,
+    { issueId: string; createdAt: number }
+  >();
+  for (const item of active) {
+    const targetId = item.target_id ?? item.issue_id;
+    if (item.type !== "quick_create_done" || !targetId) continue;
+    const prompt = item.details?.original_prompt?.replace(/\s+/g, " ").trim();
+    if (!prompt) continue;
+    const quickKey = `quick-create:${item.details?.agent_id ?? item.actor_id ?? ""}:${prompt}`;
+    const createdAt = new Date(item.created_at).getTime();
+    const existing = quickCreateIssueKeys.get(quickKey);
+    if (!existing || createdAt > existing.createdAt) {
+      quickCreateIssueKeys.set(quickKey, { issueId: targetId, createdAt });
+    }
+  }
   const groups = new Map<string, InboxItem[]>();
   for (const item of active) {
-    const key = item.issue_id ?? item.id;
+    const prompt = item.details?.original_prompt?.replace(/\s+/g, " ").trim();
+    const isQuickCreateResult =
+      item.type === "quick_create_done" || item.type === "quick_create_failed";
+    const quickKey =
+      isQuickCreateResult && prompt
+        ? `quick-create:${item.details?.agent_id ?? item.actor_id ?? ""}:${prompt}`
+        : null;
+    const key =
+      (quickKey && quickCreateIssueKeys.get(quickKey)?.issueId) ??
+      (item.target_id
+        ? `${item.target_type ?? "issue"}:${item.target_id}`
+        : null) ??
+      item.issue_id ??
+      quickKey ??
+      item.id;
     const group = groups.get(key) ?? [];
     group.push(item);
     groups.set(key, group);
@@ -83,20 +113,34 @@ export function deduplicateInboxItems(items: InboxItem[]): InboxItem[] {
     );
     const newest = group[0];
     if (!newest) continue;
+    const newestQuickCreateResult = group.find(
+      (item) =>
+        item.type === "quick_create_done" || item.type === "quick_create_failed",
+    );
+    const actionCandidates =
+      newestQuickCreateResult?.type === "quick_create_done"
+        ? group.filter((item) => item.type !== "quick_create_failed")
+        : group;
+    const surfaced =
+      actionCandidates.find(
+        (item) => !item.read && item.severity === "action_required",
+      ) ?? newest;
 
     const commentId =
-      newest.details?.comment_id ??
-      group.find((item) => item.details?.comment_id)?.details?.comment_id;
+      surfaced.details?.comment_id ??
+      (surfaced.severity === "action_required"
+        ? undefined
+        : group.find((item) => item.details?.comment_id)?.details?.comment_id);
 
-    if (commentId && newest.details?.comment_id !== commentId) {
+    if (commentId && surfaced.details?.comment_id !== commentId) {
       merged.push({
-        ...newest,
-        details: { ...(newest.details ?? {}), comment_id: commentId },
+        ...surfaced,
+        details: { ...(surfaced.details ?? {}), comment_id: commentId },
       });
       continue;
     }
 
-    merged.push(newest);
+    merged.push(surfaced);
   }
   return merged.sort(
     (a, b) =>

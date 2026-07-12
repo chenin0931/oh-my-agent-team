@@ -25,6 +25,8 @@ export interface SystemNotificationPayload {
   itemId: string;
   /** `?issue=<…>` selector for the inbox page (issue id, else the item id). */
   issueKey: string;
+  /** Domain type for typed Inbox routing. Older hosts may omit it. */
+  targetType?: "issue" | "epic";
   title: string;
   body: string;
 }

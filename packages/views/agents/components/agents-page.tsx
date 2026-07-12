@@ -8,7 +8,9 @@ import {
   Bot,
   Loader2,
   Lock,
+  Network,
   Plus,
+  Rows3,
   X,
 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -19,7 +21,7 @@ import type {
   AgentRuntime,
   CreateAgentRequest,
   MemberWithUser,
-} from "@multica/core/types";
+} from "@ohmyagentteam/core/types";
 import {
   type AgentActivity,
   agentRunCounts30dOptions,
@@ -27,7 +29,7 @@ import {
   useWorkspacePresenceMap,
   VISIBILITY_TOOLTIP,
   type AgentPresenceDetail,
-} from "@multica/core/agents";
+} from "@ohmyagentteam/core/agents";
 import {
   useAgentsViewStore,
   AGENT_DEFAULT_HIDDEN_COLUMNS,
@@ -35,19 +37,21 @@ import {
   type AgentColumnKey,
   type AgentsScope,
   type AgentSortField,
-} from "@multica/core/agents/stores";
-import { api } from "@multica/core/api";
-import { useAuthStore } from "@multica/core/auth";
-import { useWorkspaceId } from "@multica/core/hooks";
-import { useWorkspacePaths } from "@multica/core/paths";
+} from "@ohmyagentteam/core/agents/stores";
+import { api } from "@ohmyagentteam/core/api";
+import { useAuthStore } from "@ohmyagentteam/core/auth";
+import { useWorkspaceId } from "@ohmyagentteam/core/hooks";
+import { useWorkspacePaths } from "@ohmyagentteam/core/paths";
 import {
   agentListOptions,
   memberListOptions,
+  squadListOptions,
   workspaceKeys,
-} from "@multica/core/workspace/queries";
-import { runtimeListOptions } from "@multica/core/runtimes";
-import { Button } from "@multica/ui/components/ui/button";
-import { Checkbox } from "@multica/ui/components/ui/checkbox";
+} from "@ohmyagentteam/core/workspace/queries";
+import { issueListOptions } from "@ohmyagentteam/core/issues/queries";
+import { runtimeListOptions } from "@ohmyagentteam/core/runtimes";
+import { Button } from "@ohmyagentteam/ui/components/ui/button";
+import { Checkbox } from "@ohmyagentteam/ui/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -55,7 +59,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@multica/ui/components/ui/dialog";
+} from "@ohmyagentteam/ui/components/ui/dialog";
 import {
   LIST_GRID_BOTTOM_CLEARANCE,
   ListGrid,
@@ -65,13 +69,14 @@ import {
   ListGridHeaderCell,
   ListGridRow,
   type ListGridSortDirection,
-} from "@multica/ui/components/ui/list-grid";
-import { Skeleton } from "@multica/ui/components/ui/skeleton";
+} from "@ohmyagentteam/ui/components/ui/list-grid";
+import { Skeleton } from "@ohmyagentteam/ui/components/ui/skeleton";
+import { cn } from "@ohmyagentteam/ui/lib/utils";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@multica/ui/components/ui/tooltip";
+} from "@ohmyagentteam/ui/components/ui/tooltip";
 import { useNavigation, useRowLink } from "../../navigation";
 import { ActorAvatar } from "../../common/actor-avatar";
 import { PageHeader } from "../../layout/page-header";
@@ -84,6 +89,7 @@ import {
 } from "./agent-list-toolbar";
 import { useT } from "../../i18n";
 import { matchesPinyin } from "../../editor/extensions/pinyin-match";
+import { CollaborationNetworkOverview } from "./collaboration-network-overview";
 
 // Column template — single source of truth for header, rows, and skeletons.
 // Same conventions as the skills/autopilots lists (see list-grid.tsx):
@@ -196,46 +202,63 @@ export interface AgentsPageProps {
 function PageHeaderBar({
   totalCount,
   onCreate,
+  viewMode,
+  onViewModeChange,
 }: {
   totalCount: number;
   onCreate: () => void;
+  viewMode: "network" | "directory";
+  onViewModeChange: (mode: "network" | "directory") => void;
 }) {
   const { t } = useT("agents");
   return (
     <PageHeader className="justify-between px-5">
       <div className="flex items-center gap-2">
         <Bot className="h-4 w-4 text-muted-foreground" />
-        <h1 className="text-sm font-medium">{t(($) => $.page.title)}</h1>
+        <h1 className="font-serif text-[15px] font-medium">{t(($) => $.network.page_title)}</h1>
         {totalCount > 0 && (
           <span className="font-mono text-xs tabular-nums text-muted-foreground/70">
             {totalCount}
           </span>
         )}
-        <p className="ml-2 hidden text-xs text-muted-foreground md:block">
-          {t(($) => $.page.tagline)}{" "}
-          <a
-            href="https://multica.ai/docs/agents"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline decoration-muted-foreground/30 underline-offset-4 transition-colors hover:text-foreground"
-          >
-            {t(($) => $.page.learn_more)}
-          </a>
-        </p>
       </div>
       {/* Quiet chrome button (outline, icon-only below md) — primary is
           reserved for the empty state's CTA. */}
-      <Button
-        type="button"
-        size="sm"
-        variant="outline"
-        className="h-8 w-8 gap-1 px-0 md:w-auto md:px-2.5"
-        aria-label={t(($) => $.page.new_agent)}
-        onClick={onCreate}
-      >
-        <Plus className="h-3.5 w-3.5" />
-        <span className="hidden md:inline">{t(($) => $.page.new_agent)}</span>
-      </Button>
+      <div className="flex items-center gap-2">
+        <div className="flex h-8 items-center rounded-md border bg-muted/30 p-0.5">
+          <button
+            type="button"
+            onClick={() => onViewModeChange("network")}
+            aria-label={t(($) => $.network.view_network)}
+            title={t(($) => $.network.view_network)}
+            className={cn("inline-flex h-6 items-center gap-1 rounded px-2 text-xs text-muted-foreground", viewMode === "network" && "bg-background text-foreground shadow-sm")}
+          >
+            <Network className="size-3.5" />
+            <span className="hidden sm:inline">{t(($) => $.network.view_network)}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => onViewModeChange("directory")}
+            aria-label={t(($) => $.network.view_directory)}
+            title={t(($) => $.network.view_directory)}
+            className={cn("inline-flex h-6 items-center gap-1 rounded px-2 text-xs text-muted-foreground", viewMode === "directory" && "bg-background text-foreground shadow-sm")}
+          >
+            <Rows3 className="size-3.5" />
+            <span className="hidden sm:inline">{t(($) => $.network.view_directory)}</span>
+          </button>
+        </div>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="h-8 w-8 gap-1 px-0 md:w-auto md:px-2.5"
+          aria-label={t(($) => $.page.new_agent)}
+          onClick={onCreate}
+        >
+          <Plus className="h-3.5 w-3.5" />
+          <span className="hidden md:inline">{t(($) => $.page.new_agent)}</span>
+        </Button>
+      </div>
     </PageHeader>
   );
 }
@@ -252,7 +275,7 @@ function ListError({
   const { t } = useT("agents");
   return (
     <div className="flex flex-1 min-h-0 flex-col">
-      <PageHeaderBar totalCount={0} onCreate={onCreate} />
+      <PageHeaderBar totalCount={0} onCreate={onCreate} viewMode="network" onViewModeChange={() => {}} />
       <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-16 text-center">
         <AlertCircle className="h-8 w-8 text-destructive" />
         <div>
@@ -824,6 +847,8 @@ export function AgentsPage(_props: AgentsPageProps = {}) {
     runtimeListOptions(wsId),
   );
   const { data: members = [] } = useQuery(memberListOptions(wsId));
+  const { data: squads = [] } = useQuery(squadListOptions(wsId));
+  const { data: issues = [] } = useQuery(issueListOptions(wsId));
   const { data: runCountsRaw = [] } = useQuery(agentRunCounts30dOptions(wsId));
   const { byAgent: presenceMap } = useWorkspacePresenceMap(wsId);
   const { byAgent: activityMap } = useWorkspaceActivityMap(wsId);
@@ -836,6 +861,7 @@ export function AgentsPage(_props: AgentsPageProps = {}) {
     new Set(),
   );
   const [search, setSearch] = useState("");
+  const [viewMode, setViewMode] = useState<"network" | "directory">("network");
 
   const rawScope = useAgentsViewStore((s) => s.scope);
   const scope = AGENT_SCOPES.includes(rawScope) ? rawScope : "mine";
@@ -885,6 +911,24 @@ export function AgentsPage(_props: AgentsPageProps = {}) {
     const me = members.find((m) => m.user_id === currentUser.id);
     return me?.role === "owner" || me?.role === "admin";
   }, [members, currentUser]);
+
+  const networkRows = useMemo<AgentListRow[]>(() => {
+    return agents.filter((agent) => !agent.archived_at).map((agent) => {
+      const isOwner = !!currentUser?.id && agent.owner_id === currentUser.id;
+      const activity = activityMap.get(agent.id) ?? null;
+      return {
+        agent,
+        runtime: runtimesById.get(agent.runtime_id) ?? null,
+        presence: presenceMap.get(agent.id) ?? null,
+        activity,
+        runCount: runCountsById.get(agent.id) ?? 0,
+        lastActiveDays: lastActiveDaysAgo(activity),
+        owner: agent.owner_id ? membersById.get(agent.owner_id) ?? null : null,
+        isOwnedByMe: isOwner,
+        canManage: isWorkspaceAdmin || isOwner,
+      };
+    });
+  }, [agents, currentUser, activityMap, runtimesById, presenceMap, runCountsById, membersById, isWorkspaceAdmin]);
 
   // Scope counts come from the FULL set (filters never affect them).
   // Archived ignores the ownership lens (see the view store comment).
@@ -1097,16 +1141,27 @@ export function AgentsPage(_props: AgentsPageProps = {}) {
       <PageHeaderBar
         totalCount={totalCount}
         onCreate={() => setShowCreate(true)}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
       />
 
       {isLoading ? (
         <div className="flex-1 overflow-y-auto @container">
           <LoadingSkeleton />
         </div>
-      ) : showEmpty ? (
+      ) : showEmpty && viewMode === "directory" ? (
         <div className="flex flex-1 items-center justify-center">
           <EmptyState onCreate={() => setShowCreate(true)} />
         </div>
+      ) : viewMode === "network" ? (
+        <CollaborationNetworkOverview
+          members={members}
+          rows={networkRows}
+          squads={squads}
+          runtimes={runtimes}
+          issues={issues}
+          currentUserId={currentUser?.id}
+        />
       ) : (
         <>
           <AgentListToolbar

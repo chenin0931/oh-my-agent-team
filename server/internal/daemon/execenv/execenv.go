@@ -1,6 +1,6 @@
 // Package execenv manages isolated per-task execution environments for the daemon.
 // Each task gets its own directory with injected context files. Repositories are
-// checked out on demand by the agent via `multica repo checkout`.
+// checked out on demand by the agent via `omat repo checkout`.
 package execenv
 
 import (
@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/multica-ai/multica/server/internal/runtimeapps"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/runtimeapps"
 )
 
 // RepoContextForEnv describes a workspace repo available for checkout.
@@ -35,7 +35,7 @@ type ProjectResourceForEnv struct {
 
 // PrepareParams holds all inputs needed to set up an execution environment.
 type PrepareParams struct {
-	WorkspacesRoot string // base path for all envs (e.g., ~/multica_workspaces)
+	WorkspacesRoot string // base path for all envs (e.g., ~/omat_workspaces)
 	WorkspaceID    string // workspace UUID — tasks are grouped under this
 	TaskID         string // task UUID — used for directory name
 	AgentName      string // for git branch naming only
@@ -65,31 +65,35 @@ type PrepareParams struct {
 
 // TaskContextForEnv is the subset of task context used for writing context files.
 type TaskContextForEnv struct {
-	IssueID                 string
-	TriggerCommentID        string // comment that triggered this task (empty for on_assign)
-	TriggerThreadID         string // root comment ID for the triggering thread; falls back to TriggerCommentID when empty
-	NewCommentCount         int    // issue-wide comments since this agent's last run (excludes its own and the injected trigger)
-	NewCommentsSince        string // RFC3339 anchor (last run's started_at) the count is measured from; empty on cold start
-	PriorSessionResumed     bool   // true when the daemon will resume an existing provider session for this task
-	AgentID                 string // unique ID of the dispatched agent
-	AgentName               string
-	AgentInstructions       string // agent identity/persona instructions, injected into CLAUDE.md
-	AgentSkills             []SkillContextForEnv
-	Repos                   []RepoContextForEnv     // workspace repos available for checkout
-	ProjectID               string                  // issue's project, when present
-	ProjectTitle            string                  // human-readable project title
-	ProjectDescription      string                  // durable project-level context, rendered into the brief's Project Context section
-	ProjectResources        []ProjectResourceForEnv // resources attached to the project
-	ChatSessionID           string                  // non-empty for chat tasks
-	AutopilotRunID          string                  // non-empty for autopilot run_only tasks
-	AutopilotID             string
-	AutopilotTitle          string
-	AutopilotDescription    string
-	AutopilotSource         string
-	AutopilotTriggerPayload string
-	QuickCreatePrompt       string // non-empty for quick-create tasks
-	HandoffNote             string // assignment handoff instruction; rendered into issue_context.md (MUL-3375)
-	IsSquadLeader           bool   // true when the agent is acting as a squad leader (may exit silently on no_action)
+	IssueID                  string
+	TriggerCommentID         string // comment that triggered this task (empty for on_assign)
+	TriggerThreadID          string // root comment ID for the triggering thread; falls back to TriggerCommentID when empty
+	NewCommentCount          int    // issue-wide comments since this agent's last run (excludes its own and the injected trigger)
+	NewCommentsSince         string // RFC3339 anchor (last run's started_at) the count is measured from; empty on cold start
+	PriorSessionResumed      bool   // true when the daemon will resume an existing provider session for this task
+	AgentID                  string // unique ID of the dispatched agent
+	AgentName                string
+	AgentInstructions        string // agent identity/persona instructions, injected into CLAUDE.md
+	AgentSkills              []SkillContextForEnv
+	Repos                    []RepoContextForEnv     // workspace repos available for checkout
+	ProjectID                string                  // issue's project, when present
+	ProjectTitle             string                  // human-readable project title
+	ProjectDescription       string                  // durable project-level context, rendered into the brief's Project Context section
+	ProjectResources         []ProjectResourceForEnv // resources attached to the project
+	ChatSessionID            string                  // non-empty for chat tasks
+	AutopilotRunID           string                  // non-empty for autopilot run_only tasks
+	AutopilotID              string
+	AutopilotTitle           string
+	AutopilotDescription     string
+	AutopilotSource          string
+	AutopilotTriggerPayload  string
+	QuickCreatePrompt        string // non-empty for quick-create tasks
+	QuickCreateMode          string // "planning" for Planning Quick Create
+	QuickCreateDefaultStatus string // default issue status for Planning Quick Create
+	HandoffNote              string // assignment handoff instruction; rendered into issue_context.md (MUL-3375)
+	MemberAssigneeAdvisor    bool   // one-shot comment-only advice task for a human assignee
+	EpicAdvisor              bool   // one-shot comment-only planning advice for an Epic
+	IsSquadLeader            bool   // true when the agent is acting as a squad leader (may exit silently on no_action)
 	// WorkspaceContext is the workspace-level system prompt (workspace.context
 	// in the DB). Rendered into the brief as `## Workspace Context` when
 	// non-empty so every agent in the workspace sees the same shared context,
@@ -182,7 +186,7 @@ func PredictRootDir(workspacesRoot, workspaceID, taskID string) string {
 
 // Prepare creates an isolated execution environment for a task.
 // The workdir starts empty (no repo checkouts). The agent checks out repos
-// on demand via `multica repo checkout <url>`.
+// on demand via `omat repo checkout <url>`.
 func Prepare(params PrepareParams, logger *slog.Logger) (*Environment, error) {
 	if params.WorkspacesRoot == "" {
 		return nil, fmt.Errorf("execenv: workspaces root is required")
@@ -347,8 +351,8 @@ func Reuse(params ReuseParams, logger *slog.Logger) *Environment {
 	// On reuse the workdir still holds the prior run's issue_context.md and
 	// skill directories; without clearing them first, writeSkillFiles sees
 	// its own earlier output occupying the canonical slug and falls back to
-	// a collision-free sibling (issue-review, issue-review-multica,
-	// issue-review-multica-2, …), accumulating a fresh duplicate on every
+	// a collision-free sibling (issue-review, issue-review-ohmyagentteam,
+	// issue-review-ohmyagentteam-2, …), accumulating a fresh duplicate on every
 	// re-dispatch to the same issue. allocateCollisionFreeSkillDir exists to
 	// dodge *user*-owned skill dirs (the local_directory flow), not our own
 	// prior writes, so we undo them via the prior manifest first and let the
@@ -362,7 +366,7 @@ func Reuse(params ReuseParams, logger *slog.Logger) *Environment {
 	//      CleanupSidecars alone can't do this — it preserves any recorded dir
 	//      the agent populated (correct on the local_directory teardown path),
 	//      which would otherwise keep the canonical slug occupied and push the
-	//      refresh back to issue-review-multica.
+	//      refresh back to issue-review-ohmyagentteam.
 	//   2. CleanupSidecars rolls back the remaining sidecar files
 	//      (issue_context.md, project resources) and the manifest itself.
 	//

@@ -35,12 +35,34 @@ WHERE id = $1
 RETURNING *;
 
 -- name: DeleteProject :exec
--- Defense-in-depth: workspace_id is a SQL-layer tenant guard. See DeleteIssue.
-DELETE FROM project WHERE id = $1 AND workspace_id = $2;
+-- Epic containers cannot exist without a project. Delete those containers
+-- first; their work items are detached by the epic_id FK, then the project FK
+-- clears project_id on the surviving executable work items.
+WITH deleted_epics AS (
+  DELETE FROM issue
+  WHERE project_id = $1
+    AND workspace_id = $2
+    AND issue_type = 'epic'
+  RETURNING id
+)
+DELETE FROM project p WHERE p.id = $1 AND p.workspace_id = $2;
+
+-- name: ListEpicsByProjectForDelete :many
+SELECT * FROM issue
+WHERE workspace_id = $1
+  AND project_id = $2
+  AND issue_type = 'epic';
+
+-- name: ListExecutableIssuesByProjectForDelete :many
+SELECT * FROM issue
+WHERE workspace_id = $1
+  AND project_id = $2
+  AND issue_type IN ('issue', 'subtask');
 
 -- name: CountIssuesByProject :one
 SELECT count(*) FROM issue
-WHERE project_id = $1;
+WHERE project_id = $1
+  AND issue_type IN ('issue', 'subtask');
 
 -- name: GetProjectIssueStats :many
 SELECT project_id,
@@ -48,4 +70,5 @@ SELECT project_id,
        count(*) FILTER (WHERE status IN ('done', 'cancelled'))::bigint AS done_count
 FROM issue
 WHERE project_id = ANY(sqlc.arg('project_ids')::uuid[])
+  AND issue_type <> 'epic'
 GROUP BY project_id;

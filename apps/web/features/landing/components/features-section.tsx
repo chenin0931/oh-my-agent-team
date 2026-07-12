@@ -18,14 +18,14 @@ import {
   Sparkles,
   UserMinus,
 } from "lucide-react";
-import { cn } from "@multica/ui/lib/utils";
+import { cn } from "@ohmyagentteam/ui/lib/utils";
 import { ImageIcon } from "./shared";
 import { useLocale } from "../i18n";
 import type { LandingDict } from "../i18n";
-import { StatusIcon, PriorityIcon } from "@multica/views/issues/components";
-import { STATUS_CONFIG } from "@multica/core/issues/config/status";
-import { PRIORITY_CONFIG } from "@multica/core/issues/config/priority";
-import type { IssueStatus, IssuePriority } from "@multica/core/types";
+import { StatusIcon, PriorityIcon } from "@ohmyagentteam/views/issues/components";
+import { STATUS_CONFIG } from "@ohmyagentteam/core/issues/config/status";
+import { PRIORITY_CONFIG } from "@ohmyagentteam/core/issues/config/priority";
+import type { IssueStatus, IssuePriority } from "@ohmyagentteam/core/types";
 
 /* ------------------------------------------------------------------ */
 /*  Mock ActorAvatar — mirrors the real ActorAvatar styling exactly     */
@@ -163,7 +163,7 @@ function TeammatesVisual() {
       {/* Header bar */}
       <div className="flex h-10 shrink-0 items-center border-b bg-background px-4 text-sm">
         <div className="flex items-center gap-1.5 min-w-0 text-xs">
-          <span className="text-muted-foreground">Multica Demo</span>
+          <span className="text-muted-foreground">OhMyAgentTeam</span>
           <ChevronRight className="h-3 w-3 text-muted-foreground/50 shrink-0" />
           <span className="text-muted-foreground">MUL-18</span>
           <ChevronRight className="h-3 w-3 text-muted-foreground/50 shrink-0" />
@@ -174,7 +174,7 @@ function TeammatesVisual() {
       <div className="flex h-[calc(100%-40px)]">
         {/* Main content area */}
         <div className="flex-1 overflow-hidden px-8 py-5">
-          <h3 className="text-lg font-bold leading-snug tracking-tight">
+          <h3 className="text-lg font-bold leading-snug">
             Refactor API error handling middleware
           </h3>
           <p className="mt-2 text-sm text-muted-foreground">
@@ -405,7 +405,7 @@ const mockToolCalls = [
   { type: "tool_use" as const, tool: "Read", summary: "server/internal/handler/comment.go" },
   { type: "tool_result" as const, preview: "func (h *CommentHandler) Create(w http.ResponseWriter, r *http.Request) { …" },
   { type: "tool_use" as const, tool: "Bash", summary: "go test ./internal/handler/ -run TestErrorResponses" },
-  { type: "tool_result" as const, preview: "ok  \tgithub.com/multica/server/internal/handler\t0.847s" },
+  { type: "tool_result" as const, preview: "ok  \tgithub.com/ohmyagentteam/server/internal/handler\t0.847s" },
 ];
 
 const mockTaskHistory = [
@@ -422,7 +422,7 @@ function AutonomousVisual() {
       {/* Header bar */}
       <div className="flex h-10 shrink-0 items-center border-b bg-background px-4 text-sm">
         <div className="flex items-center gap-1.5 min-w-0 text-xs">
-          <span className="text-muted-foreground">Multica Demo</span>
+          <span className="text-muted-foreground">OhMyAgentTeam</span>
           <ChevronRight className="h-3 w-3 text-muted-foreground/50 shrink-0" />
           <span className="text-muted-foreground">MUL-18</span>
           <ChevronRight className="h-3 w-3 text-muted-foreground/50 shrink-0" />
@@ -1015,7 +1015,7 @@ export function FeaturesSection() {
                   key={f.label}
                   onClick={() => scrollToPanel(i)}
                   className={cn(
-                    "group flex items-center gap-3 rounded-lg px-4 py-3 text-left text-[11px] font-semibold tracking-[0.12em] transition-colors",
+                    "group flex items-center gap-3 rounded-lg px-4 py-3 text-left text-[11px] font-semibold transition-colors",
                     i === activeIndex
                       ? "text-[#0a0d12]"
                       : "text-[#0a0d12]/36 hover:text-[#0a0d12]/60",
@@ -1048,7 +1048,7 @@ export function FeaturesSection() {
                 )}
               >
                 {/* Title + description */}
-                <h2 className="font-[family-name:var(--font-serif)] text-[2.6rem] leading-[1.05] tracking-[-0.03em] text-[#0a0d12] sm:text-[3.4rem] lg:text-[4.2rem]">
+                <h2 className="font-[family-name:var(--font-serif)] text-[2.6rem] leading-[1.05] text-[#0a0d12] sm:text-[3.4rem] lg:text-[4.2rem]">
                   {feature.title}
                 </h2>
                 <p className="mt-5 max-w-[640px] text-[15px] leading-7 text-[#0a0d12]/60 sm:text-[16px]">

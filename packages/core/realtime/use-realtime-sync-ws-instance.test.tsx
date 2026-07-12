@@ -20,7 +20,6 @@ vi.mock("../platform/workspace-storage", () => ({
 }));
 
 vi.mock("../paths", () => ({
-  useHasOnboarded: () => true,
   resolvePostAuthDestination: () => "/",
 }));
 
@@ -108,9 +107,8 @@ describe("useRealtimeSync — ws instance change", () => {
     rerender({ ws: ws2 });
 
     // Should have called invalidateQueries for all workspace-scoped keys
-    // (15 workspace-scoped + 6 per-issue prefixes + 4 per-chat prefixes
-    // + 1 workspaceKeys.list() + 1 cross-workspace inbox unread summary = 27 calls)
-    expect(invalidateSpy).toHaveBeenCalledTimes(27);
+    // Includes the independent Epic cache in addition to executable issues.
+    expect(invalidateSpy).toHaveBeenCalledTimes(28);
   });
 
   it("does not re-invalidate when rerendered with the same ws instance", () => {
@@ -226,14 +224,14 @@ describe("useRealtimeSync — workspace:deleted self-initiated suppression", () 
       wrapper: createWrapper(qc),
     });
     qc.setQueryData(workspaceKeys.list(), [{ id: "ws-2", slug: "delete-me" }]);
-    defaultStorage.setItem("multica_issue_draft:delete-me", "draft");
+    defaultStorage.setItem("omat_issue_draft:delete-me", "draft");
 
     markWorkspaceDeletePending("ws-2");
     dispatchWorkspaceDeleted(ws, "ws-2");
 
     // useDeleteWorkspace.onSuccess owns cleanup for self-initiated deletes;
     // the handler must not have touched storage.
-    expect(defaultStorage.getItem("multica_issue_draft:delete-me")).toBe("draft");
+    expect(defaultStorage.getItem("omat_issue_draft:delete-me")).toBe("draft");
   });
 
   it("still cleans up for a delete initiated elsewhere", () => {
@@ -242,10 +240,10 @@ describe("useRealtimeSync — workspace:deleted self-initiated suppression", () 
       wrapper: createWrapper(qc),
     });
     qc.setQueryData(workspaceKeys.list(), [{ id: "ws-2", slug: "delete-me" }]);
-    defaultStorage.setItem("multica_issue_draft:delete-me", "draft");
+    defaultStorage.setItem("omat_issue_draft:delete-me", "draft");
 
     dispatchWorkspaceDeleted(ws, "ws-2");
 
-    expect(defaultStorage.getItem("multica_issue_draft:delete-me")).toBeNull();
+    expect(defaultStorage.getItem("omat_issue_draft:delete-me")).toBeNull();
   });
 });

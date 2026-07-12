@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"log/slog"
 
-	"github.com/multica-ai/multica/server/internal/events"
-	"github.com/multica-ai/multica/server/internal/handler"
-	"github.com/multica-ai/multica/server/internal/util"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
-	"github.com/multica-ai/multica/server/pkg/protocol"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/events"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/handler"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/util"
+	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
+	"github.com/chenin0931/oh-my-agent-team/server/pkg/protocol"
 )
 
 // registerActivityListeners wires up event bus listeners that record activity
@@ -240,6 +240,70 @@ func registerActivityListeners(bus *events.Bus, queries *db.Queries) {
 		}
 	})
 
+	// epic:* planning events are stored in the same activity table, but use
+	// planning-specific actions and typed targets. They never create task
+	// activity or flow through the executable issue protocol.
+	bus.Subscribe(protocol.EventEpicCreated, func(e events.Event) {
+		payload, ok := e.Payload.(map[string]any)
+		if !ok {
+			return
+		}
+		epic, ok := payload["epic"].(handler.EpicResponse)
+		if !ok {
+			return
+		}
+		recordEpicActivity(ctx, bus, queries, e, epic, "created", map[string]any{})
+	})
+
+	bus.Subscribe(protocol.EventEpicUpdated, func(e events.Event) {
+		payload, ok := e.Payload.(map[string]any)
+		if !ok {
+			return
+		}
+		epic, ok := payload["epic"].(handler.EpicResponse)
+		if !ok {
+			return
+		}
+		type change struct {
+			flag   string
+			action string
+			from   string
+			to     string
+		}
+		changes := []change{
+			{"lifecycle_changed", "lifecycle_changed", stringValue(payload["prev_lifecycle"]), epic.Lifecycle},
+			{"health_changed", "health_changed", stringValue(payload["prev_health"]), stringPointerValue(epic.Health)},
+			{"project_changed", "project_changed", stringValue(payload["prev_project_id"]), epic.ProjectID},
+			{"title_changed", "title_changed", stringValue(payload["prev_title"]), epic.Title},
+			{"priority_changed", "priority_changed", stringValue(payload["prev_priority"]), epic.Priority},
+			{"start_date_changed", "start_date_changed", stringValue(payload["prev_start_date"]), stringPointerValue(epic.StartDate)},
+			{"target_date_changed", "target_date_changed", stringValue(payload["prev_target_date"]), stringPointerValue(epic.TargetDate)},
+		}
+		for _, item := range changes {
+			if changed, _ := payload[item.flag].(bool); changed {
+				recordEpicActivity(ctx, bus, queries, e, epic, item.action, map[string]any{"from": item.from, "to": item.to})
+			}
+		}
+		if changed, _ := payload["owner_changed"].(bool); changed {
+			recordEpicActivity(ctx, bus, queries, e, epic, "owner_changed", map[string]any{
+				"from_type": pointerStringValue(payload["prev_owner_type"]),
+				"from_id":   pointerStringValue(payload["prev_owner_id"]),
+				"to_type":   stringPointerValue(epic.OwnerType),
+				"to_id":     stringPointerValue(epic.OwnerID),
+			})
+		}
+		for _, item := range []struct{ flag, action string }{
+			{"description_changed", "description_updated"},
+			{"success_criteria_changed", "success_criteria_updated"},
+			{"labels_changed", "labels_changed"},
+			{"work_items_changed", "work_items_changed"},
+		} {
+			if changed, _ := payload[item.flag].(bool); changed {
+				recordEpicActivity(ctx, bus, queries, e, epic, item.action, map[string]any{})
+			}
+		}
+	})
+
 	// task:completed — record "task_completed" activity
 	bus.Subscribe(protocol.EventTaskCompleted, func(e events.Event) {
 		handleTaskActivity(ctx, bus, queries, e, "task_completed")
@@ -296,13 +360,20 @@ func publishActivityEvent(bus *events.Bus, original events.Event, activity db.Ac
 		actorType = activity.ActorType.String
 	}
 	action := activity.Action
+	targetType := "issue"
+	if original.Type == protocol.EventEpicCreated || original.Type == protocol.EventEpicUpdated {
+		targetType = "epic"
+	}
+	targetID := util.UUIDToString(activity.IssueID)
 	bus.Publish(events.Event{
 		Type:        protocol.EventActivityCreated,
 		WorkspaceID: original.WorkspaceID,
 		ActorType:   original.ActorType,
 		ActorID:     original.ActorID,
 		Payload: map[string]any{
-			"issue_id": util.UUIDToString(activity.IssueID),
+			"issue_id":    targetID,
+			"target_type": targetType,
+			"target_id":   targetID,
 			"entry": map[string]any{
 				"type":       "activity",
 				"id":         util.UUIDToString(activity.ID),
@@ -314,4 +385,45 @@ func publishActivityEvent(bus *events.Bus, original events.Event, activity db.Ac
 			},
 		},
 	})
+}
+
+func recordEpicActivity(ctx context.Context, bus *events.Bus, queries *db.Queries, event events.Event, epic handler.EpicResponse, action string, details map[string]any) {
+	detailsJSON, err := json.Marshal(details)
+	if err != nil {
+		return
+	}
+	activity, err := queries.CreateActivity(ctx, db.CreateActivityParams{
+		WorkspaceID: parseUUID(epic.WorkspaceID),
+		IssueID:     parseUUID(epic.ID),
+		ActorType:   util.StrToText(event.ActorType),
+		ActorID:     optionalUUID(event.ActorID),
+		Action:      action,
+		Details:     detailsJSON,
+	})
+	if err != nil {
+		slog.Error("activity: failed to record epic planning change", "epic_id", epic.ID, "action", action, "error", err)
+		return
+	}
+	publishActivityEvent(bus, event, activity)
+}
+
+func stringValue(value any) string {
+	if text, ok := value.(string); ok {
+		return text
+	}
+	return pointerStringValue(value)
+}
+
+func pointerStringValue(value any) string {
+	if text, ok := value.(*string); ok && text != nil {
+		return *text
+	}
+	return ""
+}
+
+func stringPointerValue(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
 }

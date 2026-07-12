@@ -8,7 +8,7 @@
       "name": "Squad",
       "leader": "Leader",
       "members": "Members",
-      "creator": "Created by",
+      "owner": "Owner",
       "created": "Created"
     },
     "no_matches": "No squads match",
@@ -18,6 +18,16 @@
   "inspector": {
     "details_section": "Details",
     "archive_button": "Archive"
+  },
+  "owner_picker": {
+    "change": "Change squad owner",
+    "choose": "Transfer ownership to",
+    "current": "Current",
+    "confirm_title": "Transfer squad ownership?",
+    "confirm_description": "{{name}} will be able to manage this squad. If you are not a workspace admin, you will lose edit access.",
+    "cancel": "Cancel",
+    "confirm": "Transfer",
+    "success": "Squad ownership transferred"
   },
   "archive_dialog": {
     "title": "Archive this squad?",
@@ -86,6 +96,7 @@
   },
   "scope": {
     "mine": "Mine",
+    "others": "Other teams",
     "all": "All"
   },
   "toolbar": {

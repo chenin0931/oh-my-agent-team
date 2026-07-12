@@ -1,4 +1,4 @@
-import type { SupportedLocale } from "@multica/core/i18n";
+import type { SupportedLocale } from "@ohmyagentteam/core/i18n";
 export { docsHrefForLocale } from "@/lib/docs-href";
 
 export type Locale = SupportedLocale;
@@ -185,7 +185,7 @@ export type LandingDict = {
       copyLabel: string;
       copiedLabel: string;
     };
-    cloud: { title: string; sub: string };
+    cloud: { title: string; sub: string; cta: string };
     footer: {
       releaseNotes: string;
       allReleases: string;

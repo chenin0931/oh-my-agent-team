@@ -3,7 +3,7 @@ package metrics
 import (
 	"sync"
 
-	"github.com/multica-ai/multica/server/pkg/taskfailure"
+	"github.com/chenin0931/oh-my-agent-team/server/pkg/taskfailure"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -46,105 +46,105 @@ func NewBusinessMetrics() *BusinessMetrics {
 	validateBusinessMetricLabels()
 	m := &BusinessMetrics{
 		taskEnqueued: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Namespace: "multica",
+			Namespace: "omat",
 			Subsystem: "agent_task",
 			Name:      "enqueued_total",
 			Help:      "Total agent tasks enqueued.",
-		}, metricLabels("multica_agent_task_enqueued_total")),
+		}, metricLabels("omat_agent_task_enqueued_total")),
 		taskDispatched: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Namespace: "multica",
+			Namespace: "omat",
 			Subsystem: "agent_task",
 			Name:      "dispatched_total",
 			Help:      "Total agent tasks dispatched to a runtime.",
-		}, metricLabels("multica_agent_task_dispatched_total")),
+		}, metricLabels("omat_agent_task_dispatched_total")),
 		taskStarted: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Namespace: "multica",
+			Namespace: "omat",
 			Subsystem: "agent_task",
 			Name:      "started_total",
 			Help:      "Total agent tasks that reached running state.",
-		}, metricLabels("multica_agent_task_started_total")),
+		}, metricLabels("omat_agent_task_started_total")),
 		taskTerminal: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Namespace: "multica",
+			Namespace: "omat",
 			Subsystem: "agent_task",
 			Name:      "terminal_total",
 			Help:      "Total agent tasks that reached a terminal state.",
-		}, metricLabels("multica_agent_task_terminal_total")),
+		}, metricLabels("omat_agent_task_terminal_total")),
 		taskFailed: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Namespace: "multica",
+			Namespace: "omat",
 			Subsystem: "agent_task",
 			Name:      "failed_total",
 			Help:      "Total failed agent tasks by canonical failure reason.",
-		}, metricLabels("multica_agent_task_failed_total")),
+		}, metricLabels("omat_agent_task_failed_total")),
 		taskQueueWait: prometheus.NewHistogramVec(prometheus.HistogramOpts{
-			Namespace: "multica",
+			Namespace: "omat",
 			Subsystem: "agent_task",
 			Name:      "queue_wait_seconds",
 			Help:      "Time agent tasks spent queued before dispatch.",
 			Buckets:   taskDurationBuckets,
-		}, metricLabels("multica_agent_task_queue_wait_seconds")),
+		}, metricLabels("omat_agent_task_queue_wait_seconds")),
 		taskRunSeconds: prometheus.NewHistogramVec(prometheus.HistogramOpts{
-			Namespace: "multica",
+			Namespace: "omat",
 			Subsystem: "agent_task",
 			Name:      "run_seconds",
 			Help:      "Time agent tasks spent running before a terminal state.",
 			Buckets:   taskDurationBuckets,
-		}, metricLabels("multica_agent_task_run_seconds")),
+		}, metricLabels("omat_agent_task_run_seconds")),
 		taskTotalSeconds: prometheus.NewHistogramVec(prometheus.HistogramOpts{
-			Namespace: "multica",
+			Namespace: "omat",
 			Subsystem: "agent_task",
 			Name:      "total_seconds",
 			Help:      "Total time from agent task creation to terminal state.",
 			Buckets:   taskDurationBuckets,
-		}, metricLabels("multica_agent_task_total_seconds")),
+		}, metricLabels("omat_agent_task_total_seconds")),
 		taskInProgress: prometheus.NewGaugeVec(prometheus.GaugeOpts{
-			Namespace: "multica",
+			Namespace: "omat",
 			Subsystem: "agent_task",
 			Name:      "in_progress",
 			Help:      "Current agent tasks dispatched by this process and not yet terminal.",
-		}, metricLabels("multica_agent_task_in_progress")),
+		}, metricLabels("omat_agent_task_in_progress")),
 		taskIterations: prometheus.NewHistogramVec(prometheus.HistogramOpts{
-			Namespace: "multica",
+			Namespace: "omat",
 			Subsystem: "agent_task",
 			Name:      "iteration_count",
 			Help:      "Retry attempt count observed when an agent task reaches a terminal state.",
 			Buckets:   []float64{1, 2, 3, 4, 5, 10},
-		}, metricLabels("multica_agent_task_iteration_count")),
+		}, metricLabels("omat_agent_task_iteration_count")),
 		llmTokens: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Namespace: "multica",
+			Namespace: "omat",
 			Subsystem: "llm",
 			Name:      "tokens_total",
 			Help:      "Total priced LLM tokens by provider, model, token type, runtime mode, and task source.",
-		}, metricLabels("multica_llm_tokens_total")),
+		}, metricLabels("omat_llm_tokens_total")),
 		llmCostUSD: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Namespace: "multica",
+			Namespace: "omat",
 			Subsystem: "llm",
 			Name:      "cost_usd_total",
 			Help:      "Total estimated priced LLM token cost in USD.",
-		}, metricLabels("multica_llm_cost_usd_total")),
+		}, metricLabels("omat_llm_cost_usd_total")),
 		llmUnpricedTokens: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Namespace: "multica",
+			Namespace: "omat",
 			Subsystem: "llm",
 			Name:      "unpriced_tokens_total",
 			Help:      "Total LLM tokens for model aliases without a fixed TSR price.",
-		}, metricLabels("multica_llm_unpriced_tokens_total")),
+		}, metricLabels("omat_llm_unpriced_tokens_total")),
 		llmRequests: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Namespace: "multica",
+			Namespace: "omat",
 			Subsystem: "llm",
 			Name:      "request_total",
 			Help:      "Total task usage reports by normalized LLM provider and model.",
-		}, metricLabels("multica_llm_request_total")),
+		}, metricLabels("omat_llm_request_total")),
 		taskQueuedExpired: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Namespace: "multica",
+			Namespace: "omat",
 			Subsystem: "task",
 			Name:      "queued_expired_total",
 			Help:      "Total queued tasks expired by the scheduler.",
-		}, metricLabels("multica_task_queued_expired_total")),
+		}, metricLabels("omat_task_queued_expired_total")),
 		taskLeaseExpired: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Namespace: "multica",
+			Namespace: "omat",
 			Subsystem: "task",
 			Name:      "lease_expired_total",
 			Help:      "Total dispatched or running task leases expired by the scheduler.",
-		}, metricLabels("multica_task_lease_expired_total")),
+		}, metricLabels("omat_task_lease_expired_total")),
 		activeTasks: map[string]activeTaskLabels{},
 		events:      newBusinessEventMetrics(),
 	}

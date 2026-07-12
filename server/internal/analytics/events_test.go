@@ -34,8 +34,7 @@ func TestIsMetricsOnly(t *testing.T) {
 		// product-behaviour events (now DB + Grafana only)
 		EventSignup, EventWorkspaceCreated, EventIssueCreated, EventIssueExecuted,
 		EventChatMessageSent, EventTeamInviteSent, EventTeamInviteAccepted,
-		EventOnboardingStarted, EventOnboardingQuestionnaireSubmit, EventAgentCreated,
-		EventOnboardingCompleted, EventCloudWaitlistJoined, EventFeedbackSubmitted,
+		EventAgentCreated, EventFeedbackSubmitted,
 		EventContactSalesSubmitted, EventSquadCreated, EventAutopilotCreated,
 	} {
 		if !IsMetricsOnly(name) {

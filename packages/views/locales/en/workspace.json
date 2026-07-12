@@ -17,18 +17,116 @@
   "new_page": {
     "back": "Back",
     "log_out": "Log out",
-    "title": "Welcome to Multica",
+    "title": "Welcome to OhMyAgentTeam",
     "description": "One workspace where you and your AI teammates work side by side — taking issues, leaving comments, sharing the same context.",
     "invite_hint": "You can invite teammates once your workspace is ready."
   },
   "creation_disabled": {
     "title": "Workspace creation is disabled",
-    "description": "This Multica instance does not allow new workspaces to be created. Ask your administrator for an invitation to an existing workspace."
+    "description": "This OhMyAgentTeam instance does not allow new workspaces to be created. Ask your administrator for an invitation to an existing workspace."
   },
   "no_access": {
     "title": "Workspace not available",
     "description": "This workspace doesn't exist or you don't have access.",
     "go_to_workspaces": "Go to my workspaces",
     "sign_in_different": "Sign in as a different user"
+  },
+  "product_tour": {
+    "skip": "Skip",
+    "back": "Back",
+    "next": "Next",
+    "finish": "Start collaborating",
+    "go_to_slide": "Go to slide {{count}}",
+    "slides": {
+      "network": {
+        "eyebrow": "Collaboration network",
+        "title": "Bring people and agents into one team",
+        "description": "OhMyAgentTeam lets people, their own agents, and other members' agents collaborate around the same work context.",
+        "bullet_1": "People own goals, judgment, and final decisions.",
+        "bullet_2": "Agents plan, execute, comment, and deliver."
+      },
+      "projects": {
+        "eyebrow": "Projects and work items",
+        "title": "Projects define outcomes; work items carry execution",
+        "description": "A project rolls up the business goal and overall progress. Work items are the units that can be assigned, moved, and completed.",
+        "bullet_1": "One project can contain many work items.",
+        "bullet_2": "Unclear work can stay unassigned to a project until it is ready."
+      },
+      "planning": {
+        "eyebrow": "Agent planning",
+        "title": "Describe the goal and let an agent plan the work",
+        "description": "Enter one goal at the top. A planning agent breaks it into independently owned work and routes each item to the best person, agent, or squad.",
+        "bullet_1": "One request can create several work items.",
+        "bullet_2": "Every planned item starts in Backlog for review."
+      },
+      "workflow": {
+        "eyebrow": "Controlled execution",
+        "title": "Agents start only when work enters Todo",
+        "description": "Status is both progress and an execution switch. Backlog never starts an agent; moving an assigned item to Todo does.",
+        "bullet_1": "Subscribing or reading activity never triggers execution.",
+        "bullet_2": "Process, comments, and results stay in the work item activity."
+      },
+      "human": {
+        "eyebrow": "Human collaboration",
+        "title": "People decide while agents advise",
+        "description": "When work is assigned to a person it appears in the Action center. Their advisor agents may leave separate suggestions without taking control of the task.",
+        "bullet_1": "The person keeps status and final decision authority.",
+        "bullet_2": "Advisor agents can comment and subscribe, but cannot execute."
+      },
+      "runtime": {
+        "eyebrow": "Execution capacity",
+        "title": "Connect tools and build your agent team",
+        "description": "Execution Tools connect Codex, Claude Code, WorkBuddy, and compatible CLIs. Agents define roles and expertise; squads organize several Agents into one collaboration unit.",
+        "bullet_1": "One runtime can support several specialist agents.",
+        "bullet_2": "Agents and squads can both own work items."
+      }
+    },
+    "visual": {
+      "project_title": "Product launch plan",
+      "project_summary": "4 work items · 2 complete",
+      "project_item_1": "Define product scope",
+      "project_item_2": "Confirm purchasing plan",
+      "project_item_3": "Prepare launch campaign",
+      "complete": "Complete",
+      "planning_prompt": "Plan a customer roundtable and assign the right people and agents",
+      "analyzing": "Breaking down work and matching owners",
+      "plan_item_1": "Design the agenda",
+      "plan_item_2": "Prepare invitations",
+      "plan_item_3": "Confirm the venue",
+      "product_agent": "Product planning agent",
+      "growth_agent": "Growth agent",
+      "research_agent": "Research agent",
+      "you": "You",
+      "backlog": "Backlog",
+      "status": {
+        "backlog": "Backlog",
+        "todo": "Todo",
+        "in_progress": "In progress",
+        "in_review": "In review",
+        "done": "Done"
+      },
+      "execution_rule": "Execution rule",
+      "backlog_waits": "Backlog: plan only",
+      "todo_starts": "Todo: start work",
+      "activity_started": "Work item moved to Todo",
+      "activity_agent": "Agent started working",
+      "activity_result": "Agent posted a result",
+      "just_now": "Just now",
+      "running": "Running",
+      "activity_feed": "Activity",
+      "action_center": "Action center",
+      "assigned_to_you": "Assigned to you",
+      "human_task": "Confirm the annual purchasing budget",
+      "agent_advice": "Agent advice",
+      "advice_1": "I compared three purchasing options and their main risks.",
+      "advice_2": "Confirm the budget ceiling before starting vendor negotiations.",
+      "human_decides": "You confirm the decision and move the status",
+      "runtime_name": "Codex · Local runtime",
+      "runtime_description": "Provides real tools and a local execution environment",
+      "online": "Online",
+      "virtual_member": "Virtual member",
+      "squad": "Launch squad",
+      "squad_summary": "3 agents working together"
+    }
   }
 }

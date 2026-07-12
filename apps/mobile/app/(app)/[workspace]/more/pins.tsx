@@ -34,7 +34,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import type { Issue, PinnedItem, Project } from "@multica/core/types";
+import type { Epic, Issue, PinnedItem, Project } from "@ohmyagentteam/core/types";
 import { Text } from "@/components/ui/text";
 import { Button } from "@/components/ui/button";
 import { IssueRow } from "@/components/issue/issue-row";
@@ -43,6 +43,7 @@ import { pinListOptions } from "@/data/queries/pins";
 import { useDeletePin } from "@/data/mutations/pins";
 import { issueDetailOptions } from "@/data/queries/issues";
 import { projectDetailOptions } from "@/data/queries/projects";
+import { epicDetailOptions } from "@/data/queries/epics";
 import { useAuthStore } from "@/data/auth-store";
 import { useWorkspaceStore } from "@/data/workspace-store";
 import { useColorScheme } from "@/lib/use-color-scheme";
@@ -133,6 +134,9 @@ function PinRow({
       <IssuePinRow pin={pin} wsId={wsId} wsSlug={wsSlug} />
     );
   }
+  if (pin.item_type === "epic") {
+    return <EpicPinRow pin={pin} wsId={wsId} wsSlug={wsSlug} />;
+  }
   return <ProjectPinRow pin={pin} wsId={wsId} wsSlug={wsSlug} />;
 }
 
@@ -192,6 +196,42 @@ function ProjectPinRow({
   );
 }
 
+function EpicPinRow({
+  pin,
+  wsId,
+  wsSlug,
+}: {
+  pin: PinnedItem;
+  wsId: string | null;
+  wsSlug: string | null;
+}) {
+  const { data, isLoading } = useQuery(epicDetailOptions(wsId, pin.item_id));
+  const epic = data && data.id ? (data as Epic) : null;
+
+  if (isLoading) return <SkeletonRow />;
+  if (!epic) return <MissingPinRow itemType="epic" itemId={pin.item_id} />;
+
+  return (
+    <Pressable
+      onPress={() => {
+        if (wsSlug) router.push(`/${wsSlug}/epic/${epic.id}`);
+      }}
+      className="px-4 py-3 flex-row items-center gap-3 active:bg-secondary"
+    >
+      <Ionicons name="layers-outline" size={18} />
+      <View className="flex-1">
+        <Text className="text-xs text-muted-foreground">{epic.identifier} · Epic</Text>
+        <Text className="text-sm text-foreground" numberOfLines={1}>
+          {epic.title}
+        </Text>
+      </View>
+      <Text className="text-xs text-muted-foreground capitalize">
+        {epic.lifecycle.replaceAll("_", " ")}
+      </Text>
+    </Pressable>
+  );
+}
+
 function SkeletonRow() {
   return (
     <View className="px-4 py-3 flex-row items-center gap-3">
@@ -211,7 +251,7 @@ function MissingPinRow({
   itemType,
   itemId,
 }: {
-  itemType: "issue" | "project";
+  itemType: "issue" | "epic" | "project";
   itemId: string;
 }) {
   const { colorScheme } = useColorScheme();

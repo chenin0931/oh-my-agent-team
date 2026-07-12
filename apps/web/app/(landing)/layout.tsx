@@ -1,6 +1,7 @@
 import { Instrument_Serif, Noto_Serif_SC } from "next/font/google";
 import { LocaleProvider } from "@/features/landing/i18n";
 import { getRequestLocale } from "@/lib/request-locale";
+import { BRAND_NAME, BRAND_TAGLINE } from "@ohmyagentteam/core/brand";
 
 const instrumentSerif = Instrument_Serif({
   subsets: ["latin"],
@@ -19,17 +20,17 @@ const jsonLd = {
   "@graph": [
     {
       "@type": "Organization",
-      name: "Multica",
-      url: "https://www.multica.ai",
-      sameAs: ["https://github.com/multica-ai/multica"],
+      name: BRAND_NAME,
+      url: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+      sameAs: ["https://github.com/chenin0931/oh-my-agent-team"],
     },
     {
       "@type": "SoftwareApplication",
-      name: "Multica",
+      name: BRAND_NAME,
       applicationCategory: "ProjectManagement",
       operatingSystem: "Web",
       description:
-        "Open-source project management platform that turns coding agents into real teammates.",
+        BRAND_TAGLINE,
       offers: {
         "@type": "Offer",
         price: "0",

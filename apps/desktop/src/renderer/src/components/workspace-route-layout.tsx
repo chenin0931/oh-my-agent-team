@@ -1,17 +1,16 @@
 import { useEffect } from "react";
 import { Outlet, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { WorkspaceSlugProvider, paths } from "@multica/core/paths";
+import { WorkspaceSlugProvider, paths } from "@ohmyagentteam/core/paths";
 import {
   workspaceBySlugOptions,
   workspaceListOptions,
-} from "@multica/core/workspace";
-import { setCurrentWorkspace } from "@multica/core/platform";
-import { useAuthStore } from "@multica/core/auth";
-import { useWorkspaceSeen } from "@multica/views/workspace/use-workspace-seen";
-import { WelcomeAfterOnboarding } from "@multica/views/workspace/welcome-after-onboarding";
-import { WorkspacePresencePrefetch } from "@multica/views/layout";
-import { SourceBackfillModal } from "@multica/views/onboarding";
+} from "@ohmyagentteam/core/workspace";
+import { setCurrentWorkspace } from "@ohmyagentteam/core/platform";
+import { useAuthStore } from "@ohmyagentteam/core/auth";
+import { useWorkspaceSeen } from "@ohmyagentteam/views/workspace/use-workspace-seen";
+import { WorkspaceFirstRunExperience } from "@ohmyagentteam/views/workspace/workspace-first-run-experience";
+import { WorkspacePresencePrefetch } from "@ohmyagentteam/views/layout";
 import { useTabStore } from "@/stores/tab-store";
 import { useWindowOverlayStore } from "@/stores/window-overlay-store";
 
@@ -37,9 +36,9 @@ export function WorkspaceRouteLayout() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const isAuthLoading = useAuthStore((s) => s.isLoading);
-  // While a WindowOverlay is open (onboarding, accept-invite, new-workspace),
+  // While a WindowOverlay is open (accept-invite or new-workspace),
   // the underlying tab is still mounted in the React tree — so this layout
-  // and its WelcomeAfterOnboarding Modal would render UNDER the overlay.
+  // and its first-run dialogs would render UNDER the overlay.
   // Because the modal uses a Portal that targets document.body, it ends up
   // rendered LATER in the DOM and visually outranks the overlay's z-50.
   // Suppress the modal whenever any overlay is active; the moment the
@@ -97,21 +96,9 @@ export function WorkspaceRouteLayout() {
     <WorkspaceSlugProvider slug={workspaceSlug}>
       <WorkspacePresencePrefetch />
       <Outlet />
-      {/* Reads the welcome-store transient signal parked by
-       *  OnboardingFlow.handleRuntimeNext. Suppressed while a WindowOverlay
-       *  (onboarding / accept-invite / new-workspace) is open so the modal
-       *  doesn't portal-jump in front of an active pre-workspace flow.
-       *  Once the overlay closes the hook re-evaluates and pops the
-       *  Modal — unless the store signal has already been consumed, in
-       *  which case the hook renders null. */}
-      {!overlayActive && <WelcomeAfterOnboarding />}
-      {/* Source-attribution backfill: same Dialog the web shell mounts
-       *  inside DashboardLayout. Desktop's WorkspaceRouteLayout doesn't
-       *  wrap DashboardLayout, so the modal has to be wired in directly
-       *  here. Same overlay-suppression rule as WelcomeAfterOnboarding —
-       *  a portal-rendered Dialog at z-50 would otherwise sit above an
-       *  active pre-workspace overlay. */}
-      {!overlayActive && <SourceBackfillModal />}
+      {/* Versioned product tour. Suppressed while a WindowOverlay is active so it cannot
+       *  portal-jump in front of a pre-workspace flow. */}
+      {!overlayActive && <WorkspaceFirstRunExperience />}
     </WorkspaceSlugProvider>
   );
 }

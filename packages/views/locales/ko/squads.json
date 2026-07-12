@@ -8,7 +8,7 @@
       "name": "스쿼드",
       "leader": "리더",
       "members": "멤버",
-      "creator": "생성자",
+      "owner": "소유자",
       "created": "생성일"
     },
     "no_matches": "일치하는 스쿼드가 없습니다",
@@ -18,6 +18,16 @@
   "inspector": {
     "details_section": "세부 정보",
     "archive_button": "보관"
+  },
+  "owner_picker": {
+    "change": "스쿼드 소유자 변경",
+    "choose": "소유권 이전 대상",
+    "current": "현재",
+    "confirm_title": "스쿼드 소유권을 이전할까요?",
+    "confirm_description": "{{name}}님이 이 스쿼드를 관리할 수 있습니다. 워크스페이스 관리자가 아니라면 편집 권한을 잃게 됩니다.",
+    "cancel": "취소",
+    "confirm": "이전",
+    "success": "스쿼드 소유권을 이전했습니다"
   },
   "archive_dialog": {
     "title": "이 스쿼드를 보관할까요?",
@@ -83,6 +93,7 @@
   },
   "scope": {
     "mine": "내 스쿼드",
+    "others": "다른 사람의 팀",
     "all": "전체"
   },
   "toolbar": {

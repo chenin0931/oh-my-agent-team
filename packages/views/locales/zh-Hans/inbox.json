@@ -1,7 +1,14 @@
 {
   "page": {
-    "title": "收件箱",
-    "back": "收件箱"
+    "title": "行动中心",
+    "back": "行动中心"
+  },
+  "filters": {
+    "label": "行动中心视图",
+    "all": "全部",
+    "action": "待我处理",
+    "agents": "智能体行动",
+    "system": "系统变化"
   },
   "menu": {
     "mark_all_read": "全部标为已读",
@@ -11,6 +18,8 @@
   },
   "list": {
     "empty": "暂无通知",
+    "empty_filter": "此视图暂无内容",
+    "action_required": "需要处理",
     "mark_done_tooltip": "标为已完成",
     "archive_tooltip": "归档",
     "time": {
@@ -28,6 +37,7 @@
     "archive": "归档"
   },
   "types": {
+    "epic_owned": "负责 Epic",
     "issue_assigned": "已分配",
     "issue_subscribed": "已订阅",
     "unassigned": "已取消分配",
@@ -39,8 +49,8 @@
     "new_comment": "新评论",
     "mentioned": "提及了你",
     "review_requested": "请求审阅",
-    "task_completed": "task 已完成",
-    "task_failed": "task 失败",
+    "task_completed": "智能体任务已完成",
+    "task_failed": "智能体任务失败",
     "agent_blocked": "智能体被阻塞",
     "agent_completed": "智能体已完成",
     "reaction_added": "添加了表情反应",
@@ -58,6 +68,7 @@
     "removed_due_date": "移除了截止日期",
     "reacted_to_comment": "用 {{emoji}} 回应了你的评论",
     "created_with_agent": "通过智能体创建：{{identifier}}",
+    "planned_with_agent": "智能体已规划 {{count}} 个待规划工作项",
     "failed_with_detail": "失败：{{detail}}"
   },
   "errors": {

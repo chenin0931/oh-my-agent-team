@@ -13,7 +13,7 @@ import { Play } from "lucide-react";
  * component.
  *
  * Usage in MDX (registered in the docs MDX components map):
- *   <VideoEmbed provider="bilibili" id="BV1cv7Y6gEg7" title="Multica 介绍视频" />
+ *   <VideoEmbed provider="bilibili" id="BV1cv7Y6gEg7" title="OhMyAgentTeam 介绍视频" />
  */
 
 type Provider = "bilibili" | "youtube";

@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import type { Issue } from "@multica/core/types";
-import { api } from "@multica/core/api";
+import type { Issue, IssueType } from "@ohmyagentteam/core/types";
+import { api } from "@ohmyagentteam/core/api";
 import {
   Command,
   CommandDialog,
@@ -11,7 +11,7 @@ import {
   CommandEmpty,
   CommandGroup,
   CommandItem,
-} from "@multica/ui/components/ui/command";
+} from "@ohmyagentteam/ui/components/ui/command";
 import { StatusIcon } from "../issues/components/status-icon";
 import { useT } from "../i18n";
 
@@ -21,6 +21,7 @@ interface IssuePickerModalProps {
   title: string;
   description: string;
   excludeIds: string[];
+  allowedIssueTypes?: IssueType[];
   onSelect: (issue: Issue) => void;
 }
 
@@ -30,6 +31,7 @@ export function IssuePickerModal({
   title,
   description,
   excludeIds,
+  allowedIssueTypes,
   onSelect,
 }: IssuePickerModalProps) {
   const { t } = useT("modals");
@@ -70,7 +72,14 @@ export function IssuePickerModal({
             signal: controller.signal,
           });
           if (!controller.signal.aborted) {
-            setResults(res.issues.filter((i) => !excludeIds.includes(i.id)));
+            setResults(
+              res.issues.filter(
+                (issue) =>
+                  !excludeIds.includes(issue.id) &&
+                  (!allowedIssueTypes ||
+                    allowedIssueTypes.includes(issue.issue_type ?? "issue")),
+              ),
+            );
             setIsLoading(false);
           }
         } catch {
@@ -80,7 +89,7 @@ export function IssuePickerModal({
         }
       }, 300);
     },
-    [excludeIds],
+    [allowedIssueTypes, excludeIds],
   );
 
   return (

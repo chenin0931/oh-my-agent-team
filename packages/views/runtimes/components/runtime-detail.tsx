@@ -15,27 +15,27 @@ import type {
   Agent,
   MemberWithUser,
   RuntimeProfile,
-} from "@multica/core/types";
-import { useAuthStore } from "@multica/core/auth";
-import { useWorkspaceId } from "@multica/core/hooks";
-import { memberListOptions, agentListOptions } from "@multica/core/workspace/queries";
-import { useUpdateRuntime } from "@multica/core/runtimes/mutations";
+} from "@ohmyagentteam/core/types";
+import { useAuthStore } from "@ohmyagentteam/core/auth";
+import { useWorkspaceId } from "@ohmyagentteam/core/hooks";
+import { memberListOptions, agentListOptions } from "@ohmyagentteam/core/workspace/queries";
+import { useUpdateRuntime } from "@ohmyagentteam/core/runtimes/mutations";
 import {
   deriveRuntimeHealth,
   runtimeDisplayName,
   runtimeProfileListOptions,
-} from "@multica/core/runtimes";
+} from "@ohmyagentteam/core/runtimes";
 import {
   type AgentPresenceDetail,
   useWorkspacePresenceMap,
-} from "@multica/core/agents";
-import { useWorkspacePaths } from "@multica/core/paths";
-import { Button } from "@multica/ui/components/ui/button";
+} from "@ohmyagentteam/core/agents";
+import { useWorkspacePaths } from "@ohmyagentteam/core/paths";
+import { Button } from "@ohmyagentteam/ui/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@multica/ui/components/ui/tooltip";
+} from "@ohmyagentteam/ui/components/ui/tooltip";
 import { ActorAvatar } from "../../common/actor-avatar";
 import { BreadcrumbHeader } from "../../layout/breadcrumb-header";
 import { AppLink, useNavigation } from "../../navigation";
@@ -43,6 +43,7 @@ import { availabilityConfig, workloadConfig } from "../../agents/presence";
 import { formatLastSeen } from "../utils";
 import { HealthBadge } from "./shared";
 import { ProviderLogo } from "./provider-logo";
+import { runtimeLogoProvider } from "./runtime-logo";
 import { UpdateSection } from "./update-section";
 import { UsageSection } from "./usage-section";
 import { DeleteRuntimeDialog } from "./delete-runtime-dialog";
@@ -158,7 +159,7 @@ export function RuntimeDetail({ runtime }: { runtime: AgentRuntime }) {
         segments={[{ href: paths.runtimes(), label: t(($) => $.page.title) }]}
         leaf={
           <span className="truncate font-mono text-xs text-foreground">
-            {runtimeDisplayName(runtime)}
+            {runtimeDisplayName(runtime, runtimeProfile)}
           </span>
         }
         actions={
@@ -181,6 +182,7 @@ export function RuntimeDetail({ runtime }: { runtime: AgentRuntime }) {
           <div className="min-w-0 space-y-5">
             <HeroCard
               runtime={runtime}
+              profile={runtimeProfile}
               health={health}
               lastSeen={lastSeen}
               ownerMember={ownerMember}
@@ -246,6 +248,7 @@ function parseDeviceInfo(raw: string): { hostname: string; runtime?: string } {
 
 function HeroCard({
   runtime,
+  profile,
   health,
   lastSeen,
   ownerMember,
@@ -253,6 +256,7 @@ function HeroCard({
   daemonShort,
 }: {
   runtime: AgentRuntime;
+  profile: RuntimeProfile | null;
   health: ReturnType<typeof deriveRuntimeHealth>;
   lastSeen: string;
   ownerMember: MemberWithUser | null;
@@ -269,12 +273,15 @@ function HeroCard({
       {/* Identity row — provider logo, name, status badge, last seen. */}
       <div className="flex items-start gap-3 border-b p-4">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border bg-card">
-          <ProviderLogo provider={runtime.provider} className="h-5 w-5" />
+          <ProviderLogo
+            provider={runtimeLogoProvider(runtime, profile)}
+            className="h-5 w-5"
+          />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <h2 className="truncate text-base font-semibold tracking-tight">
-              {runtimeDisplayName(runtime)}
+            <h2 className="truncate text-base font-semibold">
+              {runtimeDisplayName(runtime, profile)}
             </h2>
             <HealthBadge health={health} />
             <span className="text-xs text-muted-foreground">
@@ -328,7 +335,7 @@ function HeroCard({
         </Fact>
       </dl>
 
-      {/* Diagnostic IDs — multica CLI git hash + truncated daemon UUID.
+      {/* Diagnostic IDs — ohmyagentteam CLI git hash + truncated daemon UUID.
           Only useful when filing an issue or reading logs; folded by
           default so they don't compete with the user-visible facts above. */}
       {hasTechDetails && (

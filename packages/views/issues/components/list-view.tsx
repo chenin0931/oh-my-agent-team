@@ -15,12 +15,12 @@ import {
   type DragOverEvent,
 } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@multica/ui/components/ui/tooltip";
-import { Button } from "@multica/ui/components/ui/button";
-import type { Issue, IssueStatus, Project } from "@multica/core/types";
-import { useLoadMoreByStatus } from "@multica/core/issues/mutations";
-import type { IssueSortParam, MyIssuesFilter } from "@multica/core/issues/queries";
-import { useViewStore } from "@multica/core/issues/stores/view-store-context";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@ohmyagentteam/ui/components/ui/tooltip";
+import { Button } from "@ohmyagentteam/ui/components/ui/button";
+import type { Issue, IssueStatus, Project } from "@ohmyagentteam/core/types";
+import { useLoadMoreByStatus } from "@ohmyagentteam/core/issues/mutations";
+import type { IssueSortParam, MyIssuesFilter } from "@ohmyagentteam/core/issues/queries";
+import { useViewStore } from "@ohmyagentteam/core/issues/stores/view-store-context";
 import { StatusHeading } from "./status-heading";
 import { ListRow, DraggableListRow, type ChildProgress } from "./list-row";
 import { useDragSettle } from "./use-drag-settle";

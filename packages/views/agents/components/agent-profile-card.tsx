@@ -1,19 +1,19 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import type { Agent, AgentRuntime } from "@multica/core/types";
-import { useAgentPresenceDetail } from "@multica/core/agents";
-import { useWorkspaceId } from "@multica/core/hooks";
+import type { Agent, AgentRuntime } from "@ohmyagentteam/core/types";
+import { useAgentPresenceDetail } from "@ohmyagentteam/core/agents";
+import { useWorkspaceId } from "@ohmyagentteam/core/hooks";
 import {
   deriveRuntimeHealth,
   type RuntimeHealth,
-} from "@multica/core/runtimes";
-import { agentListOptions, memberListOptions } from "@multica/core/workspace/queries";
-import { resolvePublicFileUrl } from "@multica/core/workspace/avatar-url";
-import { runtimeListOptions } from "@multica/core/runtimes/queries";
-import { useWorkspacePaths } from "@multica/core/paths";
-import { ActorAvatar as ActorAvatarBase } from "@multica/ui/components/common/actor-avatar";
-import { Skeleton } from "@multica/ui/components/ui/skeleton";
+} from "@ohmyagentteam/core/runtimes";
+import { agentListOptions, memberListOptions } from "@ohmyagentteam/core/workspace/queries";
+import { resolvePublicFileUrl } from "@ohmyagentteam/core/workspace/avatar-url";
+import { runtimeListOptions } from "@ohmyagentteam/core/runtimes/queries";
+import { useWorkspacePaths } from "@ohmyagentteam/core/paths";
+import { ActorAvatar as ActorAvatarBase } from "@ohmyagentteam/ui/components/common/actor-avatar";
+import { Skeleton } from "@ohmyagentteam/ui/components/ui/skeleton";
 import { AppLink } from "../../navigation";
 import { HealthIcon } from "../../runtimes/components/shared";
 import { availabilityConfig } from "../presence";

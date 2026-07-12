@@ -34,10 +34,10 @@ func BuildNewCommentsHint(issueID, triggerCommentID, triggerThreadID, newComment
 		return fmt.Sprintf(
 			"%d new comment(s) on this issue since your last run — don't read them all blindly. "+
 				"Start with the thread your triggering comment is in: "+
-				"`multica issue comment list %s --thread %s --since %s --output json` "+
+				"`omat issue comment list %s --thread %s --since %s --output json` "+
 				"(swap `--since` for `--tail 30` if you need the full thread, not just the delta). "+
 				"Only if you need context from the other threads, catch up issue-wide: "+
-				"`multica issue comment list %s --since %s --output json`.\n\n",
+				"`omat issue comment list %s --since %s --output json`.\n\n",
 			newCommentCount, issueID, threadID, newCommentsSince, issueID, newCommentsSince,
 		)
 	}
@@ -46,7 +46,7 @@ func BuildNewCommentsHint(issueID, triggerCommentID, triggerThreadID, newComment
 	// issue-wide catch-up.
 	return fmt.Sprintf(
 		"%d new comment(s) on this issue since your last run. Catch up: "+
-			"`multica issue comment list %s --since %s --output json`.\n\n",
+			"`omat issue comment list %s --since %s --output json`.\n\n",
 		newCommentCount, issueID, newCommentsSince,
 	)
 }
@@ -70,7 +70,7 @@ func BuildResumedCommentsHint(issueID, triggerCommentID, triggerThreadID string)
 			"Use the active thread anchor `%s` and triggering comment ID `%s`. "+
 			"If your reply depends on thread context, do not rely only on resumed session memory — "+
 			"first pull the triggering conversation with: "+
-			"`multica issue comment list %s --thread %s --tail 30 --output json`.\n\n",
+			"`omat issue comment list %s --thread %s --tail 30 --output json`.\n\n",
 		threadID, triggerCommentID, issueID, threadID,
 	)
 }
@@ -95,9 +95,9 @@ func BuildColdCommentsHint(issueID, triggerCommentID, triggerThreadID string) st
 	}
 	return fmt.Sprintf(
 		"Read the triggering conversation first: "+
-			"`multica issue comment list %s --thread %s --tail 30 --output json` "+
+			"`omat issue comment list %s --thread %s --tail 30 --output json` "+
 			"(that thread's root + its 30 newest replies). "+
-			"Need cross-thread background? `multica issue comment list %s --recent 10 --output json` "+
+			"Need cross-thread background? `omat issue comment list %s --recent 10 --output json` "+
 			"(resolved threads come back folded — `--full` to expand).\n\n",
 		issueID, threadID, issueID,
 	)
@@ -134,10 +134,10 @@ func activeThreadID(triggerThreadID, triggerCommentID string) string {
 //     see:
 //     1. On Windows, PowerShell 5.1's `$OutputEncoding` defaults to
 //     ASCIIEncoding when piping to native commands and drops non-ASCII as
-//     `?` before the bytes reach `multica.exe` (#2198 Chinese, #2236
+//     `?` before the bytes reach `omat.exe` (#2198 Chinese, #2236
 //     Chinese, #2376 Cyrillic).
 //     2. On any host, when the model emits a multi-flag command (e.g.
-//     `multica issue create --title ... --assignee-id ... --project ...`)
+//     `omat issue create --title ... --assignee-id ... --project ...`)
 //     the bash heredoc/flag boundary is fragile: a `BODY \` "terminator
 //     with trailing token" is not recognised as the heredoc end, so flag
 //     lines after it are swallowed into the description; or a clean
@@ -166,12 +166,12 @@ func BuildCommentReplyInstructions(provider, issueID, triggerCommentID string) s
 			"If you decide to reply, post it as a comment — always use the trigger comment ID below, "+
 				"do NOT reuse --parent values from previous turns in this session.\n\n"+
 				"On Windows, write the reply body to a UTF-8 file with your file-write tool, then post it with `--content-file`. "+
-				"Do NOT pipe via `--content-stdin` — Windows PowerShell 5.1's `$OutputEncoding` defaults to ASCIIEncoding when piping to native commands and silently drops non-ASCII (Chinese, Japanese, Cyrillic, accents, emoji) as `?` before the bytes reach `multica.exe`. "+
+				"Do NOT pipe via `--content-stdin` — Windows PowerShell 5.1's `$OutputEncoding` defaults to ASCIIEncoding when piping to native commands and silently drops non-ASCII (Chinese, Japanese, Cyrillic, accents, emoji) as `?` before the bytes reach `omat.exe`. "+
 				"Do NOT use inline `--content`; it is easy to lose formatting or accidentally compress a structured reply into one line.\n\n"+
 				"Use this form, preserving the same issue ID and --parent value:\n\n"+
 				"    # 1. Write the reply body to a UTF-8 file (e.g. reply.md) with your file-write tool.\n"+
 				"    # 2. Post the comment:\n"+
-				"    multica issue comment add %s --parent %s --content-file ./reply.md\n"+
+				"    omat issue comment add %s --parent %s --content-file ./reply.md\n"+
 				"    # 3. Remove the temp file so a later run does not pick up stale content:\n"+
 				"    Remove-Item ./reply.md\n\n"+
 				"Do NOT write literal `\\n` escapes to simulate line breaks; the file preserves real newlines.\n",
@@ -192,12 +192,12 @@ func BuildCommentReplyInstructions(provider, issueID, triggerCommentID string) s
 			"do NOT reuse --parent values from previous turns in this session.\n\n"+
 			"Write the reply body to a UTF-8 file with your file-write tool first, then post it with `--content-file`. "+
 			"Do NOT use inline `--content`; the shell rewrites unescaped backticks, `$()`, `$VAR`, or quotes in the body before the CLI receives them. "+
-			"Do NOT use `--content-stdin` with a HEREDOC either — when extra flags (e.g. `--assignee`, `--project` on `multica issue create`) accompany the command, the bash heredoc/flag boundary is fragile and flags can be silently swallowed into the stdin stream while the command still exits 0 (see GitHub #4182, OXY-78 / OXY-76). "+
+			"Do NOT use `--content-stdin` with a HEREDOC either — when extra flags (e.g. `--assignee`, `--project` on `omat issue create`) accompany the command, the bash heredoc/flag boundary is fragile and flags can be silently swallowed into the stdin stream while the command still exits 0 (see GitHub #4182, OXY-78 / OXY-76). "+
 			"It is also easy to lose formatting or compress a structured reply into one line with inline forms.\n\n"+
 			"Use this form, preserving the same issue ID and --parent value:\n\n"+
 			"    # 1. Write the reply body to a UTF-8 file (e.g. reply.md) with your file-write tool.\n"+
 			"    # 2. Post the comment:\n"+
-			"    multica issue comment add %s --parent %s --content-file ./reply.md\n"+
+			"    omat issue comment add %s --parent %s --content-file ./reply.md\n"+
 			"    # 3. Remove the temp file so a later run does not pick up stale content:\n"+
 			"    rm ./reply.md\n\n"+
 			"Do NOT write literal `\\n` escapes to simulate line breaks; the file preserves real newlines.\n",
@@ -224,9 +224,9 @@ func buildCommentReplyInstructionsSlim(provider, issueID, triggerCommentID strin
 			"If you decide to reply, post it as a comment — always use the trigger comment ID below, "+
 				"do NOT reuse --parent values from previous turns in this session.\n\n"+
 				"On Windows, write the reply body to a UTF-8 file with your file-write tool first, then post with `--content-file`. "+
-				"Do NOT pipe via `--content-stdin` — PowerShell 5.1's `$OutputEncoding` defaults to ASCIIEncoding when piping to native commands and silently drops non-ASCII (Chinese, Japanese, Cyrillic, accents, emoji) as `?` before bytes reach `multica.exe`. "+
+				"Do NOT pipe via `--content-stdin` — PowerShell 5.1's `$OutputEncoding` defaults to ASCIIEncoding when piping to native commands and silently drops non-ASCII (Chinese, Japanese, Cyrillic, accents, emoji) as `?` before bytes reach `omat.exe`. "+
 				"See ## Comment Formatting above for the full rule:\n\n"+
-				"    multica issue comment add %s --parent %s --content-file ./reply.md\n"+
+				"    omat issue comment add %s --parent %s --content-file ./reply.md\n"+
 				"    Remove-Item ./reply.md\n\n"+
 				"Do NOT write literal `\\n` escapes to simulate line breaks; the file preserves real newlines.\n",
 			issueID, triggerCommentID,
@@ -237,7 +237,7 @@ func buildCommentReplyInstructionsSlim(provider, issueID, triggerCommentID strin
 			"do NOT reuse --parent values from previous turns in this session.\n\n"+
 			"Write the reply body to a UTF-8 file with your file-write tool first, then post it with `--content-file` "+
 			"(see ## Comment Formatting above for why inline `--content` and `--content-stdin` HEREDOCs are unsafe — MUL-2904 / #4182):\n\n"+
-			"    multica issue comment add %s --parent %s --content-file ./reply.md\n"+
+			"    omat issue comment add %s --parent %s --content-file ./reply.md\n"+
 			"    rm ./reply.md\n\n"+
 			"Do NOT write literal `\\n` escapes to simulate line breaks; the file preserves real newlines.\n",
 		issueID, triggerCommentID,

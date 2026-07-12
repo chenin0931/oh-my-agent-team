@@ -31,17 +31,18 @@ import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import { createLowlight, common } from "lowlight";
 import { toHtml } from "hast-util-to-html";
 import { Check, Copy } from "lucide-react";
-import { cn } from "@multica/ui/lib/utils";
-import { copyText } from "@multica/ui/lib/clipboard";
-import { useWorkspacePaths, useWorkspaceSlug } from "@multica/core/paths";
-import type { Attachment } from "@multica/core/types";
+import { cn } from "@ohmyagentteam/ui/lib/utils";
+import { copyText } from "@ohmyagentteam/ui/lib/clipboard";
+import { useWorkspacePaths, useWorkspaceSlug } from "@ohmyagentteam/core/paths";
+import type { Attachment } from "@ohmyagentteam/core/types";
 import { useT } from "../i18n";
 import { useNavigation } from "../navigation";
 import { IssueMentionCard } from "../issues/components/issue-mention-card";
+import { EpicMentionCard } from "../epics/components/epic-mention-card";
 import { ProjectChip } from "../projects/components/project-chip";
 import { useLinkHover, LinkHoverCard } from "./link-hover-card";
 import { openLink, isMentionHref } from "./utils/link-handler";
-import { isAllowedFileCardHref } from "@multica/ui/markdown";
+import { isAllowedFileCardHref } from "@ohmyagentteam/ui/markdown";
 import { preprocessMarkdown } from "./utils/preprocess";
 import { highlightToHtml } from "./utils/highlight-markdown";
 import { MermaidDiagram } from "./mermaid-diagram";
@@ -245,7 +246,7 @@ function ReadonlyLink({
   }
 
   if (isMentionHref(href)) {
-    const match = href.match(/^mention:\/\/(member|agent|issue|project|all)\/(.+)$/);
+    const match = href.match(/^mention:\/\/(member|agent|squad|epic|issue|project|all)\/(.+)$/);
     if (match?.[1] === "issue" && match[2]) {
       const label =
         typeof children === "string"
@@ -263,6 +264,15 @@ function ReadonlyLink({
             ? children.join("")
             : undefined;
       return <ProjectMentionLink projectId={match[2]} label={label} />;
+    }
+    if (match?.[1] === "epic" && match[2]) {
+      const label =
+        typeof children === "string"
+          ? children
+          : Array.isArray(children)
+            ? children.join("")
+            : undefined;
+      return <EpicMentionCard epicId={match[2]} fallbackLabel={label} />;
     }
     // Member / agent / all mentions
     return <span className="mention">{children}</span>;

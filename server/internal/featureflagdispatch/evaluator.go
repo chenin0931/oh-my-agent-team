@@ -3,9 +3,9 @@ package featureflagdispatch
 import (
 	"context"
 
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
-	"github.com/multica-ai/multica/server/pkg/featureflag"
-	"github.com/multica-ai/multica/server/pkg/protocol"
+	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
+	"github.com/chenin0931/oh-my-agent-team/server/pkg/featureflag"
+	"github.com/chenin0931/oh-my-agent-team/server/pkg/protocol"
 )
 
 const defaultSnapshotVersion uint64 = 1

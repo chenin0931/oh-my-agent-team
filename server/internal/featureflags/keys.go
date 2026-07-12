@@ -3,7 +3,7 @@ package featureflags
 import (
 	"context"
 
-	"github.com/multica-ai/multica/server/pkg/featureflag"
+	"github.com/chenin0931/oh-my-agent-team/server/pkg/featureflag"
 )
 
 const (

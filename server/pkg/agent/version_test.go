@@ -79,6 +79,32 @@ func TestCheckMinCLIVersion(t *testing.T) {
 	}
 }
 
+func TestCheckPlanningQuickCreateCLIVersion(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		wantErr error
+	}{
+		{"tagged release at minimum", MinPlanningQuickCreateCLIVersion, nil},
+		{"tagged release above minimum", "0.3.43", nil},
+		{"quick-create minimum is too old", MinQuickCreateCLIVersion, ErrCLIVersionTooOld},
+		{"previous tagged release below minimum", "v0.3.41", ErrCLIVersionTooOld},
+		{"empty string", "", ErrCLIVersionMissing},
+		{"unparsable", "not-a-version", ErrCLIVersionMissing},
+		{"git-describe dev build", "v0.3.41-2-g6be496c65", nil},
+		{"git-describe dirty dev build", "v0.3.41-2-g6be496c65-dirty", nil},
+	}
+	for _, tt := range tests {
+		err := CheckPlanningQuickCreateCLIVersion(tt.input)
+		if tt.wantErr == nil && err != nil {
+			t.Errorf("%s: CheckPlanningQuickCreateCLIVersion(%q) = %v, want nil", tt.name, tt.input, err)
+		}
+		if tt.wantErr != nil && !errors.Is(err, tt.wantErr) {
+			t.Errorf("%s: CheckPlanningQuickCreateCLIVersion(%q) = %v, want %v", tt.name, tt.input, err, tt.wantErr)
+		}
+	}
+}
+
 func TestExtractVersionLine(t *testing.T) {
 	tests := []struct {
 		name string

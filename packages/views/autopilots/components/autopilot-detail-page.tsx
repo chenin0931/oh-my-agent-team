@@ -7,8 +7,8 @@ import {
   Webhook, Copy, Check, RotateCw,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { autopilotDetailOptions, autopilotRunsOptions, autopilotRunOptions } from "@multica/core/autopilots/queries";
-import { projectDetailOptions } from "@multica/core/projects/queries";
+import { autopilotDetailOptions, autopilotRunsOptions, autopilotRunOptions } from "@ohmyagentteam/core/autopilots/queries";
+import { projectDetailOptions } from "@ohmyagentteam/core/projects/queries";
 import {
   useUpdateAutopilot,
   useDeleteAutopilot,
@@ -16,26 +16,26 @@ import {
   useCreateAutopilotTrigger,
   useDeleteAutopilotTrigger,
   useRotateAutopilotTriggerWebhookToken,
-} from "@multica/core/autopilots/mutations";
-import { buildAutopilotWebhookUrl } from "@multica/core/autopilots";
-import { api } from "@multica/core/api";
-import { useWorkspaceId } from "@multica/core/hooks";
-import { useWorkspacePaths } from "@multica/core/paths";
-import { useActorName } from "@multica/core/workspace/hooks";
+} from "@ohmyagentteam/core/autopilots/mutations";
+import { buildAutopilotWebhookUrl } from "@ohmyagentteam/core/autopilots";
+import { api } from "@ohmyagentteam/core/api";
+import { useWorkspaceId } from "@ohmyagentteam/core/hooks";
+import { useWorkspacePaths } from "@ohmyagentteam/core/paths";
+import { useActorName } from "@ohmyagentteam/core/workspace/hooks";
 import { useNavigation, AppLink } from "../../navigation";
 import { BreadcrumbHeader } from "../../layout/breadcrumb-header";
 import { ActorAvatar } from "../../common/actor-avatar";
-import { Skeleton } from "@multica/ui/components/ui/skeleton";
-import { Button } from "@multica/ui/components/ui/button";
-import { Switch } from "@multica/ui/components/ui/switch";
-import { cn } from "@multica/ui/lib/utils";
-import { copyText } from "@multica/ui/lib/clipboard";
+import { Skeleton } from "@ohmyagentteam/ui/components/ui/skeleton";
+import { Button } from "@ohmyagentteam/ui/components/ui/button";
+import { Switch } from "@ohmyagentteam/ui/components/ui/switch";
+import { cn } from "@ohmyagentteam/ui/lib/utils";
+import { copyText } from "@ohmyagentteam/ui/lib/clipboard";
 import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
   DialogTitle,
-} from "@multica/ui/components/ui/dialog";
+} from "@ohmyagentteam/ui/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,7 +45,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@multica/ui/components/ui/alert-dialog";
+} from "@ohmyagentteam/ui/components/ui/alert-dialog";
 import {
   TriggerConfigSection,
   getDefaultTriggerConfig,
@@ -57,8 +57,8 @@ import type {
   AutopilotRun,
   AutopilotSubscriber,
   AutopilotTrigger,
-} from "@multica/core/types";
-import type { AgentTask } from "@multica/core/types/agent";
+} from "@ohmyagentteam/core/types";
+import type { AgentTask } from "@ohmyagentteam/core/types/agent";
 import { ReadonlyContent } from "../../editor";
 import { TranscriptButton } from "../../common/task-transcript";
 import { AutopilotDialog } from "./autopilot-dialog";

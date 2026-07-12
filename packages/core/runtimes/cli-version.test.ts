@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  checkPlanningQuickCreateCliVersion,
   checkQuickCreateCliVersion,
   handoffSupported,
   MIN_HANDOFF_CLI_VERSION,
@@ -26,6 +27,20 @@ describe("checkQuickCreateCliVersion", () => {
     expect(checkQuickCreateCliVersion("v0.2.15-235-gdaf0e935").state).toBe("ok");
     expect(checkQuickCreateCliVersion("v0.2.15-235-gdaf0e935-dirty").state).toBe("ok");
     expect(checkQuickCreateCliVersion("0.1.0-1-gabc1234").state).toBe("ok");
+  });
+});
+
+describe("checkPlanningQuickCreateCliVersion", () => {
+  it("requires the planning quick-create minimum", () => {
+    expect(checkPlanningQuickCreateCliVersion("v0.3.42").state).toBe("too_old");
+    expect(checkPlanningQuickCreateCliVersion("0.3.43").state).toBe("ok");
+    expect(checkPlanningQuickCreateCliVersion("0.3.41").state).toBe("too_old");
+    expect(checkPlanningQuickCreateCliVersion("0.2.21").state).toBe("too_old");
+  });
+
+  it("treats git-describe dev builds as ok", () => {
+    expect(checkPlanningQuickCreateCliVersion("v0.3.42-2-g6be496c65").state).toBe("ok");
+    expect(checkPlanningQuickCreateCliVersion("v0.3.42-2-g6be496c65-dirty").state).toBe("ok");
   });
 });
 

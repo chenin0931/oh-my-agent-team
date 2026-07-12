@@ -22,8 +22,8 @@ import {
   UserPen,
   Waves,
 } from "lucide-react";
-import { Button } from "@multica/ui/components/ui/button";
-import { Spinner } from "@multica/ui/components/ui/spinner";
+import { Button } from "@ohmyagentteam/ui/components/ui/button";
+import { Spinner } from "@ohmyagentteam/ui/components/ui/spinner";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -38,24 +38,24 @@ import {
   DropdownMenuSub,
   DropdownMenuSubTrigger,
   DropdownMenuSubContent,
-} from "@multica/ui/components/ui/dropdown-menu";
+} from "@ohmyagentteam/ui/components/ui/dropdown-menu";
 import {
   Popover,
   PopoverTrigger,
   PopoverContent,
-} from "@multica/ui/components/ui/popover";
-import { Calendar } from "@multica/ui/components/ui/calendar";
-import { Switch } from "@multica/ui/components/ui/switch";
+} from "@ohmyagentteam/ui/components/ui/popover";
+import { Calendar } from "@ohmyagentteam/ui/components/ui/calendar";
+import { Switch } from "@ohmyagentteam/ui/components/ui/switch";
 import {
   ALL_STATUSES,
   PRIORITY_ORDER,
-} from "@multica/core/issues/config";
+} from "@ohmyagentteam/core/issues/config";
 import { StatusIcon, PriorityIcon } from ".";
 import { useQuery } from "@tanstack/react-query";
-import { useWorkspaceId } from "@multica/core/hooks";
-import { memberListOptions, agentListOptions, squadListOptions } from "@multica/core/workspace/queries";
-import { projectListOptions } from "@multica/core/projects/queries";
-import { labelListOptions } from "@multica/core/labels/queries";
+import { useWorkspaceId } from "@ohmyagentteam/core/hooks";
+import { memberListOptions, agentListOptions, squadListOptions } from "@ohmyagentteam/core/workspace/queries";
+import { projectListOptions } from "@ohmyagentteam/core/projects/queries";
+import { labelListOptions } from "@ohmyagentteam/core/labels/queries";
 import { ProjectIcon } from "../../projects/components/project-icon";
 import { ActorAvatar } from "../../common/actor-avatar";
 import { LabelChip } from "../../labels/label-chip";
@@ -71,19 +71,20 @@ import {
   type IssueGrouping,
   type SwimlaneGrouping,
   type ViewMode,
-} from "@multica/core/issues/stores/view-store";
-import { useViewStore, useViewStoreApi } from "@multica/core/issues/stores/view-store-context";
-import { addDaysDateOnly, dateOnlyToLocalDate, formatDateOnly, toDateOnly, todayDateOnly } from "@multica/core/issues/date";
+} from "@ohmyagentteam/core/issues/stores/view-store";
+import { useViewStore, useViewStoreApi } from "@ohmyagentteam/core/issues/stores/view-store-context";
+import { addDaysDateOnly, dateOnlyToLocalDate, formatDateOnly, toDateOnly, todayDateOnly } from "@ohmyagentteam/core/issues/date";
 import {
   useIssuesScopeStore,
   type IssuesScope,
-} from "@multica/core/issues/stores/issues-scope-store";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@multica/ui/components/ui/tooltip";
-import type { Issue } from "@multica/core/types";
+} from "@ohmyagentteam/core/issues/stores/issues-scope-store";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@ohmyagentteam/ui/components/ui/tooltip";
+import type { Issue } from "@ohmyagentteam/core/types";
 import { useT } from "../../i18n";
 import { matchesPinyin } from "../../editor/extensions/pinyin-match";
 import { FILTER_ITEM_CLASS, HoverCheck } from "../../common/hover-check";
 import { WorkspaceAgentWorkingChip } from "./workspace-agent-working-chip";
+import { PlanningQuickCreateBar } from "./planning-quick-create-bar";
 
 type LocalDateRange = {
   from: Date | undefined;
@@ -655,12 +656,14 @@ export function IssuesHeader({
   dateFilter = null,
   onDateFilterChange,
   isRefreshing = false,
+  showPlanningQuickCreate = false,
 }: {
   scopedIssues: Issue[];
   allowGantt?: boolean;
   dateFilter?: IssueDateFilter | null;
   onDateFilterChange?: (filter: IssueDateFilter | null) => void;
   isRefreshing?: boolean;
+  showPlanningQuickCreate?: boolean;
 }) {
   const { t } = useT("issues");
   const scope = useIssuesScopeStore((s) => s.scope);
@@ -695,75 +698,83 @@ export function IssuesHeader({
   const scopeLabel = t(($) => $.scope[SCOPE_LABEL_KEY[scope]]);
 
   return (
-    <div className="h-12 shrink-0 overflow-x-auto px-4 [-webkit-overflow-scrolling:touch]">
-      <div className="flex h-full w-max min-w-full items-center justify-between gap-2">
-        {/* Left: scope buttons */}
-        <div className="hidden shrink-0 items-center gap-1 md:flex">
-          {SCOPE_VALUES.map((s) => (
-            <Tooltip key={s}>
-              <TooltipTrigger
-                render={
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className={
-                      scope === s
-                        ? "bg-accent text-accent-foreground hover:bg-accent/80"
-                        : "text-muted-foreground"
-                    }
-                    onClick={() => setScope(s)}
-                  >
-                    {t(($) => $.scope[SCOPE_LABEL_KEY[s]])}
-                  </Button>
-                }
-              />
-              <TooltipContent side="bottom">{t(($) => $.scope[SCOPE_DESC_KEY[s]])}</TooltipContent>
-            </Tooltip>
-          ))}
-        </div>
+    <div className="shrink-0">
+      {showPlanningQuickCreate && <PlanningQuickCreateBar />}
+      <div className="h-12 overflow-x-auto px-4 [-webkit-overflow-scrolling:touch]">
+        <div className="flex h-full w-max min-w-full items-center justify-between gap-2">
+          {/* Left: scope buttons */}
+          <div className="hidden shrink-0 items-center gap-1 md:flex">
+            {SCOPE_VALUES.map((s) => (
+              <Tooltip key={s}>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={
+                        scope === s
+                          ? "bg-accent text-accent-foreground hover:bg-accent/80"
+                          : "text-muted-foreground"
+                      }
+                      onClick={() => setScope(s)}
+                    >
+                      {t(($) => $.scope[SCOPE_LABEL_KEY[s]])}
+                    </Button>
+                  }
+                />
+                <TooltipContent side="bottom">
+                  {t(($) => $.scope[SCOPE_DESC_KEY[s]])}
+                </TooltipContent>
+              </Tooltip>
+            ))}
+          </div>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button
-                variant="outline"
-                size="sm"
-                className="shrink-0 gap-1 text-muted-foreground md:hidden"
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 gap-1 text-muted-foreground md:hidden"
+                >
+                  <span className="truncate">{scopeLabel}</span>
+                  <ChevronDown className="size-3 text-muted-foreground" />
+                </Button>
+              }
+            />
+            <DropdownMenuContent align="start" className="w-auto">
+              <DropdownMenuRadioGroup
+                value={scope}
+                onValueChange={(value) => setScope(value as IssuesScope)}
               >
-                <span className="truncate">{scopeLabel}</span>
-                <ChevronDown className="size-3 text-muted-foreground" />
-              </Button>
-            }
-          />
-          <DropdownMenuContent align="start" className="w-auto">
-            <DropdownMenuRadioGroup value={scope} onValueChange={(value) => setScope(value as IssuesScope)}>
-              {SCOPE_VALUES.map((s) => (
-                <DropdownMenuRadioItem key={s} value={s}>
-                  {t(($) => $.scope[SCOPE_LABEL_KEY[s]])}
-                </DropdownMenuRadioItem>
-              ))}
-            </DropdownMenuRadioGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
+                {SCOPE_VALUES.map((s) => (
+                  <DropdownMenuRadioItem key={s} value={s}>
+                    {t(($) => $.scope[SCOPE_LABEL_KEY[s]])}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
-        <div className="flex shrink-0 items-center gap-1">
-          {agentRunningFilter && (
-            <span className="mr-1 hidden text-xs text-muted-foreground md:inline">
-              {t(($) => $.agent_activity.filter_active_label)}
-            </span>
-          )}
-          <WorkspaceAgentWorkingChip
-            value={agentRunningFilter}
-            onToggle={toggleAgentRunningFilter}
-            scopedIssueIds={scopedIssueIds}
-          />
-          <IssueDisplayControls
-            scopedIssues={scopedIssues}
-            allowGantt={allowGantt}
-            dateFilter={dateFilter}
-            onDateFilterChange={onDateFilterChange}
-          />
-          <ViewRefreshIndicator active={isRefreshing} />
+          <div className="flex shrink-0 items-center gap-1">
+            {agentRunningFilter && (
+              <span className="mr-1 hidden text-xs text-muted-foreground md:inline">
+                {t(($) => $.agent_activity.filter_active_label)}
+              </span>
+            )}
+            <WorkspaceAgentWorkingChip
+              value={agentRunningFilter}
+              onToggle={toggleAgentRunningFilter}
+              scopedIssueIds={scopedIssueIds}
+            />
+            <IssueDisplayControls
+              scopedIssues={scopedIssues}
+              allowGantt={allowGantt}
+              dateFilter={dateFilter}
+              onDateFilterChange={onDateFilterChange}
+            />
+            <ViewRefreshIndicator active={isRefreshing} />
+          </div>
         </div>
       </div>
     </div>

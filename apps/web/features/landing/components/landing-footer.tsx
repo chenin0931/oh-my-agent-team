@@ -1,16 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { MulticaIcon } from "@multica/ui/components/common/multica-icon";
-import { cn } from "@multica/ui/lib/utils";
-import { useAuthStore } from "@multica/core/auth";
+import { BrandMark } from "@ohmyagentteam/ui/components/common/brand-mark";
+import { BRAND_NAME } from "@ohmyagentteam/core/brand";
+import { cn } from "@ohmyagentteam/ui/lib/utils";
+import { useAuthStore } from "@ohmyagentteam/core/auth";
 import {
-  XMark,
   GitHubMark,
-  DiscordMark,
+  CommunityMark,
   githubUrl,
-  twitterUrl,
-  discordUrl,
+  communityUrl,
 } from "./shared";
 import { useLocale, locales, localeLabels } from "../i18n";
 
@@ -27,23 +26,15 @@ export function LandingFooter() {
           {/* Left — newsletter / CTA */}
           <div className="lg:w-[340px] lg:shrink-0">
             <Link href="#product" className="flex items-center gap-3">
-              <MulticaIcon className="size-5 text-white" noSpin />
-              <span className="text-[18px] font-semibold tracking-[0.04em] lowercase">
-                multica
+              <BrandMark className="size-5 text-white" />
+              <span className="font-serif text-[18px] font-medium">
+                {BRAND_NAME}
               </span>
             </Link>
             <p className="mt-4 max-w-[300px] text-[14px] leading-[1.7] text-white/50 sm:text-[15px]">
               {t.footer.tagline}
             </p>
             <div className="mt-4 flex items-center gap-3">
-              <Link
-                href={twitterUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="text-white/40 transition-colors hover:text-white"
-              >
-                <XMark className="size-4" />
-              </Link>
               <Link
                 href={githubUrl}
                 target="_blank"
@@ -53,13 +44,13 @@ export function LandingFooter() {
                 <GitHubMark className="size-4" />
               </Link>
               <Link
-                href={discordUrl}
+                href={communityUrl}
                 target="_blank"
                 rel="noreferrer"
-                aria-label="Discord"
+                aria-label="Community"
                 className="text-white/40 transition-colors hover:text-white"
               >
-                <DiscordMark className="size-4" />
+                <CommunityMark className="size-4" />
               </Link>
             </div>
             <div className="mt-6">
@@ -76,7 +67,7 @@ export function LandingFooter() {
           <div className="grid flex-1 grid-cols-2 gap-8 sm:grid-cols-4">
             {groups.map((group) => (
               <div key={group.label}>
-                <h4 className="text-[12px] font-semibold uppercase tracking-[0.1em] text-white/40">
+                <h4 className="text-[12px] font-semibold uppercase text-white/40">
                   {group.label}
                 </h4>
                 <ul className="mt-4 flex flex-col gap-2.5">
@@ -130,12 +121,9 @@ export function LandingFooter() {
         {/* Giant logo */}
         <div className="relative overflow-hidden pb-4">
           <div className="flex items-end gap-6 sm:gap-8">
-            <MulticaIcon
-              className="size-[clamp(4rem,12vw,10rem)] shrink-0 text-white"
-              noSpin
-            />
-            <span className="font-[family-name:var(--font-serif)] text-[clamp(6rem,22vw,16rem)] font-normal leading-[0.82] tracking-[-0.04em] text-white lowercase">
-              multica
+            <BrandMark className="size-16 shrink-0 text-white sm:size-24 lg:size-32" />
+            <span className="min-w-0 break-words font-[family-name:var(--font-serif)] text-5xl font-normal leading-none text-white sm:text-7xl lg:text-8xl">
+              {BRAND_NAME}
             </span>
           </div>
         </div>

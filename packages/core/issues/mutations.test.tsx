@@ -10,6 +10,7 @@ import { setApiInstance } from "../api";
 import type { ApiClient } from "../api/client";
 import {
   useBatchUpdateIssues,
+  useCreateIssue,
   useLoadMoreByAssigneeGroup,
   useLoadMoreByStatus,
   useResolveComment,
@@ -20,6 +21,7 @@ import {
   type IssueSortParam,
 } from "./queries";
 import { inboxKeys } from "../inbox/queries";
+import { epicKeys } from "../epics/queries";
 import type {
   GroupedIssuesResponse,
   InboxItem,
@@ -387,6 +389,45 @@ describe("useLoadMoreByAssigneeGroup", () => {
   });
 });
 
+describe("useCreateIssue — refreshes Epic aggregates", () => {
+  let qc: QueryClient;
+  let createIssue: ReturnType<typeof vi.fn<(data: unknown) => Promise<Issue>>>;
+
+  beforeEach(() => {
+    qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    createIssue = vi.fn();
+    setApiInstance({ createIssue } as unknown as ApiClient);
+  });
+
+  afterEach(() => {
+    qc.clear();
+    vi.restoreAllMocks();
+  });
+
+  it("invalidates the Epic detail and work-items prefix after creation", async () => {
+    const epicId = "epic-1";
+    const created = makeIssue(9, { epic_id: epicId, project_id: "project-1" });
+    createIssue.mockResolvedValue(created);
+    qc.setQueryData(epicKeys.detail(WS_ID, epicId), { id: epicId });
+    qc.setQueryData(epicKeys.workItems(WS_ID, epicId), []);
+
+    const { result } = renderHook(() => useCreateIssue(), {
+      wrapper: createWrapper(qc),
+    });
+
+    await act(async () => {
+      await result.current.mutateAsync({
+        title: created.title,
+        project_id: "project-1",
+        epic_id: epicId,
+      });
+    });
+
+    expect(qc.getQueryState(epicKeys.detail(WS_ID, epicId))?.isInvalidated).toBe(true);
+    expect(qc.getQueryState(epicKeys.workItems(WS_ID, epicId))?.isInvalidated).toBe(true);
+  });
+});
+
 describe("useUpdateIssue — optimistic move keeps every bucketed board in sync", () => {
   const sort: IssueSortParam = { sort_by: "position", sort_direction: undefined };
   const myScope = "assigned";
@@ -555,6 +596,7 @@ describe("useUpdateIssue — optimistic move keeps every bucketed board in sync"
     // The board list + myList are reconciled surgically, never refetched.
     expect(invalidatedKeys).not.toContainEqual(issueKeys.list(WS_ID));
     expect(invalidatedKeys).not.toContainEqual(issueKeys.myAll(WS_ID));
+    expect(invalidatedKeys).toContainEqual(epicKeys.all(WS_ID));
   });
 
   it("surgically removes the issue from the old project's list on a project move (no blanket myAll refetch)", async () => {

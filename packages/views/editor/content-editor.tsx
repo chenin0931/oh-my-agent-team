@@ -40,11 +40,11 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from "react";
 import { useEditor, EditorContent, type Editor } from "@tiptap/react";
-import { cn } from "@multica/ui/lib/utils";
-import type { UploadResult } from "@multica/core/hooks/use-file-upload";
-import { useWorkspaceSlug } from "@multica/core/paths";
+import { cn } from "@ohmyagentteam/ui/lib/utils";
+import type { UploadResult } from "@ohmyagentteam/core/hooks/use-file-upload";
+import { useWorkspaceSlug } from "@ohmyagentteam/core/paths";
 import { useQueryClient } from "@tanstack/react-query";
-import type { Attachment } from "@multica/core/types";
+import type { Attachment } from "@ohmyagentteam/core/types";
 import {
   parseMarkdownChunked,
   MARKDOWN_CHUNK_THRESHOLD,
@@ -127,7 +127,7 @@ interface ContentEditorProps {
   /**
    * When true, the `@` suggestion picker is disabled but the mention node
    * type remains in the schema, so existing mentions pasted in from other
-   * Multica editors still render as the normal pill. Use for editors where
+   * OhMyAgentTeam editors still render as the normal pill. Use for editors where
    * *creating* a new mention has no business meaning (e.g. agent system
    * prompts) but *preserving* an existing one still matters.
    */
@@ -135,6 +135,8 @@ interface ContentEditorProps {
   /** Chat can surface current/recent issue/project suggestions. Other editors use default mention behavior. */
   mentionMode?: "default" | "context";
   mentionContextItems?: MentionItem[];
+  /** Limit entity kinds offered by the @ picker. */
+  mentionAllowedTypes?: readonly MentionItem["type"][];
   /** Enable the `/` command picker. Defaults false. */
   enableSlashCommands?: boolean;
   /**
@@ -199,6 +201,7 @@ const ContentEditor = forwardRef<ContentEditorRef, ContentEditorProps>(
       disableMentions = false,
       mentionMode = "default",
       mentionContextItems,
+      mentionAllowedTypes,
       enableSlashCommands = false,
       slashCommandMode = "skill",
       attachments,
@@ -347,6 +350,7 @@ const ContentEditor = forwardRef<ContentEditorRef, ContentEditorProps>(
         disableMentions,
         mentionMode,
         getMentionContextItems: () => mentionContextItemsRef.current,
+        mentionAllowedTypes,
         enableSlashCommands,
         slashCommandMode,
       }),

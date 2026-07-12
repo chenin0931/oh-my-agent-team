@@ -98,9 +98,17 @@ func ListModels(ctx context.Context, providerType, executablePath string) ([]Mod
 		annotateClaudeThinking(ctx, models, executablePath)
 		return models, nil
 	case "codex":
-		models := codexStaticModels()
-		annotateCodexThinking(ctx, models, executablePath)
-		return models, nil
+		return cachedDiscovery(discoveryCacheKey(providerType, executablePath), func() ([]Model, error) {
+			raw, err := runCodexDebugModels(ctx, executablePathOrDefault(executablePath, "codex"))
+			if err == nil {
+				if models := parseCodexModels(raw); len(models) > 0 {
+					return models, nil
+				}
+			}
+			models := codexStaticModels()
+			annotateCodexThinking(ctx, models, executablePath)
+			return models, nil
+		})
 	case "antigravity":
 		// agy 1.0.6 added a `--model` flag plus an `agy models` catalog
 		// command (MUL-3125). Enumerate it on demand like the other
@@ -311,6 +319,41 @@ func codexStaticModels() []Model {
 	}
 }
 
+func parseCodexModels(raw []byte) []Model {
+	var response codexDebugModelsResponse
+	if err := json.Unmarshal(raw, &response); err != nil {
+		return nil
+	}
+	thinking := parseCodexDebugModels(raw)
+	models := make([]Model, 0, len(response.Models))
+	seen := make(map[string]bool, len(response.Models))
+	for _, candidate := range response.Models {
+		if candidate.Slug == "" || candidate.Visibility == "hide" || seen[candidate.Slug] {
+			continue
+		}
+		seen[candidate.Slug] = true
+		label := candidate.DisplayName
+		if label == "" {
+			label = candidate.Slug
+		}
+		models = append(models, Model{
+			ID:       candidate.Slug,
+			Label:    label,
+			Provider: "openai",
+			Default:  len(models) == 0,
+			Thinking: thinking[candidate.Slug],
+		})
+	}
+	return models
+}
+
+func executablePathOrDefault(executablePath, fallback string) string {
+	if executablePath != "" {
+		return executablePath
+	}
+	return fallback
+}
+
 // discoverTraecliModels spins up a throwaway `traecli acp serve --yolo` process
 // and parses the model catalog traecli returns from session/new (same shape as
 // Kiro/Qoder). The official TRAE CLI must be logged in for the catalog to be
@@ -318,8 +361,8 @@ func codexStaticModels() []Model {
 func discoverTraecliModels(ctx context.Context, executablePath string) ([]Model, error) {
 	return discoverACPModels(ctx, executablePath, acpDiscoveryProvider{
 		defaultBin:   "traecli",
-		clientName:   "multica-model-discovery",
-		tmpdirPrefix: "multica-traecli-discovery-",
+		clientName:   "ohmyagentteam-model-discovery",
+		tmpdirPrefix: "ohmyagentteam-traecli-discovery-",
 		acpArgs:      []string{"acp", "serve", "--yolo"},
 	})
 }
@@ -429,7 +472,7 @@ func discoverOpenCodeModels(ctx context.Context, executablePath string) ([]Model
 	// Newer opencode (1.15+) syncs its hosted free-model catalog over the
 	// network on `opencode models`, which can take ~6s; the previous 5s cap
 	// timed out and returned an empty list, so the runtime showed online but
-	// the model picker was empty. See multica-ai/multica#3627.
+	// the model picker was empty. See chenin0931/oh-my-agent-team#3627.
 	runCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(runCtx, executablePath, "models", "--verbose")
@@ -754,9 +797,9 @@ func isPiDiscoveryNoise(line string) bool {
 func discoverHermesModels(ctx context.Context, executablePath string) ([]Model, error) {
 	return discoverACPModels(ctx, executablePath, acpDiscoveryProvider{
 		defaultBin:   "hermes",
-		clientName:   "multica-model-discovery",
+		clientName:   "ohmyagentteam-model-discovery",
 		extraEnv:     []string{"HERMES_YOLO_MODE=1"},
-		tmpdirPrefix: "multica-hermes-discovery-",
+		tmpdirPrefix: "ohmyagentteam-hermes-discovery-",
 	})
 }
 
@@ -771,8 +814,8 @@ func discoverHermesModels(ctx context.Context, executablePath string) ([]Model, 
 func discoverKimiModels(ctx context.Context, executablePath string) ([]Model, error) {
 	return discoverACPModels(ctx, executablePath, acpDiscoveryProvider{
 		defaultBin:   "kimi",
-		clientName:   "multica-model-discovery",
-		tmpdirPrefix: "multica-kimi-discovery-",
+		clientName:   "ohmyagentteam-model-discovery",
+		tmpdirPrefix: "ohmyagentteam-kimi-discovery-",
 	})
 }
 
@@ -781,8 +824,8 @@ func discoverKimiModels(ctx context.Context, executablePath string) ([]Model, er
 func discoverKiroModels(ctx context.Context, executablePath string) ([]Model, error) {
 	return discoverACPModels(ctx, executablePath, acpDiscoveryProvider{
 		defaultBin:   "kiro-cli",
-		clientName:   "multica-model-discovery",
-		tmpdirPrefix: "multica-kiro-discovery-",
+		clientName:   "ohmyagentteam-model-discovery",
+		tmpdirPrefix: "ohmyagentteam-kiro-discovery-",
 	})
 }
 
@@ -808,8 +851,8 @@ func discoverKiroModels(ctx context.Context, executablePath string) ([]Model, er
 func discoverCopilotModels(ctx context.Context, executablePath string) ([]Model, error) {
 	models, err := discoverACPModels(ctx, executablePath, acpDiscoveryProvider{
 		defaultBin:   "copilot",
-		clientName:   "multica-model-discovery",
-		tmpdirPrefix: "multica-copilot-discovery-",
+		clientName:   "ohmyagentteam-model-discovery",
+		tmpdirPrefix: "ohmyagentteam-copilot-discovery-",
 		acpArgs:      []string{"--acp"},
 	})
 	if err != nil || len(models) == 0 {
@@ -827,9 +870,9 @@ func discoverCopilotModels(ctx context.Context, executablePath string) ([]Model,
 func discoverQoderModels(ctx context.Context, executablePath string) ([]Model, error) {
 	return discoverACPModels(ctx, executablePath, acpDiscoveryProvider{
 		defaultBin:   "qodercli",
-		clientName:   "multica-model-discovery",
+		clientName:   "ohmyagentteam-model-discovery",
 		acpArgs:      []string{"--yolo", "--acp"},
-		tmpdirPrefix: "multica-qoder-discovery-",
+		tmpdirPrefix: "ohmyagentteam-qoder-discovery-",
 	})
 }
 

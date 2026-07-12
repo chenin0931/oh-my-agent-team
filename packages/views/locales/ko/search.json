@@ -7,6 +7,7 @@
     "commands": "명령어",
     "members": "멤버",
     "projects": "프로젝트",
+    "epics": "Epic",
     "issues": "이슈",
     "recent": "최근 항목"
   },
@@ -24,6 +25,7 @@
     "current_theme_aria": "현재 테마",
     "new_issue": "새 이슈",
     "new_project": "새 프로젝트",
+    "new_epic": "새 Epic",
     "copy_issue_link": "이슈 링크 복사",
     "copy_identifier": "식별자 복사 ({{identifier}})",
     "switch_to_light": "라이트 테마로 전환",

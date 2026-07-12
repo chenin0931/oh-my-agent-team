@@ -6,10 +6,10 @@ import (
 	"net/http"
 
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/multica-ai/multica/server/internal/service"
-	"github.com/multica-ai/multica/server/internal/util"
-	agentver "github.com/multica-ai/multica/server/pkg/agent"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/service"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/util"
+	agentver "github.com/chenin0931/oh-my-agent-team/server/pkg/agent"
+	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
 )
 
 // maxPreviewTriggerIssues caps a single preview request so a pathological
@@ -157,7 +157,7 @@ func (h *Handler) PreviewIssueTrigger(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusBadRequest, "invalid workspace")
 			return
 		}
-		status := "todo"
+		status := "backlog"
 		if req.Status != nil && *req.Status != "" {
 			status = *req.Status
 		}

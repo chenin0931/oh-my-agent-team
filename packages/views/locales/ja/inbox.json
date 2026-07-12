@@ -1,7 +1,14 @@
 {
   "page": {
-    "title": "インボックス",
-    "back": "インボックス"
+    "title": "アクションセンター",
+    "back": "アクションセンター"
+  },
+  "filters": {
+    "label": "アクションセンターの表示",
+    "all": "すべて",
+    "action": "要対応",
+    "agents": "エージェント",
+    "system": "システム"
   },
   "menu": {
     "mark_all_read": "すべて既読にする",
@@ -11,6 +18,8 @@
   },
   "list": {
     "empty": "通知はありません",
+    "empty_filter": "この表示には項目がありません",
+    "action_required": "対応が必要",
     "mark_done_tooltip": "完了にする",
     "archive_tooltip": "アーカイブ",
     "time": {
@@ -28,6 +37,7 @@
     "archive": "アーカイブ"
   },
   "types": {
+    "epic_owned": "Epic の責任者",
     "issue_assigned": "割り当て済み",
     "issue_subscribed": "購読済み",
     "unassigned": "割り当て解除",
@@ -58,6 +68,7 @@
     "removed_due_date": "期限を削除",
     "reacted_to_comment": "あなたのコメントに {{emoji}} のリアクションをしました",
     "created_with_agent": "エージェントで作成: {{identifier}}",
+    "planned_with_agent": "エージェントが {{count}} 件のバックログ項目を計画しました",
     "failed_with_detail": "失敗: {{detail}}"
   },
   "errors": {

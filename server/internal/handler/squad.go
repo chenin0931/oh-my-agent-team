@@ -10,11 +10,11 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/multica-ai/multica/server/internal/analytics"
-	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
-	"github.com/multica-ai/multica/server/internal/util"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
-	"github.com/multica-ai/multica/server/pkg/protocol"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/analytics"
+	obsmetrics "github.com/chenin0931/oh-my-agent-team/server/internal/metrics"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/util"
+	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
+	"github.com/chenin0931/oh-my-agent-team/server/pkg/protocol"
 )
 
 // ── Response types ──────────────────────────────────────────────────────────
@@ -28,6 +28,7 @@ type SquadResponse struct {
 	AvatarURL     *string                      `json:"avatar_url"`
 	LeaderID      string                       `json:"leader_id"`
 	CreatorID     string                       `json:"creator_id"`
+	OwnerID       string                       `json:"owner_id"`
 	CreatedAt     string                       `json:"created_at"`
 	UpdatedAt     string                       `json:"updated_at"`
 	ArchivedAt    *string                      `json:"archived_at"`
@@ -68,6 +69,7 @@ func squadToResponse(s db.Squad) SquadResponse {
 		AvatarURL:     textToPtr(s.AvatarUrl),
 		LeaderID:      uuidToString(s.LeaderID),
 		CreatorID:     uuidToString(s.CreatorID),
+		OwnerID:       uuidToString(s.OwnerID),
 		CreatedAt:     timestampToString(s.CreatedAt),
 		UpdatedAt:     timestampToString(s.UpdatedAt),
 		ArchivedAt:    timestampToPtr(s.ArchivedAt),
@@ -111,7 +113,7 @@ func applySquadMemberSummary(resp *SquadResponse, summary *squadMemberSummary) {
 
 // canManageSquad reports whether the member may mutate the squad. Workspace
 // owner/admin manage every squad; a regular member manages only the squads
-// they created. Squads stay creator-scoped for management while remaining
+// they own. Squads stay owner-scoped for management while remaining
 // visible workspace-wide (ListSquads is unfiltered). Mirrors the front-end
 // per-squad `canManage` gate so the UI and API agree on who can rename / add
 // members / archive (MUL-4223).
@@ -119,13 +121,13 @@ func canManageSquad(member db.Member, squad db.Squad) bool {
 	if roleAllowed(member.Role, "owner", "admin") {
 		return true
 	}
-	return uuidToString(squad.CreatorID) == uuidToString(member.UserID)
+	return uuidToString(squad.OwnerID) == uuidToString(member.UserID)
 }
 
 // memberCanWireAgent reports whether the acting member may attach the given
 // agent to a squad (as leader or worker). Workspace owner/admin may wire any
 // workspace agent — their management surface is unchanged. A regular member
-// (a creator managing their own squad) may only wire agents they can
+// (an owner managing their own squad) may only wire agents they can
 // @-trigger: canInvokeAgent judged as the member themselves, so public_to
 // agents on their allow-list and their own private agents pass, while other
 // members' private / non-allow-listed agents are rejected. This stops a
@@ -224,9 +226,8 @@ func (h *Handler) ListSquads(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) CreateSquad(w http.ResponseWriter, r *http.Request) {
 	workspaceID := workspaceIDFromURL(r, "workspaceId")
-	// Any workspace member can create a squad and becomes its creator
-	// (CreatorID below). This aligns squads with agents/projects, which are
-	// also member-creatable; management stays creator-scoped (MUL-4223).
+	// Any workspace member can create a squad. The actor is recorded as both the
+	// immutable creator and the initial, transferable owner.
 	member, ok := h.requireWorkspaceMember(w, r, workspaceID, "workspace not found")
 	if !ok {
 		return
@@ -269,7 +270,7 @@ func (h *Handler) CreateSquad(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "leader must be a valid agent in this workspace")
 		return
 	}
-	// A non-admin creator may only lead their squad with an agent they can
+	// A non-admin owner may only lead their squad with an agent they can
 	// @-trigger; admins may wire any workspace agent (MUL-4223).
 	if !h.memberCanWireAgent(r.Context(), member, leaderAgent, workspaceID) {
 		writeError(w, http.StatusForbidden, "you can only use an agent you have access to as leader")
@@ -287,6 +288,7 @@ func (h *Handler) CreateSquad(w http.ResponseWriter, r *http.Request) {
 		Description: req.Description,
 		LeaderID:    leaderUUID,
 		CreatorID:   member.UserID,
+		OwnerID:     member.UserID,
 		AvatarUrl:   avatarURL,
 	})
 	if err != nil {
@@ -355,6 +357,7 @@ func (h *Handler) UpdateSquad(w http.ResponseWriter, r *http.Request) {
 		Description  *string `json:"description"`
 		Instructions *string `json:"instructions"`
 		LeaderID     *string `json:"leader_id"`
+		OwnerID      *string `json:"owner_id"`
 		AvatarURL    *string `json:"avatar_url"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -375,6 +378,19 @@ func (h *Handler) UpdateSquad(w http.ResponseWriter, r *http.Request) {
 	if req.AvatarURL != nil {
 		params.AvatarUrl = pgtype.Text{String: *req.AvatarURL, Valid: true}
 	}
+	if req.OwnerID != nil {
+		ownerID, ok := parseUUIDOrBadRequest(w, *req.OwnerID, "owner_id")
+		if !ok {
+			return
+		}
+		if _, err := h.Queries.GetMemberByUserAndWorkspace(r.Context(), db.GetMemberByUserAndWorkspaceParams{
+			UserID: ownerID, WorkspaceID: wsUUID,
+		}); err != nil {
+			writeError(w, http.StatusBadRequest, "owner must be a current workspace member")
+			return
+		}
+		params.OwnerID = ownerID
+	}
 	if req.LeaderID != nil {
 		lid, ok := parseUUIDOrBadRequest(w, *req.LeaderID, "leader_id")
 		if !ok {
@@ -388,7 +404,7 @@ func (h *Handler) UpdateSquad(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusBadRequest, "leader must be a valid agent in this workspace")
 			return
 		}
-		// A non-admin creator may only promote an agent they can @-trigger.
+		// A non-admin owner may only promote an agent they can @-trigger.
 		if !h.memberCanWireAgent(r.Context(), member, newLeader, workspaceID) {
 			writeError(w, http.StatusForbidden, "you can only use an agent you have access to as leader")
 			return
@@ -886,7 +902,7 @@ func (h *Handler) UpdateSquadMemberRole(w http.ResponseWriter, r *http.Request) 
 // into the unified activity_log. Called by the leader agent via CLI after
 // each trigger to record whether it took action, stayed silent, or failed.
 func (h *Handler) RecordSquadLeaderEvaluation(w http.ResponseWriter, r *http.Request) {
-	issue, ok := h.loadIssueForUser(w, r, chi.URLParam(r, "id"))
+	issue, ok := h.loadExecutableIssueForUser(w, r, chi.URLParam(r, "id"))
 	if !ok {
 		return
 	}

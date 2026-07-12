@@ -10,24 +10,24 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import type { Agent, UpdateAgentRequest } from "@multica/core/types";
+import type { Agent, UpdateAgentRequest } from "@ohmyagentteam/core/types";
 import {
   type AgentPresenceDetail,
   useWorkspacePresenceMap,
-} from "@multica/core/agents";
-import { api, ApiError } from "@multica/core/api";
-import { useAuthStore } from "@multica/core/auth";
-import { useWorkspaceId } from "@multica/core/hooks";
-import { useWorkspacePaths } from "@multica/core/paths";
+} from "@ohmyagentteam/core/agents";
+import { api, ApiError } from "@ohmyagentteam/core/api";
+import { useAuthStore } from "@ohmyagentteam/core/auth";
+import { useWorkspaceId } from "@ohmyagentteam/core/hooks";
+import { useWorkspacePaths } from "@ohmyagentteam/core/paths";
 import {
   agentListOptions,
   memberListOptions,
   workspaceKeys,
-} from "@multica/core/workspace/queries";
-import { runtimeListOptions } from "@multica/core/runtimes";
-import { useAgentPermissions } from "@multica/core/permissions";
-import { Button } from "@multica/ui/components/ui/button";
-import { CapabilityBanner } from "@multica/ui/components/common/capability-banner";
+} from "@ohmyagentteam/core/workspace/queries";
+import { runtimeListOptions } from "@ohmyagentteam/core/runtimes";
+import { useAgentPermissions } from "@ohmyagentteam/core/permissions";
+import { Button } from "@ohmyagentteam/ui/components/ui/button";
+import { CapabilityBanner } from "@ohmyagentteam/ui/components/common/capability-banner";
 import {
   Dialog,
   DialogContent,
@@ -35,14 +35,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@multica/ui/components/ui/dialog";
+} from "@ohmyagentteam/ui/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@multica/ui/components/ui/dropdown-menu";
-import { Skeleton } from "@multica/ui/components/ui/skeleton";
+} from "@ohmyagentteam/ui/components/ui/dropdown-menu";
+import { Skeleton } from "@ohmyagentteam/ui/components/ui/skeleton";
 import { AppLink, useNavigation } from "../../navigation";
 import { BreadcrumbHeader } from "../../layout/breadcrumb-header";
 import { PageHeader } from "../../layout/page-header";
@@ -381,7 +381,7 @@ function DetailHeader({
       segments={[{ href: backHref, label: t(($) => $.page.title) }]}
       leaf={
         <>
-          <h1 className="min-w-0 truncate text-sm font-medium text-foreground">{agent.name}</h1>
+          <h1 className="min-w-0 truncate font-serif text-[15px] font-medium text-foreground">{agent.name}</h1>
           {av && presence && (
             <span
               className={`inline-flex shrink-0 items-center gap-1.5 rounded-md border px-1.5 py-0.5 text-xs ${av.textClass}`}

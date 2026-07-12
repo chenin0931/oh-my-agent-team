@@ -1,22 +1,23 @@
 {
   "nav": {
-    "inbox": "Inbox",
+    "inbox": "Action center",
     "my_issues": "My Issues",
-    "issues": "Issues",
+    "issues": "All work items",
     "projects": "Projects",
     "autopilots": "Autopilot",
-    "agents": "Agents",
+    "agents": "Collaboration network",
     "squads": "Squads",
     "usage": "Usage",
-    "runtimes": "Runtimes",
+    "runtimes": "Execution capacity",
     "skills": "Skills",
     "settings": "Settings"
   },
   "help": {
     "trigger": "Help",
+    "product_tour": "Product tour",
     "docs": "Docs",
     "changelog": "Change log",
-    "discord": "Discord",
+    "discord": "Community",
     "feedback": "Feedback"
   },
   "workspace_loader": {
@@ -32,15 +33,19 @@
     "invitation_join": "Join",
     "invitation_decline": "Decline",
     "log_out": "Log out",
-    "new_issue": "New Issue",
+    "new_issue": "New work item",
     "new_issue_shortcut": "C",
     "pinned_label": "Pinned",
+    "personal_group": "My work",
+    "work_group": "Plan and deliver",
+    "network_group": "Collaboration",
+    "system_group": "System",
     "workspace_group": "Workspace",
     "configure_group": "Configure",
     "unread_overflow": "99+",
     "discord_card": {
-      "title": "Join our Discord",
-      "description": "Chat with the team and other builders.",
+      "title": "Join the community",
+      "description": "Ask questions and share feedback on GitHub Discussions.",
       "dismiss": "Dismiss"
     }
   }

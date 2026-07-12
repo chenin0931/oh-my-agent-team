@@ -47,6 +47,10 @@ func lockRollupSingleton(t *testing.T) {
 		conn.Release()
 		t.Fatalf("acquire rollup singleton guard: %v", err)
 	}
+	if _, err := conn.Exec(ctx, `INSERT INTO task_usage_hourly_rollup_state (id) VALUES (1) ON CONFLICT DO NOTHING`); err != nil {
+		conn.Release()
+		t.Fatalf("ensure rollup singleton row: %v", err)
+	}
 	t.Cleanup(func() {
 		// Fresh context so a cancelled test context cannot skip the unlock.
 		if _, err := conn.Exec(context.Background(), `SELECT pg_advisory_unlock($1)`, rollupSingletonTestLock); err != nil {

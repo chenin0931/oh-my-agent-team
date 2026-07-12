@@ -105,7 +105,7 @@ func TestClaudeStaticModelsExposesSonnet5(t *testing.T) {
 
 func TestCodexStaticModelsExposesGPT55(t *testing.T) {
 	// Codex CLI has no `models list` subcommand so the catalog is
-	// hand-maintained. Regression guard for multica-ai/multica#2009 —
+	// hand-maintained. Regression guard for chenin0931/oh-my-agent-team#2009 —
 	// GPT-5.5 must be selectable, and the badge default must point at
 	// the latest release rather than lagging a version behind.
 	models := codexStaticModels()
@@ -138,6 +138,29 @@ func TestCodexStaticModelsExposesGPT55(t *testing.T) {
 	}
 	if defaults != 1 {
 		t.Errorf("expected exactly one default Codex entry, got %d", defaults)
+	}
+}
+
+func TestParseCodexModelsUsesInstalledCatalog(t *testing.T) {
+	raw := []byte(`{"models":[
+		{"slug":"gpt-5.5","display_name":"GPT-5.5","visibility":"list","default_reasoning_level":"medium","supported_reasoning_levels":[{"effort":"medium","description":"Balanced"}]},
+		{"slug":"gpt-5.4","display_name":"GPT-5.4","visibility":"list","supported_reasoning_levels":[]},
+		{"slug":"internal-review","display_name":"Internal","visibility":"hide","supported_reasoning_levels":[]},
+		{"slug":"gpt-5.4","display_name":"Duplicate","visibility":"list","supported_reasoning_levels":[]}
+	]}`)
+
+	models := parseCodexModels(raw)
+	if len(models) != 2 {
+		t.Fatalf("parseCodexModels returned %d models, want 2: %+v", len(models), models)
+	}
+	if models[0].ID != "gpt-5.5" || !models[0].Default {
+		t.Fatalf("first visible installed model should be the default: %+v", models[0])
+	}
+	if models[0].Thinking == nil || models[0].Thinking.DefaultLevel != "medium" {
+		t.Fatalf("installed thinking catalog was not preserved: %+v", models[0].Thinking)
+	}
+	if models[1].ID != "gpt-5.4" || models[1].Default {
+		t.Fatalf("unexpected second model: %+v", models[1])
 	}
 }
 
@@ -248,7 +271,7 @@ func TestInferCopilotProvider(t *testing.T) {
 func TestCopilotStaticModelsExposesFullCatalog(t *testing.T) {
 	// GitHub Copilot CLI has no `models list` subcommand, so the
 	// catalog is hand-maintained from the official supported-models
-	// docs. Regression guard for multica-ai/multica#1948 — the
+	// docs. Regression guard for chenin0931/oh-my-agent-team#1948 — the
 	// dropdown previously shipped only 2 models and used dashed IDs
 	// (`claude-sonnet-4-6`) which the CLI rejects. IDs must use the
 	// dotted form (`claude-sonnet-4.6`) that `copilot --model <id>`

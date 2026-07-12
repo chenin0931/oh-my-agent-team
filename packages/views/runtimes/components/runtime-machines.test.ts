@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { AgentRuntime } from "@multica/core/types";
+import type { AgentRuntime } from "@ohmyagentteam/core/types";
 import {
   buildRuntimeMachines,
   filterRuntimeMachines,
@@ -51,6 +51,48 @@ describe("runtime machine grouping", () => {
       issueCount: 0,
       providerNames: ["claude", "codex"],
     });
+  });
+
+  it("uses the Manus logo key for a Manus runtime", () => {
+    const machines = buildRuntimeMachines(
+      [
+        makeRuntime({
+          id: "rt-manus",
+          provider: "claude",
+          name: "Manus (dev.local)",
+          device_info: "dev.local · manus-ohmyagentteam-claude 0.1.0",
+        }),
+        makeRuntime({
+          id: "rt-codex",
+          provider: "codex",
+          name: "Codex (dev.local)",
+        }),
+      ],
+      { now: NOW, localDaemonId: "daemon-1" },
+    );
+
+    expect(machines[0]?.providerNames).toEqual(["codex", "manus"]);
+  });
+
+  it("uses the Feishu logo key for the Feishu Aily runtime", () => {
+    const machines = buildRuntimeMachines(
+      [
+        makeRuntime({
+          id: "rt-aily",
+          provider: "claude",
+          name: "飞书智能伙伴aily (dev.local)",
+          device_info: "dev.local · aily-ohmyagentteam-claude 0.1.0",
+        }),
+        makeRuntime({
+          id: "rt-codex",
+          provider: "codex",
+          name: "Codex (dev.local)",
+        }),
+      ],
+      { now: NOW, localDaemonId: "daemon-1" },
+    );
+
+    expect(machines[0]?.providerNames).toEqual(["codex", "feishu"]);
   });
 
   it("uses a machine-wide custom name as the machine title, over the local name", () => {

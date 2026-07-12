@@ -2,20 +2,20 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useWorkspaceId } from "@multica/core/hooks";
-import { useWorkspacePaths } from "@multica/core/paths";
-import { useViewStore, useViewStoreApi } from "@multica/core/issues/stores/view-store-context";
-import type { GanttZoom } from "@multica/core/issues/stores/view-store";
-import { projectListOptions } from "@multica/core/projects/queries";
-import type { Issue, IssueStatus } from "@multica/core/types";
-import { dateOnlyToUTCDate } from "@multica/core/issues/date";
-import { cn } from "@multica/ui/lib/utils";
+import { useWorkspaceId } from "@ohmyagentteam/core/hooks";
+import { useWorkspacePaths } from "@ohmyagentteam/core/paths";
+import { useViewStore, useViewStoreApi } from "@ohmyagentteam/core/issues/stores/view-store-context";
+import type { GanttZoom } from "@ohmyagentteam/core/issues/stores/view-store";
+import { projectListOptions } from "@ohmyagentteam/core/projects/queries";
+import type { Issue, IssueStatus } from "@ohmyagentteam/core/types";
+import { dateOnlyToUTCDate } from "@ohmyagentteam/core/issues/date";
+import { cn } from "@ohmyagentteam/ui/lib/utils";
 import {
   Tooltip,
   TooltipTrigger,
   TooltipContent,
-} from "@multica/ui/components/ui/tooltip";
-import { Button } from "@multica/ui/components/ui/button";
+} from "@ohmyagentteam/ui/components/ui/tooltip";
+import { Button } from "@ohmyagentteam/ui/components/ui/button";
 import { AppLink } from "../../navigation";
 import { ActorAvatar } from "../../common/actor-avatar";
 import { ProjectIcon } from "../../projects/components/project-icon";
@@ -46,7 +46,7 @@ function daysBetween(a: Date, b: Date): number {
 
 // Issue dates arrive as date-only "YYYY-MM-DD" strings (calendar days). Anchor
 // each to UTC midnight so the bar lands on exactly that day, independent of the
-// viewer's timezone. See @multica/core/issues/date.
+// viewer's timezone. See @ohmyagentteam/core/issues/date.
 function parseDay(iso: string | null): Date | null {
   return dateOnlyToUTCDate(iso);
 }

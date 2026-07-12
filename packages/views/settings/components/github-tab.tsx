@@ -4,10 +4,10 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ExternalLink, GitCommitHorizontal, Link2, PanelRight } from "lucide-react";
-import { Button } from "@multica/ui/components/ui/button";
-import { Card, CardContent } from "@multica/ui/components/ui/card";
-import { Label } from "@multica/ui/components/ui/label";
-import { Switch } from "@multica/ui/components/ui/switch";
+import { Button } from "@ohmyagentteam/ui/components/ui/button";
+import { Card, CardContent } from "@ohmyagentteam/ui/components/ui/card";
+import { Label } from "@ohmyagentteam/ui/components/ui/label";
+import { Switch } from "@ohmyagentteam/ui/components/ui/switch";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,17 +17,17 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@multica/ui/components/ui/alert-dialog";
-import { useAuthStore } from "@multica/core/auth";
-import { useWorkspaceId } from "@multica/core/hooks";
-import { useCurrentWorkspace } from "@multica/core/paths";
-import { memberListOptions, workspaceKeys } from "@multica/core/workspace/queries";
+} from "@ohmyagentteam/ui/components/ui/alert-dialog";
+import { useAuthStore } from "@ohmyagentteam/core/auth";
+import { useWorkspaceId } from "@ohmyagentteam/core/hooks";
+import { useCurrentWorkspace } from "@ohmyagentteam/core/paths";
+import { memberListOptions, workspaceKeys } from "@ohmyagentteam/core/workspace/queries";
 import {
   deriveGitHubSettings,
   githubInstallationsOptions,
-} from "@multica/core/github";
-import { api } from "@multica/core/api";
-import type { Workspace } from "@multica/core/types";
+} from "@ohmyagentteam/core/github";
+import { api } from "@ohmyagentteam/core/api";
+import type { Workspace } from "@ohmyagentteam/core/types";
 import { useNavigation } from "../../navigation";
 import { useT } from "../../i18n";
 import { GitHubMark } from "./github-mark";
@@ -279,7 +279,7 @@ export function GitHubTab() {
                 <p className="text-sm text-muted-foreground">
                   {t(($) => $.github.feature_co_author_description_prefix)}{" "}
                   <code className="rounded bg-muted px-1 py-0.5 text-xs">
-                    {"Co-authored-by: multica-agent <github@multica.ai>"}
+                    {"Co-authored-by: ohmyagentteam-agent <agent@ohmyagentteam.com>"}
                   </code>{" "}
                   {t(($) => $.github.feature_co_author_description_suffix)}
                 </p>

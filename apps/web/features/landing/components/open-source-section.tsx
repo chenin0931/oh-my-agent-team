@@ -13,10 +13,10 @@ export function OpenSourceSection() {
         <div className="flex flex-col gap-16 lg:flex-row lg:items-start lg:gap-24">
           {/* Left column — heading + CTA */}
           <div className="lg:w-[480px] lg:shrink-0">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#0a0d12]/40">
+            <p className="text-[11px] font-semibold uppercase text-[#0a0d12]/40">
               {t.openSource.label}
             </p>
-            <h2 className="mt-4 font-[family-name:var(--font-serif)] text-[2.6rem] leading-[1.05] tracking-[-0.03em] sm:text-[3.4rem] lg:text-[4.2rem]">
+            <h2 className="mt-4 font-[family-name:var(--font-serif)] text-[2.6rem] leading-[1.05] sm:text-[3.4rem] lg:text-[4.2rem]">
               {t.openSource.headlineLine1}
               <br />
               {t.openSource.headlineLine2}

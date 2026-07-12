@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/multica-ai/multica/server/internal/runtimeapps"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/runtimeapps"
 )
 
 // Sub-issue Creation section — after MUL-2538 the platform posts the
@@ -47,17 +47,17 @@ func TestSubIssueCreationSectionPresentForIssueRuns(t *testing.T) {
 			}
 			for _, want := range []string{
 				"**Choosing `--status` when creating sub-issues.**",
+				"Omit `--status` or use `--status backlog` = **wait**",
 				"`--status todo` = **start now**",
-				"`--status backlog` = **wait**",
-				"`multica issue status <child-id> todo`",
+				"`omat issue status <child-id> todo`",
 				"all `--status todo`",
-				"`--status backlog` from the start",
+				"use `--status backlog` for Steps 2/3 from the start",
 				// Stage guidance must reach the always-on brief so agents
 				// reach for stages instead of only the manual backlog chain
 				// (MUL-3508 follow-up).
 				"**Ordering with stages.**",
 				"`--stage <N>`",
-				"`multica issue children <id>`",
+				"`omat issue children <id>`",
 			} {
 				if !strings.Contains(out, want) {
 					t.Errorf("[%s] section missing %q", tc.name, want)
@@ -98,7 +98,7 @@ func TestBriefHasNoParentNotificationGuidance(t *testing.T) {
 			// Old "do it yourself" framing (PR #2918).
 			"## Parent / Sub-issue Protocol",
 			"**Tell the parent when you finish a child.**",
-			"multica issue comment add <parent-id>",
+			"omat issue comment add <parent-id>",
 			"with NO `--parent`",
 			"link the child as `[MUL-",
 			"`@mention` the parent's assignee",
@@ -129,7 +129,7 @@ func TestBriefHasNoParentNotificationGuidance(t *testing.T) {
 			// The protocol must no longer emit a placeholder
 			// `<this-issue-id>` status flip — the workflow above owns
 			// that command with the real issue id substituted.
-			"`multica issue status <this-issue-id> in_review`",
+			"`omat issue status <this-issue-id> in_review`",
 			// Non-existent CLI form Elon's earlier review flagged.
 			"issue list --parent",
 		} {
@@ -142,7 +142,7 @@ func TestBriefHasNoParentNotificationGuidance(t *testing.T) {
 
 // Comment-triggered briefs must NOT carry any unconditional status-flip
 // command targeting the current issue. Previous revisions had a
-// dedicated protocol step that wrote `multica issue status <this-issue-id> in_review`;
+// dedicated protocol step that wrote `omat issue status <this-issue-id> in_review`;
 // the comment-triggered workflow rule "Do NOT change the issue status
 // unless the comment explicitly asks for it" must remain the source of
 // truth (Elon's blocking review on PR #2918).
@@ -154,7 +154,7 @@ func TestCommentTriggeredProtocolDoesNotForceInReview(t *testing.T) {
 	}
 	out := buildMetaSkillContent("claude", ctx)
 
-	if strings.Contains(out, "`multica issue status <this-issue-id> in_review`") {
+	if strings.Contains(out, "`omat issue status <this-issue-id> in_review`") {
 		t.Errorf("comment-triggered brief must not contain a placeholder `<this-issue-id> in_review` flip — that conflicts with the comment-triggered \"do not change status unless asked\" rule")
 	}
 
@@ -196,11 +196,11 @@ func TestCommentTriggeredBriefCarriesNewCommentsHint(t *testing.T) {
 		t.Errorf("comment brief must offer the full-thread (--tail 30) option, got:\n%s", out)
 	}
 	// Issue-wide catch-up demoted to an only-if-needed fallback.
-	if !strings.Contains(out, "multica issue comment list "+issueID+" --since "+since+" --output json") {
+	if !strings.Contains(out, "omat issue comment list "+issueID+" --since "+since+" --output json") {
 		t.Errorf("comment brief must keep the issue-wide --since catch-up fallback, got:\n%s", out)
 	}
 	// The removed resolve step must not reappear.
-	if strings.Contains(out, "multica comment resolve") {
+	if strings.Contains(out, "ohmyagentteam comment resolve") {
 		t.Errorf("comment brief must not carry the dropped resolve step, got:\n%s", out)
 	}
 }
@@ -222,7 +222,7 @@ func TestCommentTriggeredBriefColdStartThreadRead(t *testing.T) {
 	if strings.Contains(out, "new comment(s) since your last run") {
 		t.Errorf("no since-delta hint should render on cold start, got:\n%s", out)
 	}
-	if !strings.Contains(out, "multica issue comment list "+issueID+" --thread thread-root-1 --tail 30 --output json") {
+	if !strings.Contains(out, "omat issue comment list "+issueID+" --thread thread-root-1 --tail 30 --output json") {
 		t.Errorf("cold start must point at the triggering thread read, got:\n%s", out)
 	}
 }
@@ -250,7 +250,7 @@ func TestCommentTriggeredBriefResumedNoDeltaSkipsDefaultThreadRead(t *testing.T)
 		"active thread anchor `thread-root-1` and triggering comment ID `trigger-1`",
 		"If your reply depends on thread context",
 		"do not rely only on resumed session memory",
-		"multica issue comment list " + issueID + " --thread thread-root-1 --tail 30 --output json",
+		"omat issue comment list " + issueID + " --thread thread-root-1 --tail 30 --output json",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("resumed/no-delta brief missing %q\n--- output ---\n%s", want, out)
@@ -279,11 +279,11 @@ func TestAssignmentTriggeredProtocolHonorsAgentIdentity(t *testing.T) {
 		"Agent Identity instructions have priority over the assignment workflow below.",
 		"If a workflow step conflicts with Agent Identity, skip the conflicting action",
 		"Never treat this runtime workflow as permission to change issue status, investigate, implement",
-		"Run `multica issue status " + issueID + " in_progress` unless your Agent Identity forbids issue status changes; if it does, skip this step.",
+		"Run `omat issue status " + issueID + " in_progress` unless your Agent Identity forbids issue status changes; if it does, skip this step.",
 		"Complete the task within your Agent Identity boundaries.",
 		"Do not investigate, implement, create issues, update issues, or delegate if your Agent Identity forbids that action",
-		"When done, run `multica issue status " + issueID + " in_review` unless your Agent Identity forbids issue status changes; if it does, skip this step.",
-		"If blocked, run `multica issue status " + issueID + " blocked` unless your Agent Identity forbids issue status changes.",
+		"When done, run `omat issue status " + issueID + " in_review` unless your Agent Identity forbids issue status changes; if it does, skip this step.",
+		"If blocked, run `omat issue status " + issueID + " blocked` unless your Agent Identity forbids issue status changes.",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("assignment-triggered brief missing identity-bound workflow text %q\n---\n%s", want, out)
@@ -291,9 +291,9 @@ func TestAssignmentTriggeredProtocolHonorsAgentIdentity(t *testing.T) {
 	}
 
 	for _, banned := range []string{
-		"4. Run `multica issue status " + issueID + " in_progress`\n",
+		"4. Run `omat issue status " + issueID + " in_progress`\n",
 		"5. Follow your Skills and Agent Identity to complete the task (write code, investigate, etc.)",
-		"8. When done, run `multica issue status " + issueID + " in_review`\n",
+		"8. When done, run `omat issue status " + issueID + " in_review`\n",
 	} {
 		if strings.Contains(out, banned) {
 			t.Errorf("assignment-triggered brief still contains unconditional legacy workflow text %q\n---\n%s", banned, out)
@@ -360,9 +360,9 @@ func TestChatOutputDoesNotRequireIssueComment(t *testing.T) {
 	}
 
 	for _, banned := range []string{
-		"Final results MUST be delivered via `multica issue comment add`",
+		"Final results MUST be delivered via `omat issue comment add`",
 		"The user does NOT see your terminal output",
-		"do not call `multica issue comment add`",
+		"do not call `omat issue comment add`",
 		"unless the user explicitly asks",
 	} {
 		if strings.Contains(out, banned) {
@@ -629,6 +629,51 @@ func TestSubIssueCreationSectionSkippedForNonIssueModes(t *testing.T) {
 	}
 }
 
+func TestMemberAssigneeAdvisorRuntimeBriefIsCommentOnly(t *testing.T) {
+	run := func(t *testing.T, label string) {
+		t.Helper()
+		out := buildMetaSkillContent("claude", TaskContextForEnv{
+			IssueID:               "11111111-2222-3333-4444-555555555555",
+			AgentName:             "Security Advisor",
+			AgentInstructions:     "Focus on security review advice.",
+			MemberAssigneeAdvisor: true,
+		})
+
+		for _, want := range []string{
+			"comment-only",
+			"one-time advisory pass",
+			"post exactly one concise advisory comment",
+			"finish with empty output",
+			"`omat issue get <id> --output json`",
+			"`omat issue comment add <issue-id> [--content-file <path>]`",
+		} {
+			if !strings.Contains(out, want) {
+				t.Errorf("%s advisor brief missing %q\n--- output ---\n%s", label, want, out)
+			}
+		}
+		for _, forbidden := range []string{
+			"## Issue Metadata",
+			"## Sub-issue Creation",
+			"## Mentions",
+			"`omat issue status",
+			"`omat issue create",
+			"`omat issue update",
+			"`omat issue metadata",
+			"mention://agent",
+		} {
+			if strings.Contains(out, forbidden) {
+				t.Errorf("%s advisor brief should not include %q\n--- output ---\n%s", label, forbidden, out)
+			}
+		}
+	}
+
+	t.Run("legacy", func(t *testing.T) { run(t, "legacy") })
+	t.Run("slim", func(t *testing.T) {
+		withSlimBrief(t)
+		run(t, "slim")
+	})
+}
+
 // writeRuntimeConfigFile is the safe replacement for the previous
 // unconditional os.WriteFile of CLAUDE.md / AGENTS.md. The two
 // states it must handle correctly are: file missing, file present without
@@ -639,7 +684,7 @@ func TestWriteRuntimeConfigFileCreatesMissingFile(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "CLAUDE.md")
-	const brief = "# Multica Agent Runtime\n\nbrief body line"
+	const brief = "# OhMyAgentTeam Agent Runtime\n\nbrief body line"
 
 	if err := writeRuntimeConfigFile(path, brief); err != nil {
 		t.Fatalf("writeRuntimeConfigFile returned error: %v", err)
@@ -669,7 +714,7 @@ func TestWriteRuntimeConfigFilePreservesUserContent(t *testing.T) {
 		t.Fatalf("seed user file: %v", err)
 	}
 
-	const brief = "## Multica brief\n\ninjected body"
+	const brief = "## OhMyAgentTeam brief\n\ninjected body"
 	if err := writeRuntimeConfigFile(path, brief); err != nil {
 		t.Fatalf("writeRuntimeConfigFile returned error: %v", err)
 	}
@@ -712,7 +757,7 @@ func TestWriteRuntimeConfigFileReplacesExistingBlock(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 
-	const newBrief = "## New Multica brief\n\nfresh body"
+	const newBrief = "## New OhMyAgentTeam brief\n\nfresh body"
 	if err := writeRuntimeConfigFile(path, newBrief); err != nil {
 		t.Fatalf("writeRuntimeConfigFile returned error: %v", err)
 	}
@@ -748,7 +793,7 @@ func TestWriteRuntimeConfigFileIsIdempotent(t *testing.T) {
 		t.Fatalf("seed user file: %v", err)
 	}
 
-	const brief = "## Multica brief\n\nbody"
+	const brief = "## OhMyAgentTeam brief\n\nbody"
 	for i := 0; i < 5; i++ {
 		if err := writeRuntimeConfigFile(path, brief); err != nil {
 			t.Fatalf("iteration %d: %v", i, err)
@@ -869,8 +914,8 @@ func TestWriteRuntimeConfigFileIgnoresStrayEndMarkerBeforeBegin(t *testing.T) {
 
 	// Seed a file whose user-authored portion documents the marker format
 	// (so the *end* marker appears before any *begin* marker), then has a
-	// real block authored by an earlier Multica run below.
-	const userDoc = "# Repo CLAUDE.md\n\nExample of what Multica writes:\n" +
+	// real block authored by an earlier OhMyAgentTeam run below.
+	const userDoc = "# Repo CLAUDE.md\n\nExample of what OhMyAgentTeam writes:\n" +
 		runtimeMarkerEnd + "\n\n# Real config below\n"
 	original := userDoc +
 		runtimeMarkerBegin + "\nFIRST BRIEF\n" + runtimeMarkerEnd + "\n"
@@ -963,7 +1008,7 @@ func TestWriteRuntimeConfigFileReplacesMalformedHalfBlock(t *testing.T) {
 
 // Cleanup excises the marker block, preserving every byte of surrounding
 // user content. This is the local_directory invariant: a `claude` /
-// `codex` run started by the user after a Multica task must see the same
+// `codex` run started by the user after a OhMyAgentTeam task must see the same
 // file the user wrote.
 func TestCleanupRuntimeConfigPreservesUserContent(t *testing.T) {
 	t.Parallel()

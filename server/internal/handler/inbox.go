@@ -8,9 +8,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/multica-ai/multica/server/internal/logger"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
-	"github.com/multica-ai/multica/server/pkg/protocol"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/logger"
+	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
+	"github.com/chenin0931/oh-my-agent-team/server/pkg/protocol"
 )
 
 type InboxItemResponse struct {
@@ -21,6 +21,8 @@ type InboxItemResponse struct {
 	Type          string          `json:"type"`
 	Severity      string          `json:"severity"`
 	IssueID       *string         `json:"issue_id"`
+	TargetType    *string         `json:"target_type"`
+	TargetID      *string         `json:"target_id"`
 	Title         string          `json:"title"`
 	Body          *string         `json:"body"`
 	Read          bool            `json:"read"`
@@ -41,6 +43,8 @@ func inboxToResponse(i db.InboxItem) InboxItemResponse {
 		Type:          i.Type,
 		Severity:      i.Severity,
 		IssueID:       uuidToPtr(i.IssueID),
+		TargetType:    textToPtr(i.TargetType),
+		TargetID:      uuidToPtr(i.TargetID),
 		Title:         i.Title,
 		Body:          textToPtr(i.Body),
 		Read:          i.Read,
@@ -61,6 +65,8 @@ func inboxRowToResponse(r db.ListInboxItemsRow) InboxItemResponse {
 		Type:          r.Type,
 		Severity:      r.Severity,
 		IssueID:       uuidToPtr(r.IssueID),
+		TargetType:    textToPtr(r.TargetType),
+		TargetID:      uuidToPtr(r.TargetID),
 		Title:         r.Title,
 		Body:          textToPtr(r.Body),
 		Read:          r.Read,

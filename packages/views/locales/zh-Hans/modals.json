@@ -143,6 +143,21 @@
     "local_hint": "其他机器上的 agent 看不到这个路径，会启动失败。需要协作请用仓库模式。"
   },
   "create_issue": {
+    "issue_types": {
+      "epic": "Epic",
+      "issue": "Issue",
+      "subtask": "子任务"
+    },
+    "typed": {
+      "sr_manual": "新建 {{type}}",
+      "manual_breadcrumb": "手动创建 {{type}}",
+      "title_placeholder": "{{type}} 标题",
+      "title_required": "请输入标题后再创建 {{type}}",
+      "submit": "创建 {{type}}",
+      "toast_created": "已创建 {{type}}",
+      "view": "查看 {{type}}",
+      "toast_failed": "创建 {{type}} 失败"
+    },
     "sr_manual": "新建 issue",
     "sr_agent": "快速创建 issue",
     "manual_breadcrumb": "手动创建",
@@ -192,7 +207,7 @@
       "search_placeholder": "搜索智能体或小队...",
       "agents_group": "智能体",
       "squads_group": "小队",
-      "version_missing": "该智能体的守护进程没有报告 CLI 版本。通过智能体创建需要 multica CLI ≥ {{min}}。请升级守护进程并重连，或切换到手动创建。",
+      "version_missing": "该智能体的守护进程没有报告 CLI 版本。通过智能体创建需要 OMAT CLI ≥ {{min}}。请升级守护进程并重连，或切换到手动创建。",
       "version_below": "该智能体的守护进程 CLI 是 {{current}}——通过智能体创建需要 ≥ {{min}}。请升级守护进程，或切换到手动创建。",
       "prompt_placeholder": "告诉智能体要做什么，例如：\"让 Bohan 修一下 Web 项目里收件箱加载慢的问题\"",
       "submit": "创建",

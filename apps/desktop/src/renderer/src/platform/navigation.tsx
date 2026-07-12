@@ -3,9 +3,9 @@ import type { DataRouter } from "react-router-dom";
 import {
   NavigationProvider,
   type NavigationAdapter,
-} from "@multica/views/navigation";
-import { useAuthStore } from "@multica/core/auth";
-import { isReservedSlug } from "@multica/core/paths";
+} from "@ohmyagentteam/views/navigation";
+import { useAuthStore } from "@ohmyagentteam/core/auth";
+import { isReservedSlug } from "@ohmyagentteam/core/paths";
 import {
   useTabStore,
   resolveRouteIcon,
@@ -53,13 +53,6 @@ function tryRouteToOverlay(path: string, router?: DataRouter): boolean {
   const overlay = useWindowOverlayStore.getState();
   if (path === "/workspaces/new") {
     overlay.open({ type: "new-workspace" });
-    if (router && router.state.location.pathname !== "/") {
-      router.navigate("/", { replace: true });
-    }
-    return true;
-  }
-  if (path === "/onboarding") {
-    overlay.open({ type: "onboarding" });
     if (router && router.state.location.pathname !== "/") {
       router.navigate("/", { replace: true });
     }
@@ -254,7 +247,7 @@ function currentActiveTab() {
  * Per-tab navigation provider rendered inside each tab's Activity wrapper.
  * Subscribes to the tab's own router for up-to-date pathname.
  *
- * This is what @multica/views page components read via useNavigation().
+ * This is what @ohmyagentteam/views page components read via useNavigation().
  */
 export function TabNavigationProvider({
   router,

@@ -1,5 +1,5 @@
 /* =============================================================================
- * Multica shared base styles — imported by all apps
+ * OhMyAgentTeam shared base styles — imported by all apps
  * ============================================================================= */
 
 /* Shiki dual themes: CSS-only light/dark switching via CSS variables */
@@ -14,7 +14,7 @@
   color: var(--shiki-dark) !important;
 }
 
-/* Multica icon: entrance spin animation */
+/* OhMyAgentTeam icon: entrance spin animation */
 @keyframes entrance-spin {
   0% { transform: rotate(0deg); opacity: 0; }
   50% { opacity: 1; }
@@ -23,67 +23,6 @@
 
 .animate-entrance-spin {
   animation: entrance-spin 0.6s ease-out forwards;
-}
-
-/* Onboarding: step / phase entry — 400ms fade.
- * Applied on mount so every new step (and intra-step phase switch, via
- * key=phase remount) plays once. `both` fill-mode commits the `from`
- * styles pre-animation to avoid a single-frame flash at natural state
- * before the animation grabs.
- *
- * Earlier iteration also included a 4px translateY rise. Removed because
- * the transform on h-full step roots was getting counted into the
- * parent's scrollable overflow (web onboarding page + desktop
- * WindowOverlay both wrap with overflow-y-auto), producing a brief
- * scrollbar flash on each step entry. Pure opacity has no such side
- * effect. */
-@keyframes onboarding-enter {
-  from { opacity: 0; }
-}
-
-.animate-onboarding-enter {
-  animation: onboarding-enter 0.4s ease both;
-}
-
-/* Welcome-after-onboarding Modal: emoji pops in with two quick scale
- * bounces so the celebration registers visually without being
- * disruptive. ~700ms total. */
-@keyframes welcome-emoji-pop {
-  0%   { transform: scale(0.4); opacity: 0; }
-  35%  { transform: scale(1.25); opacity: 1; }
-  55%  { transform: scale(0.92); }
-  75%  { transform: scale(1.12); }
-  100% { transform: scale(1); }
-}
-.animate-welcome-emoji-pop {
-  animation: welcome-emoji-pop 0.7s cubic-bezier(0.4, 0, 0.2, 1) both;
-}
-
-/* Onboarding completion: success badge spring-pop.
- * Lands with a subtle overshoot (scale 1.12 → 1) so the circle feels
- * physical rather than linearly interpolated. Paired with the drawn
- * checkmark below which kicks in after the badge has settled. */
-@keyframes completion-badge {
-  0% { transform: scale(0); opacity: 0; }
-  60% { transform: scale(1.12); opacity: 1; }
-  100% { transform: scale(1); opacity: 1; }
-}
-
-.animate-completion-badge {
-  animation: completion-badge 500ms cubic-bezier(0.5, 1.5, 0.4, 1) both;
-}
-
-/* Onboarding completion: SVG checkmark drawn by animating
- * stroke-dashoffset from 1 → 0. Requires the target <path> to declare
- * `pathLength={1}` and `strokeDasharray={1}` so the stroke length is
- * normalized and the animation is geometry-agnostic. */
-@keyframes completion-check {
-  from { stroke-dashoffset: 1; }
-  to { stroke-dashoffset: 0; }
-}
-
-.animate-completion-check {
-  animation: completion-check 400ms ease-out 350ms both;
 }
 
 /* Chat FAB: gentle color + border tint while a chat task is running.
@@ -282,13 +221,13 @@
 /* In-page find (Cmd/Ctrl+F on the issue detail page). Matches are painted with
  * the CSS Custom Highlight API — ranges only, no DOM mutation — so the tint
  * layers cleanly over React-rendered markdown and the contenteditable
- * title/description editors. `multica-find-active` is registered with a higher
+ * title/description editors. `ohmyagentteam-find-active` is registered with a higher
  * priority so the current match paints on top of the dimmer all-matches tint. */
-::highlight(multica-find) {
+::highlight(ohmyagentteam-find) {
   background-color: var(--find-match);
   color: var(--find-match-foreground);
 }
-::highlight(multica-find-active) {
+::highlight(ohmyagentteam-find-active) {
   background-color: var(--find-match-active);
   color: var(--find-match-foreground);
 }

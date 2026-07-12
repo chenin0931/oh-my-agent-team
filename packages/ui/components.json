@@ -12,10 +12,10 @@
   },
   "iconLibrary": "lucide",
   "aliases": {
-    "components": "@multica/ui/components",
-    "ui": "@multica/ui/components/ui",
-    "hooks": "@multica/ui/hooks",
-    "lib": "@multica/ui/lib",
-    "utils": "@multica/ui/lib/utils"
+    "components": "@ohmyagentteam/ui/components",
+    "ui": "@ohmyagentteam/ui/components/ui",
+    "hooks": "@ohmyagentteam/ui/hooks",
+    "lib": "@ohmyagentteam/ui/lib",
+    "utils": "@ohmyagentteam/ui/lib/utils"
   }
 }

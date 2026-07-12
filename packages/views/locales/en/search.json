@@ -7,6 +7,7 @@
     "commands": "Commands",
     "members": "Members",
     "projects": "Projects",
+    "epics": "Epics",
     "issues": "Issues",
     "recent": "Recent"
   },
@@ -24,6 +25,7 @@
     "current_theme_aria": "Current theme",
     "new_issue": "New Issue",
     "new_project": "New Project",
+    "new_epic": "New Epic",
     "copy_issue_link": "Copy Issue Link",
     "copy_identifier": "Copy Identifier ({{identifier}})",
     "switch_to_light": "Switch to Light Theme",

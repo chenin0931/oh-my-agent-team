@@ -19,7 +19,7 @@ import { isBenignException } from "./benign-exceptions";
 
 export const EVENT_SCHEMA_VERSION = 2;
 
-const SIGNUP_SOURCE_COOKIE = "multica_signup_source";
+const SIGNUP_SOURCE_COOKIE = "omat_signup_source";
 // Per-value cap keeps a long utm_content from blowing the budget. We drop
 // the entire cookie if the JSON still exceeds the overall limit — partial
 // JSON is worse than no attribution because PostHog can't parse it.
@@ -179,10 +179,8 @@ export function initAnalytics(config: AnalyticsConfig | null | undefined): boole
     posthog.identify(pendingIdentify.userId, pendingIdentify.props);
     pendingIdentify = null;
   }
-  // Replay buffered events / person-property updates in their original
-  // order — funnel correctness depends on sequence (e.g. a user submits
-  // the questionnaire and then finishes onboarding within the same
-  // config-race window).
+  // Replay buffered events and person-property updates in their original
+  // order so early-session analytics preserve causality.
   while (pendingOps.length > 0) {
     const op = pendingOps.shift()!;
     if (op.kind === "event") {
@@ -261,7 +259,7 @@ export function captureEvent(
  * handlers can't see.
  *
  * Currently called by the web route-level `global-error`. Section-level
- * `@multica/ui` ErrorBoundary can opt in by passing `onError={captureException}`
+ * `@ohmyagentteam/ui` ErrorBoundary can opt in by passing `onError={captureException}`
  * at its call sites; it is not wired app-wide (those failures already degrade
  * gracefully with fallback UI).
  *

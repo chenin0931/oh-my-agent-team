@@ -3,9 +3,9 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Bot } from "lucide-react";
-import { useWorkspaceId } from "@multica/core/hooks";
-import { agentListOptions, squadListOptions } from "@multica/core/workspace/queries";
-import type { AutopilotAssigneeType } from "@multica/core/types";
+import { useWorkspaceId } from "@ohmyagentteam/core/hooks";
+import { agentListOptions, squadListOptions } from "@ohmyagentteam/core/workspace/queries";
+import type { AutopilotAssigneeType } from "@ohmyagentteam/core/types";
 import { ActorAvatar } from "../../../common/actor-avatar";
 import {
   PropertyPicker,

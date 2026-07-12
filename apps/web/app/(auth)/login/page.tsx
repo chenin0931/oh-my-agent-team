@@ -3,46 +3,44 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
-import { sanitizeNextUrl, useAuthStore } from "@multica/core/auth";
-import { useConfigStore } from "@multica/core/config";
+import { sanitizeNextUrl, useAuthStore } from "@ohmyagentteam/core/auth";
+import { useConfigStore } from "@ohmyagentteam/core/config";
 import {
   workspaceKeys,
   workspaceListOptions,
-} from "@multica/core/workspace/queries";
+} from "@ohmyagentteam/core/workspace/queries";
 import {
   paths,
   resolvePostAuthDestination,
-  useHasOnboarded,
-} from "@multica/core/paths";
-import { api } from "@multica/core/api";
-import type { Workspace } from "@multica/core/types";
+} from "@ohmyagentteam/core/paths";
+import { api } from "@ohmyagentteam/core/api";
+import type { Workspace } from "@ohmyagentteam/core/types";
 import {
   Card,
   CardHeader,
   CardTitle,
   CardDescription,
   CardContent,
-} from "@multica/ui/components/ui/card";
-import { Button } from "@multica/ui/components/ui/button";
+} from "@ohmyagentteam/ui/components/ui/card";
+import { Button } from "@ohmyagentteam/ui/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { setLoggedInCookie } from "@/features/auth/auth-cookie";
 import Link from "next/link";
-import { LoginPage, validateCliCallback } from "@multica/views/auth";
-import { useT } from "@multica/views/i18n";
+import { LoginPage, validateCliCallback } from "@ohmyagentteam/views/auth";
+import { useT } from "@ohmyagentteam/views/i18n";
+import { BRAND_DEEP_LINK_SCHEME } from "@ohmyagentteam/core/brand";
 
 /**
  * Pick where a logged-in user with no explicit `?next=` should land.
- * Un-onboarded users with pending invitations on their email get routed to
- * the batch /invitations page; everyone else falls through to the standard
- * resolver. A network blip on listMyInvitations is non-fatal — we fall
- * through rather than trap the user on an error screen.
+ * Users without a workspace first get a chance to accept pending invitations.
+ * Everyone else falls through to workspace-presence routing. A network blip
+ * is non-fatal so login never stalls on invitation discovery.
  */
 async function resolveLoggedInDestination(
   qc: QueryClient,
-  hasOnboarded: boolean,
   workspaces: Workspace[],
 ): Promise<string> {
-  if (!hasOnboarded) {
+  if (workspaces.length === 0) {
     try {
       const invites = await api.listMyInvitations();
       if (invites.length > 0) {
@@ -53,7 +51,7 @@ async function resolveLoggedInDestination(
       // fall through
     }
   }
-  return resolvePostAuthDestination(workspaces, hasOnboarded);
+  return resolvePostAuthDestination(workspaces);
 }
 
 function LoginPageContent() {
@@ -78,15 +76,13 @@ function LoginPageContent() {
 
   const [desktopToken, setDesktopToken] = useState<string | null>(null);
   const [desktopError, setDesktopError] = useState("");
-  const hasOnboarded = useHasOnboarded();
-
   // Latched once auth has been observed settled as logged-out on this page.
   // Any `user` that appears afterwards came from the login form in this
   // session — not from an existing session found on arrival.
   const settledLoggedOutRef = useRef(false);
 
   // Already authenticated ON ARRIVAL — honor ?next= or fall back to first
-  // workspace (or /onboarding if the user has none). Skip this entire path
+  // workspace (or workspace creation if the user has none). Skip this path
   // when the user arrived to authorize the CLI.
   useEffect(() => {
     if (isLoading) return;
@@ -103,7 +99,7 @@ function LoginPageContent() {
         .issueCliToken()
         .then(({ token }) => {
           setDesktopToken(token);
-          window.location.href = `multica://auth/callback?token=${encodeURIComponent(token)}`;
+          window.location.href = `${BRAND_DEEP_LINK_SCHEME}://auth/callback?token=${encodeURIComponent(token)}`;
         })
         .catch((err) => {
           setDesktopError(
@@ -132,21 +128,26 @@ function LoginPageContent() {
     void qc
       .ensureQueryData(workspaceListOptions())
       .catch(() => [] as Workspace[])
-      .then((list) => resolveLoggedInDestination(qc, hasOnboarded, list))
+      .then((list) => resolveLoggedInDestination(qc, list))
       .then((dest) => router.replace(dest));
-  }, [isLoading, user, router, nextUrl, cliCallbackRaw, isDesktopHandoff, hasOnboarded, qc]);
+  }, [
+    isLoading,
+    user,
+    router,
+    nextUrl,
+    cliCallbackRaw,
+    isDesktopHandoff,
+    qc,
+    t,
+  ]);
 
   const handleSuccess = async () => {
-    // Read the latest user snapshot directly — the closure's `hasOnboarded`
-    // was captured before login completed and would be stale here.
-    const currentUser = useAuthStore.getState().user;
-    const onboarded = currentUser?.onboarded_at != null;
     if (nextUrl) {
       router.push(nextUrl);
       return;
     }
     const list = qc.getQueryData<Workspace[]>(workspaceKeys.list()) ?? [];
-    router.push(await resolveLoggedInDestination(qc, onboarded, list));
+    router.push(await resolveLoggedInDestination(qc, list));
   };
 
   // Build Google OAuth state: encode platform, next URL, and CLI callback
@@ -201,7 +202,7 @@ function LoginPageContent() {
               <Button
                 variant="outline"
                 onClick={() => {
-                  window.location.href = `multica://auth/callback?token=${encodeURIComponent(desktopToken)}`;
+                  window.location.href = `${BRAND_DEEP_LINK_SCHEME}://auth/callback?token=${encodeURIComponent(desktopToken)}`;
                 }}
               >
                 {t(($) => $.web.desktop_handoff.open_button)}

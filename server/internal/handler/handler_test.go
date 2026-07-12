@@ -15,12 +15,12 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/multica-ai/multica/server/internal/analytics"
-	"github.com/multica-ai/multica/server/internal/events"
-	"github.com/multica-ai/multica/server/internal/realtime"
-	"github.com/multica-ai/multica/server/internal/service"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
-	"github.com/multica-ai/multica/server/pkg/protocol"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/analytics"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/events"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/realtime"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/service"
+	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
+	"github.com/chenin0931/oh-my-agent-team/server/pkg/protocol"
 )
 
 var testHandler *Handler
@@ -30,7 +30,7 @@ var testWorkspaceID string
 var testRuntimeID string
 
 const (
-	handlerTestEmail         = "handler-test@multica.ai"
+	handlerTestEmail         = "handler-test@ohmyagentteam.com"
 	handlerTestName          = "Handler Test User"
 	handlerTestWorkspaceSlug = "handler-tests"
 )
@@ -39,7 +39,7 @@ func TestMain(m *testing.M) {
 	ctx := context.Background()
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
-		dbURL = "postgres://multica:multica@localhost:5432/multica?sslmode=disable"
+		dbURL = "postgres://ohmyagentteam:ohmyagentteam@localhost:5432/ohmyagentteam?sslmode=disable"
 	}
 
 	pool, err := pgxpool.New(ctx, dbURL)
@@ -512,10 +512,9 @@ func TestDeleteIssueRejectsInvalidUUID(t *testing.T) {
 	}
 }
 
-// TestCreateIssueDefaultStatusIsTodo verifies that issues created without an
-// explicit status default to "todo" so the daemon picks them up immediately.
-// Before this fix the default was "backlog", which daemons ignore.
-func TestCreateIssueDefaultStatusIsTodo(t *testing.T) {
+// TestCreateIssueDefaultStatusIsBacklog verifies that issues created without an
+// explicit status default to "backlog" so new work is planned before execution.
+func TestCreateIssueDefaultStatusIsBacklog(t *testing.T) {
 	w := httptest.NewRecorder()
 	req := newRequest("POST", "/api/issues?workspace_id="+testWorkspaceID, map[string]any{
 		"title": "Issue with no explicit status",
@@ -527,8 +526,8 @@ func TestCreateIssueDefaultStatusIsTodo(t *testing.T) {
 
 	var created IssueResponse
 	json.NewDecoder(w.Body).Decode(&created)
-	if created.Status != "todo" {
-		t.Fatalf("CreateIssue: expected default status 'todo', got '%s'", created.Status)
+	if created.Status != "backlog" {
+		t.Fatalf("CreateIssue: expected default status 'backlog', got '%s'", created.Status)
 	}
 
 	// Cleanup
@@ -738,7 +737,7 @@ func TestCreateSubIssueInheritsParentProject(t *testing.T) {
 	}
 }
 
-func TestCreateSubIssueUsesExplicitProjectOverParentProject(t *testing.T) {
+func TestCreateSubIssueIgnoresExplicitProjectAndInheritsParentProject(t *testing.T) {
 	var parentProjectID, childProjectID, parentID, childID string
 	defer func() {
 		for _, issueID := range []string{childID, parentID} {
@@ -816,8 +815,8 @@ func TestCreateSubIssueUsesExplicitProjectOverParentProject(t *testing.T) {
 	if child.ParentIssueID == nil || *child.ParentIssueID != parentID {
 		t.Fatalf("CreateIssue child: expected parent_issue_id %q, got %v", parentID, child.ParentIssueID)
 	}
-	if child.ProjectID == nil || *child.ProjectID != childProjectID {
-		t.Fatalf("CreateIssue child: expected explicit project_id %q, got %v", childProjectID, child.ProjectID)
+	if child.ProjectID == nil || *child.ProjectID != parentProjectID {
+		t.Fatalf("CreateIssue child: expected inherited parent project_id %q, got %v", parentProjectID, child.ProjectID)
 	}
 }
 
@@ -2427,7 +2426,7 @@ func TestCreateWorkspaceInvalidSlugReturnsBadRequest(t *testing.T) {
 
 func TestSendCode(t *testing.T) {
 	w := httptest.NewRecorder()
-	body := map[string]string{"email": "sendcode-test@multica.ai"}
+	body := map[string]string{"email": "sendcode-test@ohmyagentteam.com"}
 	var buf bytes.Buffer
 	json.NewEncoder(&buf).Encode(body)
 	req := httptest.NewRequest("POST", "/auth/send-code", &buf)
@@ -2444,7 +2443,7 @@ func TestSendCode(t *testing.T) {
 	}
 
 	t.Cleanup(func() {
-		testPool.Exec(context.Background(), `DELETE FROM verification_code WHERE email = $1`, "sendcode-test@multica.ai")
+		testPool.Exec(context.Background(), `DELETE FROM verification_code WHERE email = $1`, "sendcode-test@ohmyagentteam.com")
 	})
 }
 
@@ -2459,7 +2458,7 @@ func TestSendCodeDbError(t *testing.T) {
 	cancel()
 
 	w := httptest.NewRecorder()
-	body := map[string]string{"email": "dberror-test@multica.ai"}
+	body := map[string]string{"email": "dberror-test@ohmyagentteam.com"}
 	var buf bytes.Buffer
 	json.NewEncoder(&buf).Encode(body)
 	req := httptest.NewRequest("POST", "/auth/send-code", &buf)
@@ -2482,7 +2481,7 @@ func TestSendCodeDbError(t *testing.T) {
 }
 
 func TestSendCodeRateLimit(t *testing.T) {
-	const email = "ratelimit-test@multica.ai"
+	const email = "ratelimit-test@ohmyagentteam.com"
 	t.Cleanup(func() {
 		testPool.Exec(context.Background(), `DELETE FROM verification_code WHERE email = $1`, email)
 	})
@@ -2512,7 +2511,7 @@ func TestSendCodeRateLimit(t *testing.T) {
 }
 
 func TestVerifyCode(t *testing.T) {
-	const email = "verify-test@multica.ai"
+	const email = "verify-test@ohmyagentteam.com"
 	ctx := context.Background()
 
 	t.Cleanup(func() {
@@ -2583,7 +2582,7 @@ func TestVerifyCodeRejectsDevCodeUnlessExplicitlyConfigured(t *testing.T) {
 	t.Setenv(devVerificationCodeEnv, "")
 	t.Setenv("APP_ENV", "")
 
-	const email = "dev-code-disabled-test@multica.ai"
+	const email = "dev-code-disabled-test@ohmyagentteam.com"
 	ctx := context.Background()
 
 	t.Cleanup(func() {
@@ -2607,7 +2606,7 @@ func TestVerifyCodeAcceptsConfiguredDevCodeOutsideProduction(t *testing.T) {
 	t.Setenv(devVerificationCodeEnv, "888888")
 	t.Setenv("APP_ENV", "development")
 
-	const email = "dev-code-enabled-test@multica.ai"
+	const email = "dev-code-enabled-test@ohmyagentteam.com"
 	ctx := context.Background()
 
 	t.Cleanup(func() {
@@ -2632,7 +2631,7 @@ func TestVerifyCodeRejectsConfiguredDevCodeInProduction(t *testing.T) {
 	t.Setenv(devVerificationCodeEnv, "888888")
 	t.Setenv("APP_ENV", "production")
 
-	const email = "dev-code-production-test@multica.ai"
+	const email = "dev-code-production-test@ohmyagentteam.com"
 	ctx := context.Background()
 
 	t.Cleanup(func() {
@@ -2655,7 +2654,7 @@ func TestVerifyCodeRejectsConfiguredDevCodeInProduction(t *testing.T) {
 func TestVerifyCodeWrongCode(t *testing.T) {
 	t.Setenv(devVerificationCodeEnv, "")
 
-	const email = "wrong-code-test@multica.ai"
+	const email = "wrong-code-test@ohmyagentteam.com"
 	ctx := context.Background()
 
 	t.Cleanup(func() {
@@ -2685,7 +2684,7 @@ func TestVerifyCodeWrongCode(t *testing.T) {
 func TestVerifyCodeBruteForceProtection(t *testing.T) {
 	t.Setenv(devVerificationCodeEnv, "")
 
-	const email = "bruteforce-test@multica.ai"
+	const email = "bruteforce-test@ohmyagentteam.com"
 	ctx := context.Background()
 
 	t.Cleanup(func() {
@@ -2735,7 +2734,7 @@ func TestVerifyCodeBruteForceProtection(t *testing.T) {
 }
 
 func TestVerifyCodeNewUserHasNoWorkspace(t *testing.T) {
-	const email = "workspace-verify-test@multica.ai"
+	const email = "workspace-verify-test@ohmyagentteam.com"
 	ctx := context.Background()
 
 	t.Cleanup(func() {

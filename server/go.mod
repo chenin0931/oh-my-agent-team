@@ -1,4 +1,4 @@
-module github.com/multica-ai/multica/server
+module github.com/chenin0931/oh-my-agent-team/server
 
 go 1.26.1
 

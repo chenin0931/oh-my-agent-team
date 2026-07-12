@@ -21,7 +21,7 @@ import {
 import { Stack, router, useLocalSearchParams } from "expo-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Clipboard from "expo-clipboard";
-import type { Issue } from "@multica/core/types";
+import type { Issue } from "@ohmyagentteam/core/types";
 import { Text } from "@/components/ui/text";
 import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
@@ -96,6 +96,17 @@ export default function IssueDetail() {
   }, [detail, qc, wsId, id]);
 
   const issue = detail.data;
+
+  // Historical links used the Issue route for every row in the shared table.
+  // Epic is now a planning container, so replace the route before any
+  // executable controls can render.
+  useEffect(() => {
+    if (issue?.issue_type === "epic" && wsSlug) {
+      router.replace(`/${wsSlug}/epic/${issue.id}`);
+    }
+  }, [issue?.id, issue?.issue_type, wsSlug]);
+
+  const isEpic = issue?.issue_type === "epic";
   const deleteIssue = useDeleteIssue();
   const userId = useAuthStore((s) => s.user?.id ?? null);
   const { data: pins } = useQuery(pinListOptions(wsId, userId));
@@ -152,6 +163,8 @@ export default function IssueDetail() {
       },
     );
   }, [issue, wsSlug, deleteIssue, isPinned, createPin, deletePin]);
+
+  if (isEpic) return null;
 
   return (
     <View className="flex-1 bg-background">

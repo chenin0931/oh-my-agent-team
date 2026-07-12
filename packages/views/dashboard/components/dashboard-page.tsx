@@ -3,25 +3,25 @@
 import { useMemo, useState } from "react";
 import { BarChart3, FolderKanban, Trash2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { Skeleton } from "@multica/ui/components/ui/skeleton";
+import { Skeleton } from "@ohmyagentteam/ui/components/ui/skeleton";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@multica/ui/components/ui/select";
-import { useWorkspaceId } from "@multica/core/hooks";
-import type { Agent } from "@multica/core/types";
-import { agentListOptions } from "@multica/core/workspace/queries";
-import { projectListOptions } from "@multica/core/projects/queries";
+} from "@ohmyagentteam/ui/components/ui/select";
+import { useWorkspaceId } from "@ohmyagentteam/core/hooks";
+import type { Agent } from "@ohmyagentteam/core/types";
+import { agentListOptions } from "@ohmyagentteam/core/workspace/queries";
+import { projectListOptions } from "@ohmyagentteam/core/projects/queries";
 import {
   dashboardUsageDailyOptions,
   dashboardUsageByAgentOptions,
   dashboardAgentRunTimeOptions,
   dashboardRunTimeDailyOptions,
-} from "@multica/core/dashboard";
-import { useCustomPricingStore } from "@multica/core/runtimes/custom-pricing-store";
+} from "@ohmyagentteam/core/dashboard";
+import { useCustomPricingStore } from "@ohmyagentteam/core/runtimes/custom-pricing-store";
 import { useViewingTimezone } from "../../common/use-viewing-timezone";
 import { PageHeader } from "../../layout/page-header";
 import { KpiCard } from "../../runtimes/components/shared";
@@ -97,10 +97,10 @@ const ALL_PROJECTS = "__all__";
 // Stable references — `data ?? []` would create a new empty array on
 // every render while the query is loading, which breaks useMemo's
 // reference-equality dep check and trips the exhaustive-deps lint rule.
-const EMPTY_DAILY: import("@multica/core/types").DashboardUsageDaily[] = [];
-const EMPTY_BY_AGENT: import("@multica/core/types").DashboardUsageByAgent[] = [];
-const EMPTY_RUNTIME: import("@multica/core/types").DashboardAgentRunTime[] = [];
-const EMPTY_RUNTIME_DAILY: import("@multica/core/types").DashboardRunTimeDaily[] = [];
+const EMPTY_DAILY: import("@ohmyagentteam/core/types").DashboardUsageDaily[] = [];
+const EMPTY_BY_AGENT: import("@ohmyagentteam/core/types").DashboardUsageByAgent[] = [];
+const EMPTY_RUNTIME: import("@ohmyagentteam/core/types").DashboardAgentRunTime[] = [];
+const EMPTY_RUNTIME_DAILY: import("@ohmyagentteam/core/types").DashboardRunTimeDaily[] = [];
 const EMPTY_AGENTS: Agent[] = [];
 
 function fmtMoney(n: number): string {

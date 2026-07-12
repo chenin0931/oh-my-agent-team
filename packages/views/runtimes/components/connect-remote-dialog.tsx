@@ -3,11 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, ChevronRight, Copy, Terminal } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useWorkspaceId } from "@multica/core/hooks";
-import { runtimeKeys } from "@multica/core/runtimes/queries";
-import { useWSEvent } from "@multica/core/realtime";
-import { paths, useWorkspaceSlug } from "@multica/core/paths";
-import { useConfigStore } from "@multica/core/config";
+import { useWorkspaceId } from "@ohmyagentteam/core/hooks";
+import { runtimeKeys } from "@ohmyagentteam/core/runtimes/queries";
+import { useWSEvent } from "@ohmyagentteam/core/realtime";
+import { paths, useWorkspaceSlug } from "@ohmyagentteam/core/paths";
+import { useConfigStore } from "@ohmyagentteam/core/config";
 import {
   Dialog,
   DialogContent,
@@ -15,44 +15,47 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@multica/ui/components/ui/dialog";
-import { Button } from "@multica/ui/components/ui/button";
-import { CODE_LIGATURE_CLASS } from "@multica/ui/lib/code-style";
-import { copyText } from "@multica/ui/lib/clipboard";
-import { cn } from "@multica/ui/lib/utils";
+} from "@ohmyagentteam/ui/components/ui/dialog";
+import { Button } from "@ohmyagentteam/ui/components/ui/button";
+import { CODE_LIGATURE_CLASS } from "@ohmyagentteam/ui/lib/code-style";
+import { copyText } from "@ohmyagentteam/ui/lib/clipboard";
+import { cn } from "@ohmyagentteam/ui/lib/utils";
 import { useNavigation } from "../../navigation";
 import { useT } from "../../i18n";
 
 type Step = "instructions" | "success";
 
 const INSTALL_CMD =
-  "curl -fsSL https://raw.githubusercontent.com/multica-ai/multica/main/scripts/install.sh | bash";
-const CLOUD_SERVER_URL = "https://api.multica.ai";
-const CLOUD_APP_URL = "https://multica.ai";
+  "curl -fsSL https://raw.githubusercontent.com/chenin0931/oh-my-agent-team/main/scripts/install.sh | bash";
+const CLOUD_SERVER_URL = "https://api.ohmyagentteam.com";
+const CLOUD_APP_URL = "https://ohmyagentteam.com";
 
 function normalizeCommandURL(url: string | undefined) {
   return url?.trim().replace(/\/+$/, "") ?? "";
 }
 
-function daemonCommands(serverUrl: string | undefined, appUrl: string | undefined) {
+export function daemonCommands(
+  serverUrl: string | undefined,
+  appUrl: string | undefined,
+) {
   const normalizedServerUrl = normalizeCommandURL(serverUrl);
   const normalizedAppUrl = normalizeCommandURL(appUrl);
   if (normalizedServerUrl && normalizedAppUrl) {
     return {
-      setupCmd: `multica setup self-host --server-url ${normalizedServerUrl} --app-url ${normalizedAppUrl}`,
-      tokenCmd: `multica config set server_url ${normalizedServerUrl}
-multica config set app_url ${normalizedAppUrl}
-multica login --token <YOUR_TOKEN>
-multica daemon start`,
+      setupCmd: `omat setup self-host --server-url ${normalizedServerUrl} --app-url ${normalizedAppUrl}`,
+      tokenCmd: `omat config set server_url ${normalizedServerUrl}
+omat config set app_url ${normalizedAppUrl}
+omat login --token <YOUR_TOKEN>
+omat daemon start`,
     };
   }
 
   return {
-    setupCmd: "multica setup",
-    tokenCmd: `multica config set server_url ${CLOUD_SERVER_URL}
-multica config set app_url ${CLOUD_APP_URL}
-multica login --token <YOUR_TOKEN>
-multica daemon start`,
+    setupCmd: "omat setup",
+    tokenCmd: `omat config set server_url ${CLOUD_SERVER_URL}
+omat config set app_url ${CLOUD_APP_URL}
+omat login --token <YOUR_TOKEN>
+omat daemon start`,
   };
 }
 
@@ -64,7 +67,7 @@ export function ConnectRemoteDialog({ onClose }: { onClose: () => void }) {
   const navigation = useNavigation();
   const newRuntimeIdRef = useRef<string | null>(null);
 
-  // `multica setup` is one blocking command that handles config + login
+  // `omat setup` is one blocking command that handles config + login
   // + daemon start; the dialog passively listens for the resulting
   // `daemon:register` WS event and auto-advances to success.
   const handleDaemonRegister = useCallback(
@@ -115,7 +118,7 @@ export function ConnectRemoteDialog({ onClose }: { onClose: () => void }) {
 }
 
 // ---------------------------------------------------------------------------
-// Copy button + code row — mirrors onboarding/CliInstallInstructions
+// Copy button and code row shared by the connection instructions.
 // ---------------------------------------------------------------------------
 
 function CopyButton({ text, ariaLabel }: { text: string; ariaLabel: string }) {
@@ -269,28 +272,26 @@ function TroubleshootingDetails({ tokenCmd }: { tokenCmd: string }) {
         <ul className="space-y-1">
           <li className="flex items-center gap-1.5">
             <span>{t(($) => $.connect.trouble_check_status)}</span>
-            {/* CLI command — literal shell string, not i18n content. */}
-            {/* eslint-disable-next-line i18next/no-literal-string */}
+            {/* CLI command: literal shell syntax, not translated copy. */}
             <code
               className={cn(
                 "rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-foreground",
                 CODE_LIGATURE_CLASS,
               )}
             >
-              {"multica daemon status"}
+              {"omat daemon status"}
             </code>
           </li>
           <li className="flex items-center gap-1.5">
             <span>{t(($) => $.connect.trouble_view_logs)}</span>
-            {/* CLI command — literal shell string, not i18n content. */}
-            {/* eslint-disable-next-line i18next/no-literal-string */}
+            {/* CLI command: literal shell syntax, not translated copy. */}
             <code
               className={cn(
                 "rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-foreground",
                 CODE_LIGATURE_CLASS,
               )}
             >
-              {"multica daemon logs -f"}
+              {"omat daemon logs -f"}
             </code>
           </li>
         </ul>

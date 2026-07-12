@@ -11,6 +11,46 @@
     "list_load_failed_default": "Something went wrong fetching the agent list.",
     "try_again": "Try again"
   },
+  "network": {
+    "page_title": "Collaboration network",
+    "view_network": "Network",
+    "view_directory": "Directory",
+    "metrics": {
+      "people": "People",
+      "agents": "Agents",
+      "squads": "Squads",
+      "active_work": "Active work",
+      "capacity": "Online capacity",
+      "shared_agents": "Workspace agents",
+      "online_hint": "{{count}} online",
+      "working_hint": "{{count}} working"
+    },
+    "people_title": "People and their agents",
+    "people_subtitle": "Ownership, availability, and delegated work across the workspace.",
+    "my_team_title": "My team",
+    "my_team_description": "Your agents, squads, and the work delegated through them.",
+    "my_team_empty": "Your member profile is not available in this workspace.",
+    "other_teams_title": "Other people's teams",
+    "other_teams_description": "Every member remains the visible owner of the agents and squads they bring into the network.",
+    "other_teams_empty": "No other people have joined this workspace yet.",
+    "workload_summary": "{{direct}} direct · {{delegated}} delegated",
+    "no_owned_agents": "No owned agents",
+    "no_owned_team_assets": "No agents or squads yet",
+    "unowned_agents": "Unowned agents",
+    "squads_title": "Squads",
+    "no_leader": "No leader",
+    "member_count_one": "{{count}} member",
+    "member_count_other": "{{count}} members",
+    "no_squads": "No active squads",
+    "capacity_title": "Execution capacity",
+    "agent_count_one": "{{count}} agent",
+    "agent_count_other": "{{count}} agents",
+    "no_capacity": "No runtimes connected",
+    "shared": "Shared",
+    "squad_asset": "Squad",
+    "active_issue_count_one": "{{count}} active work item",
+    "active_issue_count_other": "{{count}} active work items"
+  },
   "scope": {
     "mine": "Mine",
     "all": "All",
@@ -40,7 +80,7 @@
   },
   "empty": {
     "title": "No agents yet",
-    "description": "Create an agent and assign it issues, like any teammate. Local agents run on your machine; cloud agents run on Multica's runtime."
+    "description": "Create an agent and assign it issues, like any teammate. Local agents run on your machine; cloud agents run on OhMyAgentTeam's runtime."
   },
   "no_matches": {
     "title": "No matches",
@@ -258,6 +298,9 @@
     "runtime_search_placeholder": "Search machines…",
     "runtime_no_results": "No matching machines",
     "runtime_group_online": "{{online}}/{{total}} online",
+    "no_runtime_title": "Connect execution capacity first",
+    "no_runtime_description": "An agent needs an online CLI runtime before it can receive work.",
+    "open_execution_tools": "Execution tools",
     "duplicate_copy_suffix": " (Copy)",
     "create": "Create",
     "creating": "Creating...",

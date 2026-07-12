@@ -10,16 +10,16 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@multica/ui/components/ui/dialog";
-import { Button } from "@multica/ui/components/ui/button";
-import { Textarea } from "@multica/ui/components/ui/textarea";
-import { Spinner } from "@multica/ui/components/ui/spinner";
-import type { IssueAssigneeType, IssueStatus, UpdateIssueRequest } from "@multica/core/types";
-import { useUpdateIssue, useBatchUpdateIssues } from "@multica/core/issues/mutations";
-import { useActorName } from "@multica/core/workspace/hooks";
-import { useWorkspaceId } from "@multica/core/hooks";
-import { agentListOptions } from "@multica/core/workspace/queries";
-import { runtimeListOptions, readRuntimeCliVersion, handoffSupported } from "@multica/core/runtimes";
+} from "@ohmyagentteam/ui/components/ui/dialog";
+import { Button } from "@ohmyagentteam/ui/components/ui/button";
+import { Textarea } from "@ohmyagentteam/ui/components/ui/textarea";
+import { Spinner } from "@ohmyagentteam/ui/components/ui/spinner";
+import type { IssueAssigneeType, IssueStatus, UpdateIssueRequest } from "@ohmyagentteam/core/types";
+import { useUpdateIssue, useBatchUpdateIssues } from "@ohmyagentteam/core/issues/mutations";
+import { useActorName } from "@ohmyagentteam/core/workspace/hooks";
+import { useWorkspaceId } from "@ohmyagentteam/core/hooks";
+import { agentListOptions } from "@ohmyagentteam/core/workspace/queries";
+import { runtimeListOptions, readRuntimeCliVersion, handoffSupported } from "@ohmyagentteam/core/runtimes";
 import { useIssueTriggerPreview } from "../issues/hooks/use-issue-trigger-preview";
 import { useT } from "../i18n";
 

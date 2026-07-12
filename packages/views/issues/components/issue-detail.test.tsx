@@ -1,9 +1,10 @@
 import { forwardRef, useRef, useState, useImperativeHandle } from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import type { Issue, TimelineEntry } from "@multica/core/types";
-import { I18nProvider } from "@multica/core/i18n/react";
+import type { Issue, TimelineEntry } from "@ohmyagentteam/core/types";
+import { I18nProvider } from "@ohmyagentteam/core/i18n/react";
 import enCommon from "../../locales/en/common.json";
 import enIssues from "../../locales/en/issues.json";
 
@@ -11,15 +12,15 @@ const TEST_RESOURCES = { en: { common: enCommon, issues: enIssues } };
 
 const mockViewport = vi.hoisted(() => ({ isMobile: false }));
 
-vi.mock("@multica/ui/hooks/use-mobile", () => ({
+vi.mock("@ohmyagentteam/ui/hooks/use-mobile", () => ({
   useIsMobile: () => mockViewport.isMobile,
 }));
 
 // useWorkspaceId() derives from useCurrentWorkspace (relative import inside
-// @multica/core/hooks.tsx). vi.mock("@multica/core/paths") only intercepts
+// @ohmyagentteam/core/hooks.tsx). vi.mock("@ohmyagentteam/core/paths") only intercepts
 // the bare-specifier, not the internal relative import. Mock the hooks module
 // directly so the bridge hook returns the test UUID.
-vi.mock("@multica/core/hooks", () => ({
+vi.mock("@ohmyagentteam/core/hooks", () => ({
   useWorkspaceId: () => "ws-1",
 }));
 
@@ -27,9 +28,9 @@ vi.mock("@multica/core/hooks", () => ({
 // Mocks
 // ---------------------------------------------------------------------------
 
-// Mock @multica/core/auth
+// Mock @ohmyagentteam/core/auth
 const mockAuthUser = { id: "user-1", email: "test@test.com", name: "Test User" };
-vi.mock("@multica/core/auth", () => ({
+vi.mock("@ohmyagentteam/core/auth", () => ({
   useAuthStore: Object.assign(
     (selector?: any) => {
       const state = { user: mockAuthUser, isAuthenticated: true };
@@ -41,8 +42,8 @@ vi.mock("@multica/core/auth", () => ({
   createAuthStore: vi.fn(),
 }));
 
-// Mock @multica/core/workspace/hooks
-vi.mock("@multica/core/workspace/hooks", () => ({
+// Mock @ohmyagentteam/core/workspace/hooks
+vi.mock("@ohmyagentteam/core/workspace/hooks", () => ({
   useActorName: () => ({
     getMemberName: (id: string) => (id === "user-1" ? "Test User" : "Unknown"),
     getAgentName: (id: string) => (id === "agent-1" ? "Claude Agent" : "Unknown Agent"),
@@ -57,7 +58,7 @@ vi.mock("@multica/core/workspace/hooks", () => ({
 }));
 
 // Mock workspace queries
-vi.mock("@multica/core/workspace/queries", () => ({
+vi.mock("@ohmyagentteam/core/workspace/queries", () => ({
   memberListOptions: () => ({
     queryKey: ["workspaces", "ws-1", "members"],
     queryFn: () => Promise.resolve([{ user_id: "user-1", name: "Test User", email: "test@test.com", role: "admin" }]),
@@ -80,12 +81,12 @@ vi.mock("@multica/core/workspace/queries", () => ({
   }),
 }));
 
-// Mock @multica/core/paths — after the URL-driven workspace refactor,
+// Mock @ohmyagentteam/core/paths — after the URL-driven workspace refactor,
 // useCurrentWorkspace / useWorkspacePaths derive from the workspace slug in
 // URL Context. Tests don't mount a real route, so we short-circuit to fixtures.
-vi.mock("@multica/core/paths", async () => {
-  const actual = await vi.importActual<typeof import("@multica/core/paths")>(
-    "@multica/core/paths",
+vi.mock("@ohmyagentteam/core/paths", async () => {
+  const actual = await vi.importActual<typeof import("@ohmyagentteam/core/paths")>(
+    "@ohmyagentteam/core/paths",
   );
   return {
     ...actual,
@@ -104,7 +105,7 @@ vi.mock("../../navigation", () => ({
   useNavigation: () => ({
     push: vi.fn(),
     pathname: "/issues/issue-1",
-    getShareableUrl: (p: string) => `https://app.multica.com${p}`,
+    getShareableUrl: (p: string) => `https://app.ohmyagentteam.com${p}`,
   }),
   NavigationProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
@@ -225,14 +226,14 @@ const mockApiObj = vi.hoisted(() => ({
   listProjects: vi.fn().mockResolvedValue({ projects: [] }),
 }));
 
-vi.mock("@multica/core/api", () => ({
+vi.mock("@ohmyagentteam/core/api", () => ({
   api: mockApiObj,
   getApi: () => mockApiObj,
   setApiInstance: vi.fn(),
 }));
 
 // Mock issue config
-vi.mock("@multica/core/issues/config", () => ({
+vi.mock("@ohmyagentteam/core/issues/config", () => ({
   ALL_STATUSES: ["backlog", "todo", "in_progress", "in_review", "done", "blocked", "cancelled"],
   BOARD_STATUSES: ["backlog", "todo", "in_progress", "in_review", "done", "blocked"],
   STATUS_ORDER: ["backlog", "todo", "in_progress", "in_review", "done", "blocked", "cancelled"],
@@ -257,7 +258,7 @@ vi.mock("@multica/core/issues/config", () => ({
 
 // Mock recent issues store
 const mockRecordVisit = vi.fn();
-vi.mock("@multica/core/issues/stores", () => ({
+vi.mock("@ohmyagentteam/core/issues/stores", () => ({
   useRecentIssuesStore: Object.assign(
     (selector?: any) => {
       const state = { byWorkspace: {}, recordVisit: mockRecordVisit, pruneWorkspaces: vi.fn() };
@@ -350,7 +351,7 @@ beforeEach(() => {
 });
 
 // Mock modals
-vi.mock("@multica/core/modals", () => ({
+vi.mock("@ohmyagentteam/core/modals", () => ({
   useModalStore: Object.assign(
     () => ({ open: vi.fn() }),
     { getState: () => ({ open: vi.fn() }) },
@@ -358,12 +359,12 @@ vi.mock("@multica/core/modals", () => ({
 }));
 
 // Mock core/hooks/use-file-upload
-vi.mock("@multica/core/hooks/use-file-upload", () => ({
+vi.mock("@ohmyagentteam/core/hooks/use-file-upload", () => ({
   useFileUpload: () => ({ uploadWithToast: vi.fn().mockResolvedValue("https://example.com/file.png") }),
 }));
 
 // Mock realtime
-vi.mock("@multica/core/realtime", () => ({
+vi.mock("@ohmyagentteam/core/realtime", () => ({
   useWSEvent: vi.fn(),
   useWSReconnect: vi.fn(),
   useWS: () => ({ subscribe: vi.fn(() => () => {}), onReconnect: vi.fn(() => () => {}) }),
@@ -376,7 +377,7 @@ vi.mock("sonner", () => ({
   toast: { error: vi.fn(), success: vi.fn() },
 }));
 
-// Mock react-resizable-panels (used by @multica/ui/components/ui/resizable)
+// Mock react-resizable-panels (used by @ohmyagentteam/ui/components/ui/resizable)
 vi.mock("react-resizable-panels", () => ({
   Group: ({ children, ...props }: any) => <div data-testid="panel-group" {...props}>{children}</div>,
   Panel: ({ children, ...props }: any) => <div data-testid="panel" {...props}>{children}</div>,
@@ -668,7 +669,8 @@ describe("IssueDetail (shared)", () => {
     expect(screen.getByText("Add property")).toBeInTheDocument();
   });
 
-  it("uses a non-resizable layout with the sidebar sheet closed by default on mobile", async () => {
+  it("uses content, activity, and properties tabs on mobile", async () => {
+    const user = userEvent.setup();
     mockViewport.isMobile = true;
 
     renderIssueDetail();
@@ -678,7 +680,14 @@ describe("IssueDetail (shared)", () => {
     });
 
     expect(screen.queryByTestId("panel-group")).not.toBeInTheDocument();
-    expect(screen.queryByText("Properties")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Content" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Activity" })).toBeInTheDocument();
+    const propertiesTab = screen.getByRole("button", { name: "Properties" });
+    expect(propertiesTab).toBeInTheDocument();
+
+    await user.click(propertiesTab);
+    expect(screen.getByText("Status")).toBeInTheDocument();
+    expect(screen.getByText("In Progress")).toBeInTheDocument();
   });
 
   it("hides metadata content from the sidebar and shows a button when the bag has keys", async () => {
@@ -756,25 +765,27 @@ describe("IssueDetail (shared)", () => {
     expect(screen.getByText("Updated")).toBeInTheDocument();
   });
 
-  it("shows 'not found' message when issue does not exist", async () => {
+  it("shows 'not found' message when the work item does not exist", async () => {
     mockApiObj.getIssue.mockRejectedValue(new Error("Not found"));
 
     renderIssueDetail("nonexistent-id");
 
     await waitFor(() => {
       expect(
-        screen.getByText("This issue does not exist or has been deleted in this workspace."),
+        screen.getByText(
+          "This work item does not exist or has been deleted in this workspace.",
+        ),
       ).toBeInTheDocument();
     });
   });
 
-  it("shows 'Back to Issues' button when issue is not found and no onDelete prop", async () => {
+  it("shows 'Back to work items' when no onDelete prop is provided", async () => {
     mockApiObj.getIssue.mockRejectedValue(new Error("Not found"));
 
     renderIssueDetail("nonexistent-id");
 
     await waitFor(() => {
-      expect(screen.getByText("Back to Issues")).toBeInTheDocument();
+      expect(screen.getByText("Back to work items")).toBeInTheDocument();
     });
   });
 

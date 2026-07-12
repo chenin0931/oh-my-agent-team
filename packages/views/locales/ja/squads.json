@@ -8,7 +8,7 @@
       "name": "スカッド",
       "leader": "リーダー",
       "members": "メンバー",
-      "creator": "作成者",
+      "owner": "所有者",
       "created": "作成日時"
     },
     "no_matches": "該当するスカッドはありません",
@@ -18,6 +18,16 @@
   "inspector": {
     "details_section": "詳細",
     "archive_button": "アーカイブ"
+  },
+  "owner_picker": {
+    "change": "スクワッド所有者を変更",
+    "choose": "所有権の移管先",
+    "current": "現在",
+    "confirm_title": "所有権を移管しますか？",
+    "confirm_description": "{{name}} がこのスクワッドを管理できるようになります。ワークスペース管理者でない場合、編集権限を失います。",
+    "cancel": "キャンセル",
+    "confirm": "移管",
+    "success": "所有権を移管しました"
   },
   "archive_dialog": {
     "title": "このスクワッドをアーカイブしますか？",
@@ -83,6 +93,7 @@
   },
   "scope": {
     "mine": "自分",
+    "others": "ほかのチーム",
     "all": "すべて"
   },
   "toolbar": {

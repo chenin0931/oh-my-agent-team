@@ -1,9 +1,9 @@
 {
   "page": {
-    "breadcrumb": "マイイシュー",
+    "breadcrumb": "マイワーク",
     "workspace_fallback": "ワークスペース",
-    "empty_title": "あなたに割り当てられたイシューはありません",
-    "empty_description": "あなたが作成したイシューや割り当てられたイシューがここに表示されます。"
+    "empty_title": "対応が必要な作業はありません",
+    "empty_description": "自分が担当、作成、またはエージェントに委任した作業がここに表示されます。"
   },
   "header": {
     "scope": {

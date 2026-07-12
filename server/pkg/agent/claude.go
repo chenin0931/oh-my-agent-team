@@ -232,7 +232,7 @@ func (b *claudeBackend) Execute(ctx context.Context, prompt string, opts ExecOpt
 		}
 		if finalStatus == "completed" && sawAsyncLaunch {
 			finalStatus = "failed"
-			finalError = "claude launched an async background task; Multica-managed runs require foreground execution"
+			finalError = "claude launched an async background task; OhMyAgentTeam-managed runs require foreground execution"
 		}
 
 		// cmd.Wait() has returned — os/exec's stderr copy goroutine has
@@ -657,7 +657,7 @@ func claudeRootSudoPreflight(args, env []string) error {
 	if !argsRequestBypassPermissions(args) || os.Geteuid() != 0 || envHasSandbox(env) {
 		return nil
 	}
-	return fmt.Errorf("Claude Code refuses bypassPermissions under root/sudo privileges. Run the Multica daemon as a non-root user, or set IS_SANDBOX=1 if running in a genuine container/sandbox")
+	return fmt.Errorf("Claude Code refuses bypassPermissions under root/sudo privileges. Run the OhMyAgentTeam daemon as a non-root user, or set IS_SANDBOX=1 if running in a genuine container/sandbox")
 }
 
 func argsRequestBypassPermissions(args []string) bool {
@@ -831,7 +831,7 @@ func stripSurroundingQuotes(s string) (string, bool) {
 // writeMcpConfigToTemp writes MCP config JSON to a temporary file and returns
 // its path. The caller is responsible for removing it via cleanupMcpConfigTemp.
 func writeMcpConfigToTemp(raw json.RawMessage) (string, error) {
-	dir, err := os.MkdirTemp("", "multica-mcp-*")
+	dir, err := os.MkdirTemp("", "ohmyagentteam-mcp-*")
 	if err != nil {
 		return "", fmt.Errorf("create mcp config temp dir: %w", err)
 	}
@@ -853,7 +853,7 @@ func cleanupMcpConfigTemp(path string) {
 		return
 	}
 	dir := filepath.Dir(path)
-	if strings.HasPrefix(filepath.Base(dir), "multica-mcp-") {
+	if strings.HasPrefix(filepath.Base(dir), "ohmyagentteam-mcp-") {
 		_ = os.RemoveAll(dir)
 		return
 	}

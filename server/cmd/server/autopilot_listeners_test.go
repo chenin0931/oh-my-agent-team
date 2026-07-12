@@ -6,9 +6,9 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/multica-ai/multica/server/internal/events"
-	"github.com/multica-ai/multica/server/internal/service"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/events"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/service"
+	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
 )
 
 func TestAutopilotRunOnlyTaskTerminalEventsUpdateRun(t *testing.T) {

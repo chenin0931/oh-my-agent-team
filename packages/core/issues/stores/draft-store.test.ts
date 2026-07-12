@@ -28,7 +28,7 @@ const RESET_STATE = {
   draft: {
     title: "",
     description: "",
-    status: "todo" as const,
+    status: "backlog" as const,
     priority: "none" as const,
     assigneeType: undefined,
     assigneeId: undefined,
@@ -127,7 +127,7 @@ describe("issue draft store — legacy rehydrate", () => {
 
   it("backfills attachments for drafts persisted before the field existed", async () => {
     localStorage.setItem(
-      "multica_issue_draft:acme",
+      "omat_issue_draft:acme",
       JSON.stringify({
         state: {
           draft: {

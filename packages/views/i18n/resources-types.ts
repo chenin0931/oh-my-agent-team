@@ -2,14 +2,13 @@ import "i18next";
 // Pulls in the `ui` namespace augmentation owned by packages/ui — see
 // packages/ui/types/i18next.ts. Side-effect import is required for views'
 // typecheck program to see ui's contribution to `I18nResources`.
-import "@multica/ui/i18n-types";
+import "@ohmyagentteam/ui/i18n-types";
 import type common from "../locales/en/common.json";
 import type auth from "../locales/en/auth.json";
 import type settings from "../locales/en/settings.json";
 import type issues from "../locales/en/issues.json";
 import type agents from "../locales/en/agents.json";
 import type editor from "../locales/en/editor.json";
-import type onboarding from "../locales/en/onboarding.json";
 import type invite from "../locales/en/invite.json";
 import type labels from "../locales/en/labels.json";
 import type members from "../locales/en/members.json";
@@ -41,7 +40,7 @@ import type billing from "../locales/en/billing.json";
 // type literal inside CustomTypeOptions) so other packages can contribute
 // namespaces via declaration merging. See packages/ui/types/i18next.d.ts —
 // it adds the `ui` namespace there, which lets packages/ui typecheck the
-// selector form standalone without depending on @multica/views.
+// selector form standalone without depending on @ohmyagentteam/views.
 declare global {
   interface I18nResources {
     common: typeof common;
@@ -50,7 +49,6 @@ declare global {
     issues: typeof issues;
     agents: typeof agents;
     editor: typeof editor;
-    onboarding: typeof onboarding;
     invite: typeof invite;
     labels: typeof labels;
     members: typeof members;

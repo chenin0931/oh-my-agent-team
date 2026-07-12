@@ -16,10 +16,11 @@
 
 import { NodeViewWrapper } from "@tiptap/react";
 import type { NodeViewProps } from "@tiptap/react";
-import { useWorkspacePaths } from "@multica/core/paths";
+import { useWorkspacePaths } from "@ohmyagentteam/core/paths";
 import { useNavigation } from "../../navigation";
 import { IssueChip } from "../../issues/components/issue-chip";
 import { ProjectChip } from "../../projects/components/project-chip";
+import { EpicChip } from "../../epics/components/epic-chip";
 
 export function MentionView({ node }: NodeViewProps) {
   const { type, id, label } = node.attrs;
@@ -40,10 +41,50 @@ export function MentionView({ node }: NodeViewProps) {
     );
   }
 
+  if (type === "epic") {
+    return (
+      <NodeViewWrapper as="span" className="inline">
+        <EpicMention epicId={id} fallbackLabel={label} />
+      </NodeViewWrapper>
+    );
+  }
+
   return (
     <NodeViewWrapper as="span" className="inline">
       <span className="mention">@{label ?? id}</span>
     </NodeViewWrapper>
+  );
+}
+
+function EpicMention({
+  epicId,
+  fallbackLabel,
+}: {
+  epicId: string;
+  fallbackLabel?: string;
+}) {
+  const paths = useWorkspacePaths();
+  const { push, openInNewTab } = useNavigation();
+  const epicPath = paths.epicDetail(epicId);
+
+  const handleClick = (event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.metaKey || event.ctrlKey || event.shiftKey) {
+      openInNewTab?.(epicPath, fallbackLabel);
+      return;
+    }
+    push(epicPath);
+  };
+
+  return (
+    <a href={epicPath} onClick={handleClick} className="epic-mention">
+      <EpicChip
+        epicId={epicId}
+        fallbackLabel={fallbackLabel}
+        className="cursor-pointer transition-colors hover:bg-accent"
+      />
+    </a>
   );
 }
 

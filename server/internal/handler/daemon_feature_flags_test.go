@@ -4,10 +4,10 @@ import (
 	"context"
 	"testing"
 
-	"github.com/multica-ai/multica/server/internal/featureflagdispatch"
-	"github.com/multica-ai/multica/server/internal/util"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
-	"github.com/multica-ai/multica/server/pkg/featureflag"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/featureflagdispatch"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/util"
+	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
+	"github.com/chenin0931/oh-my-agent-team/server/pkg/featureflag"
 )
 
 func TestProcessHeartbeatIncludesDaemonFeatureFlagSnapshot(t *testing.T) {

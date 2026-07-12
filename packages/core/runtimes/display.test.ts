@@ -26,4 +26,30 @@ describe("runtimeDisplayName", () => {
     ).toBe("Claude (host)");
     expect(runtimeDisplayName({ name: "Claude (host)" })).toBe("Claude (host)");
   });
+
+  it("uses the custom runtime profile display name while preserving the host", () => {
+    expect(
+      runtimeDisplayName(
+        {
+          name: "Aily (host)",
+          custom_name: null,
+          profile_id: "profile-1",
+        },
+        { display_name: "飞书智能伙伴aily" },
+      ),
+    ).toBe("飞书智能伙伴aily (host)");
+  });
+
+  it("keeps a custom name ahead of the custom runtime profile display name", () => {
+    expect(
+      runtimeDisplayName(
+        {
+          name: "Aily (host)",
+          custom_name: "My Feishu Runtime",
+          profile_id: "profile-1",
+        },
+        { display_name: "飞书智能伙伴aily" },
+      ),
+    ).toBe("My Feishu Runtime");
+  });
 });

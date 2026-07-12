@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { I18nProvider } from "@multica/core/i18n/react";
+import { I18nProvider } from "@ohmyagentteam/core/i18n/react";
 import enCommon from "../locales/en/common.json";
 import enModals from "../locales/en/modals.json";
 
@@ -34,7 +34,7 @@ const mockDraftStore = {
   draft: {
     title: "",
     description: "",
-    status: "todo" as const,
+    status: "backlog" as const,
     priority: "none" as const,
     assigneeType: undefined as "agent" | "squad" | "member" | undefined,
     assigneeId: undefined as string | undefined,
@@ -75,18 +75,18 @@ vi.mock("../navigation", () => ({
   useNavigation: () => ({ push: mockPush }),
 }));
 
-vi.mock("@multica/core/paths", () => ({
+vi.mock("@ohmyagentteam/core/paths", () => ({
   useCurrentWorkspace: () => ({ name: "Test Workspace" }),
   useWorkspacePaths: () => ({
     issueDetail: (id: string) => `/ws-test/issues/${id}`,
   }),
 }));
 
-vi.mock("@multica/core/hooks", () => ({
+vi.mock("@ohmyagentteam/core/hooks", () => ({
   useWorkspaceId: () => "ws-test",
 }));
 
-vi.mock("@multica/core/issues/queries", () => ({
+vi.mock("@ohmyagentteam/core/issues/queries", () => ({
   issueDetailOptions: (wsId: string, id: string) => ({
     queryKey: ["issues", wsId, "detail", id],
     queryFn: () => Promise.resolve(null),
@@ -109,7 +109,7 @@ vi.mock("../issues/hooks/use-issue-trigger-preview", () => ({
   }),
 }));
 
-vi.mock("@multica/core/workspace/hooks", () => ({
+vi.mock("@ohmyagentteam/core/workspace/hooks", () => ({
   useActorName: () => ({ getActorName: () => "Agent" }),
 }));
 
@@ -120,7 +120,7 @@ vi.mock("../common/actor-avatar", () => ({
   ActorAvatar: () => null,
 }));
 
-vi.mock("@multica/core/issues/stores/draft-store", () => ({
+vi.mock("@ohmyagentteam/core/issues/stores/draft-store", () => ({
   useIssueDraftStore: Object.assign(
     (selector?: (state: typeof mockDraftStore) => unknown) =>
       (selector ? selector(mockDraftStore) : mockDraftStore),
@@ -128,17 +128,17 @@ vi.mock("@multica/core/issues/stores/draft-store", () => ({
   ),
 }));
 
-vi.mock("@multica/core/issues/stores/quick-create-store", () => ({
+vi.mock("@ohmyagentteam/core/issues/stores/quick-create-store", () => ({
   useQuickCreateStore: (selector?: (state: typeof mockQuickCreateStore) => unknown) =>
     (selector ? selector(mockQuickCreateStore) : mockQuickCreateStore),
 }));
 
-vi.mock("@multica/core/issues/mutations", () => ({
+vi.mock("@ohmyagentteam/core/issues/mutations", () => ({
   useCreateIssue: () => ({ mutateAsync: mockCreateIssue }),
   useUpdateIssue: () => ({ mutate: vi.fn() }),
 }));
 
-vi.mock("@multica/core/hooks/use-file-upload", () => ({
+vi.mock("@ohmyagentteam/core/hooks/use-file-upload", () => ({
   useFileUpload: () => ({ uploadWithToast: mockUploadWithToast }),
 }));
 
@@ -162,18 +162,18 @@ const { ApiError } = vi.hoisted(() => {
   return { ApiError: ApiErrorImpl };
 });
 
-vi.mock("@multica/core/api", async () => {
+vi.mock("@ohmyagentteam/core/api", async () => {
   // Pull real `parseWithFallback` + `DuplicateIssueErrorBodySchema` from the
   // schema modules so the drift-fallback branch in create-issue.tsx runs the
   // actual validation logic (not a stub). Only `ApiError` is local — the
   // component imports it from this module and the cross-realm `instanceof`
   // check requires a single class identity.
-  const { parseWithFallback } = await vi.importActual<typeof import("@multica/core/api/schema")>(
-    "@multica/core/api/schema",
+  const { parseWithFallback } = await vi.importActual<typeof import("@ohmyagentteam/core/api/schema")>(
+    "@ohmyagentteam/core/api/schema",
   );
   const { DuplicateIssueErrorBodySchema } = await vi.importActual<
-    typeof import("@multica/core/api/schemas")
-  >("@multica/core/api/schemas");
+    typeof import("@ohmyagentteam/core/api/schemas")
+  >("@ohmyagentteam/core/api/schemas");
   return {
     api: {},
     ApiError,
@@ -265,7 +265,7 @@ vi.mock("../projects/components/project-picker", () => ({
   ProjectPicker: () => <div data-testid="project-picker" />,
 }));
 
-vi.mock("@multica/ui/components/ui/dialog", () => ({
+vi.mock("@ohmyagentteam/ui/components/ui/dialog", () => ({
   Dialog: ({ children }: { children: React.ReactNode }) => <div data-testid="dialog-root">{children}</div>,
   DialogContent: ({ children, className }: { children: React.ReactNode; className?: string }) => (
     <div className={className}>{children}</div>
@@ -275,7 +275,7 @@ vi.mock("@multica/ui/components/ui/dialog", () => ({
   ),
 }));
 
-vi.mock("@multica/ui/components/ui/dropdown-menu", () => ({
+vi.mock("@ohmyagentteam/ui/components/ui/dropdown-menu", () => ({
   DropdownMenu: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   DropdownMenuTrigger: ({ render }: { render: React.ReactNode }) => <>{render}</>,
   DropdownMenuContent: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -289,14 +289,14 @@ vi.mock("./issue-picker-modal", () => ({
   IssuePickerModal: () => null,
 }));
 
-vi.mock("@multica/ui/components/ui/tooltip", () => ({
+vi.mock("@ohmyagentteam/ui/components/ui/tooltip", () => ({
   Tooltip: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   TooltipTrigger: ({ render }: { render: React.ReactNode }) => <>{render}</>,
   TooltipContent: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   TooltipProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
-vi.mock("@multica/ui/components/ui/button", () => ({
+vi.mock("@ohmyagentteam/ui/components/ui/button", () => ({
   Button: ({
     children,
     disabled,
@@ -314,7 +314,7 @@ vi.mock("@multica/ui/components/ui/button", () => ({
   ),
 }));
 
-vi.mock("@multica/ui/components/ui/switch", () => ({
+vi.mock("@ohmyagentteam/ui/components/ui/switch", () => ({
   Switch: ({
     checked,
     onCheckedChange,
@@ -331,7 +331,7 @@ vi.mock("@multica/ui/components/ui/switch", () => ({
   ),
 }));
 
-vi.mock("@multica/ui/components/common/file-upload-button", () => ({
+vi.mock("@ohmyagentteam/ui/components/common/file-upload-button", () => ({
   FileUploadButton: ({ onSelect }: { onSelect: (file: File) => void }) => (
     <button type="button" onClick={() => onSelect(new File(["test"], "test.txt"))}>
       Upload file
@@ -339,7 +339,7 @@ vi.mock("@multica/ui/components/common/file-upload-button", () => ({
   ),
 }));
 
-vi.mock("@multica/ui/lib/utils", () => ({
+vi.mock("@ohmyagentteam/ui/lib/utils", () => ({
   cn: (...values: Array<string | false | null | undefined>) => values.filter(Boolean).join(" "),
 }));
 
@@ -373,7 +373,7 @@ describe("CreateIssueModal", () => {
     });
     mockDraftStore.draft.title = "";
     mockDraftStore.draft.description = "";
-    mockDraftStore.draft.status = "todo";
+    mockDraftStore.draft.status = "backlog";
     mockDraftStore.draft.priority = "none";
     // Reset the shared draft mock so per-test assignee seeding (squad / agent)
     // doesn't leak into the next test in the suite.
@@ -390,7 +390,7 @@ describe("CreateIssueModal", () => {
       mockDraftStore.draft = {
         title: "",
         description: "",
-        status: "todo",
+        status: "backlog",
         priority: "none",
         assigneeType: mockDraftStore.lastAssigneeType,
         assigneeId: mockDraftStore.lastAssigneeId,
@@ -412,18 +412,18 @@ describe("CreateIssueModal", () => {
       filename: "shot.png",
       url: "https://cdn.example.test/shot.png",
       download_url: "https://cdn.example.test/shot.png?Signature=fresh",
-      markdown_url: "https://multica-api.copilothub.ai/api/attachments/11111111-2222-3333-4444-555555555555/download",
+      markdown_url: "https://ohmyagentteam-api.copilothub.ai/api/attachments/11111111-2222-3333-4444-555555555555/download",
       content_type: "image/png",
       size_bytes: 123,
       created_at: "2026-06-12T00:00:00Z",
       link: "https://cdn.example.test/shot.png",
-      markdownLink: "https://multica-api.copilothub.ai/api/attachments/11111111-2222-3333-4444-555555555555/download",
+      markdownLink: "https://ohmyagentteam-api.copilothub.ai/api/attachments/11111111-2222-3333-4444-555555555555/download",
     });
     mockCreateIssue.mockResolvedValue({
       id: "issue-123",
       identifier: "TES-123",
       title: "Ship create issue regression coverage",
-      status: "todo",
+      status: "backlog",
     });
   });
 
@@ -442,15 +442,18 @@ describe("CreateIssueModal", () => {
       expect(mockCreateIssue).toHaveBeenCalledWith({
         title: "Ship create issue regression coverage",
         description: undefined,
-        status: "todo",
+        status: "backlog",
         priority: "none",
         assignee_type: undefined,
         assignee_id: undefined,
         start_date: undefined,
         due_date: undefined,
         attachment_ids: undefined,
+        issue_type: "issue",
+        epic_id: undefined,
         parent_issue_id: undefined,
         project_id: undefined,
+        stage: undefined,
       });
     });
 
@@ -489,15 +492,18 @@ describe("CreateIssueModal", () => {
       expect(mockCreateIssue).toHaveBeenCalledWith({
         title: "First follow-up issue",
         description: "Description to clear",
-        status: "todo",
+        status: "backlog",
         priority: "none",
         assignee_type: undefined,
         assignee_id: undefined,
         start_date: undefined,
         due_date: undefined,
         attachment_ids: undefined,
+        issue_type: "issue",
+        epic_id: undefined,
         parent_issue_id: undefined,
         project_id: undefined,
+        stage: undefined,
       });
     });
 
@@ -507,7 +513,7 @@ describe("CreateIssueModal", () => {
     expect(mockSetDraft).toHaveBeenCalledWith({
       title: "",
       description: "",
-      status: "todo",
+      status: "backlog",
       priority: "none",
       assigneeType: undefined,
       assigneeId: undefined,
@@ -515,6 +521,106 @@ describe("CreateIssueModal", () => {
       dueDate: null,
       labelIds: [],
       attachments: [],
+    });
+  });
+
+  it("preserves project and hierarchy context across consecutive creates", async () => {
+    const user = userEvent.setup();
+    mockQuickCreateStore.keepOpen = true;
+
+    renderModal(
+      <ManualCreatePanel
+        onClose={vi.fn()}
+        data={{
+          issue_type: "subtask",
+          project_id: "proj-1",
+          parent_issue_id: "parent-1",
+          stage: 2,
+        }}
+        isExpanded={false}
+        setIsExpanded={vi.fn()}
+      />,
+    );
+
+    const title = screen.getByPlaceholderText("Subtask title");
+    await user.type(title, "First scoped subtask");
+    await user.click(screen.getByRole("button", { name: "Create Subtask" }));
+    await waitFor(() => expect(mockCreateIssue).toHaveBeenCalledTimes(1));
+
+    const nextTitle = screen.getByPlaceholderText("Subtask title");
+    await user.type(nextTitle, "Second scoped subtask");
+    await user.click(screen.getByRole("button", { name: "Create Subtask" }));
+    await waitFor(() => expect(mockCreateIssue).toHaveBeenCalledTimes(2));
+
+    expect(mockCreateIssue.mock.calls[1]?.[0]).toEqual(
+      expect.objectContaining({
+        title: "Second scoped subtask",
+        issue_type: "subtask",
+        project_id: "proj-1",
+        parent_issue_id: "parent-1",
+        stage: 2,
+      }),
+    );
+  });
+
+  it("normalizes stale Epic seeds to executable Issue hierarchy controls", () => {
+    const { unmount } = renderModal(
+      <ManualCreatePanel
+        onClose={vi.fn()}
+        data={{ issue_type: "epic", project_id: "proj-1" }}
+        isExpanded={false}
+        setIsExpanded={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText("Set parent issue...")).not.toBeInTheDocument();
+    expect(screen.getByText("Add sub-issue...")).toBeInTheDocument();
+    unmount();
+
+    renderModal(
+      <ManualCreatePanel
+        onClose={vi.fn()}
+        data={{ issue_type: "issue", project_id: "proj-1" }}
+        isExpanded={false}
+        setIsExpanded={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText("Set parent issue...")).not.toBeInTheDocument();
+    expect(screen.getByText("Add sub-issue...")).toBeInTheDocument();
+  });
+
+  it("never submits an Epic through the generic Issue modal", async () => {
+    const user = userEvent.setup();
+    renderModal(
+      <CreateIssueModal
+        onClose={vi.fn()}
+        data={{
+          issue_type: "epic",
+          project_id: "proj-1",
+          status: "backlog",
+        }}
+      />,
+    );
+
+    expect(screen.getByText("New Issue")).toBeInTheDocument();
+    expect(screen.queryByText("New Epic")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Switch to Agent" })).toBeInTheDocument();
+
+    await user.type(screen.getByPlaceholderText("Issue title"), "Launch campaign");
+    await user.click(screen.getByRole("button", { name: "Create Issue" }));
+
+    await waitFor(() => {
+      expect(mockCreateIssue).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Launch campaign",
+          issue_type: "issue",
+          project_id: "proj-1",
+          status: "backlog",
+          epic_id: undefined,
+          parent_issue_id: undefined,
+        }),
+      );
     });
   });
 
@@ -558,7 +664,7 @@ describe("CreateIssueModal", () => {
       filename: "shot.png",
       url: "https://cdn.example.test/shot.png",
       download_url: "",
-      markdown_url: "https://multica-api.copilothub.ai/api/attachments/11111111-2222-3333-4444-555555555555/download",
+      markdown_url: "https://ohmyagentteam-api.copilothub.ai/api/attachments/11111111-2222-3333-4444-555555555555/download",
       content_type: "image/png",
       size_bytes: 123,
       created_at: "2026-06-12T00:00:00Z",
@@ -599,7 +705,7 @@ describe("CreateIssueModal", () => {
       filename: "kept.png",
       url: "https://cdn.example.test/kept.png",
       download_url: "",
-      markdown_url: "https://multica-api.copilothub.ai/api/attachments/11111111-2222-3333-4444-555555555555/download",
+      markdown_url: "https://ohmyagentteam-api.copilothub.ai/api/attachments/11111111-2222-3333-4444-555555555555/download",
       content_type: "image/png",
       size_bytes: 123,
       created_at: "2026-06-12T00:00:00Z",
@@ -609,7 +715,7 @@ describe("CreateIssueModal", () => {
       id: "99999999-8888-7777-6666-555555555555",
       filename: "deleted.png",
       url: "https://cdn.example.test/deleted.png",
-      markdown_url: "https://multica-api.copilothub.ai/api/attachments/99999999-8888-7777-6666-555555555555/download",
+      markdown_url: "https://ohmyagentteam-api.copilothub.ai/api/attachments/99999999-8888-7777-6666-555555555555/download",
     };
     mockDraftStore.draft.title = "Image draft";
     mockDraftStore.draft.description = `![kept.png](${referenced.markdown_url})`;
@@ -798,7 +904,7 @@ describe("CreateIssueModal", () => {
       />,
     );
 
-    await user.type(screen.getByPlaceholderText("Issue title"), "Refactor auth");
+    await user.type(screen.getByPlaceholderText("Subtask title"), "Refactor auth");
     await user.click(screen.getByRole("button", { name: /Switch to Agent/i }));
 
     expect(onSwitchMode).toHaveBeenCalledTimes(1);

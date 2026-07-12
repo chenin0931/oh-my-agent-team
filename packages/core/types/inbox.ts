@@ -4,6 +4,7 @@ export type InboxSeverity = "action_required" | "attention" | "info";
 
 export type InboxItemType =
   | "issue_assigned"
+  | "epic_owned"
   | "issue_subscribed"
   | "unassigned"
   | "assignee_changed"
@@ -43,6 +44,9 @@ export interface InboxItem {
   type: InboxItemType;
   severity: InboxSeverity;
   issue_id: string | null;
+  /** Typed notification destination. Older servers omit these fields. */
+  target_type?: "issue" | "epic" | null;
+  target_id?: string | null;
   title: string;
   body: string | null;
   issue_status: IssueStatus | null;

@@ -11,11 +11,11 @@ const state = vi.hoisted(() => ({
   listFetched: true,
   wsList: [] as { id: string; slug: string }[],
   workspaceSeen: true,
-  modalRenders: 0,
-  modalAriaLabel: "source-backfill-modal-marker",
+  tourRenders: 0,
+  tourAriaLabel: "product-tour-marker",
 }));
 
-vi.mock("@multica/core/auth", () => {
+vi.mock("@ohmyagentteam/core/auth", () => {
   const useAuthStore = (selector: (s: typeof state) => unknown) => {
     if (selector.toString().includes("isLoading"))
       return state.isAuthLoading;
@@ -24,13 +24,13 @@ vi.mock("@multica/core/auth", () => {
   return { useAuthStore };
 });
 
-vi.mock("@multica/core/platform", () => ({
+vi.mock("@ohmyagentteam/core/platform", () => ({
   setCurrentWorkspace: vi.fn(),
 }));
 
-vi.mock("@multica/core/workspace", async () => {
-  const actual = await vi.importActual<typeof import("@multica/core/workspace")>(
-    "@multica/core/workspace",
+vi.mock("@ohmyagentteam/core/workspace", async () => {
+  const actual = await vi.importActual<typeof import("@ohmyagentteam/core/workspace")>(
+    "@ohmyagentteam/core/workspace",
   );
   return {
     ...actual,
@@ -45,9 +45,9 @@ vi.mock("@multica/core/workspace", async () => {
   };
 });
 
-vi.mock("@multica/core/paths", async () => {
-  const actual = await vi.importActual<typeof import("@multica/core/paths")>(
-    "@multica/core/paths",
+vi.mock("@ohmyagentteam/core/paths", async () => {
+  const actual = await vi.importActual<typeof import("@ohmyagentteam/core/paths")>(
+    "@ohmyagentteam/core/paths",
   );
   return {
     ...actual,
@@ -61,27 +61,19 @@ vi.mock("@multica/core/paths", async () => {
   };
 });
 
-vi.mock("@multica/views/workspace/use-workspace-seen", () => ({
+vi.mock("@ohmyagentteam/views/workspace/use-workspace-seen", () => ({
   useWorkspaceSeen: () => state.workspaceSeen,
 }));
 
-vi.mock("@multica/views/workspace/welcome-after-onboarding", () => ({
-  WelcomeAfterOnboarding: () => null,
-}));
-
-vi.mock("@multica/views/layout", () => ({
-  WorkspacePresencePrefetch: () => null,
-}));
-
-// The point of this whole test: assert the desktop layout mounts the
-// SourceBackfillModal. We stub the real component with a marker that
-// renders only when the layout actually rendered it (and not e.g.
-// suppressed by overlayActive).
-vi.mock("@multica/views/onboarding", () => ({
-  SourceBackfillModal: () => {
-    state.modalRenders += 1;
-    return <div data-testid={state.modalAriaLabel} />;
+vi.mock("@ohmyagentteam/views/workspace/workspace-first-run-experience", () => ({
+  WorkspaceFirstRunExperience: () => {
+    state.tourRenders += 1;
+    return <div data-testid={state.tourAriaLabel} />;
   },
+}));
+
+vi.mock("@ohmyagentteam/views/layout", () => ({
+  WorkspacePresencePrefetch: () => null,
 }));
 
 vi.mock("@/stores/tab-store", () => ({
@@ -128,20 +120,20 @@ beforeEach(() => {
   state.listFetched = true;
   state.wsList = [{ id: "ws-1", slug: "acme" }];
   state.workspaceSeen = true;
-  state.modalRenders = 0;
+  state.tourRenders = 0;
 });
 
 describe("WorkspaceRouteLayout", () => {
-  it("mounts SourceBackfillModal when no WindowOverlay is active", () => {
+  it("mounts the product tour when no WindowOverlay is active", () => {
     const { queryByTestId } = renderLayout();
-    expect(queryByTestId(state.modalAriaLabel)).not.toBeNull();
-    expect(state.modalRenders).toBeGreaterThan(0);
+    expect(queryByTestId(state.tourAriaLabel)).not.toBeNull();
+    expect(state.tourRenders).toBeGreaterThan(0);
   });
 
-  it("suppresses SourceBackfillModal while a WindowOverlay is active", () => {
+  it("suppresses the product tour while a WindowOverlay is active", () => {
     state.overlay = { type: "new-workspace" };
     const { queryByTestId } = renderLayout();
-    expect(queryByTestId(state.modalAriaLabel)).toBeNull();
-    expect(state.modalRenders).toBe(0);
+    expect(queryByTestId(state.tourAriaLabel)).toBeNull();
+    expect(state.tourRenders).toBe(0);
   });
 });

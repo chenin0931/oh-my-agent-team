@@ -27,11 +27,12 @@ import { useQueries } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import type {
+  Epic,
   Issue,
   IssueStatus,
   SearchIssueResult,
   SearchProjectResult,
-} from "@multica/core/types";
+} from "@ohmyagentteam/core/types";
 import { Text } from "@/components/ui/text";
 import { StatusIcon } from "@/components/ui/status-icon";
 import { PriorityIcon } from "@/components/ui/priority-icon";
@@ -49,6 +50,7 @@ import { projectStatusLabel } from "@/lib/project-status";
 
 const DEBOUNCE_MS = 300;
 const ISSUE_LIMIT = 20;
+const EPIC_LIMIT = 10;
 const PROJECT_LIMIT = 10;
 const RECENT_LIMIT = 5;
 
@@ -119,6 +121,7 @@ function HighlightText({
 type RowItem =
   | { kind: "header"; key: string; title: string }
   | { kind: "issue"; key: string; issue: SearchIssueResult; query: string }
+  | { kind: "epic"; key: string; epic: Epic; query: string }
   | { kind: "project"; key: string; project: SearchProjectResult; query: string }
   | { kind: "recent"; key: string; issue: Issue };
 
@@ -256,6 +259,39 @@ function SearchProjectRow({ item, query, slug }: SearchProjectRowProps) {
   );
 }
 
+function SearchEpicRow({
+  item,
+  query,
+  slug,
+}: {
+  item: Epic;
+  query: string;
+  slug: string | null;
+}) {
+  return (
+    <Pressable
+      onPress={() => navigateOnTap(slug, `/${slug}/epic/${item.id}`)}
+      className="active:bg-secondary px-4 py-3"
+    >
+      <View className="flex-row items-center gap-3">
+        <Ionicons name="layers-outline" size={17} color="#71717a" />
+        <Text className="text-xs text-muted-foreground shrink-0 w-16">
+          {item.identifier}
+        </Text>
+        <HighlightText
+          text={item.title}
+          query={query}
+          className="flex-1 text-sm text-foreground"
+          numberOfLines={1}
+        />
+        <Text className="text-xs text-muted-foreground capitalize">
+          {item.lifecycle.replaceAll("_", " ")}
+        </Text>
+      </View>
+    </Pressable>
+  );
+}
+
 interface RecentRowProps {
   item: Issue;
   slug: string | null;
@@ -290,10 +326,11 @@ function RecentRow({ item, slug }: RecentRowProps) {
 
 interface SearchResultsState {
   issues: SearchIssueResult[];
+  epics: Epic[];
   projects: SearchProjectResult[];
 }
 
-const EMPTY_RESULTS: SearchResultsState = { issues: [], projects: [] };
+const EMPTY_RESULTS: SearchResultsState = { issues: [], epics: [], projects: [] };
 
 export default function SearchModal() {
   const wsId = useWorkspaceStore((s) => s.currentWorkspaceId);
@@ -353,9 +390,13 @@ export default function SearchModal() {
       const controller = new AbortController();
       abortRef.current = controller;
       try {
-        const [issueRes, projectRes] = await Promise.all([
+        const [issueRes, epicRes, projectRes] = await Promise.all([
           api.searchIssues(
             { q: q.trim(), limit: ISSUE_LIMIT, include_closed: true },
+            { signal: controller.signal },
+          ),
+          api.searchEpics(
+            { q: q.trim(), limit: EPIC_LIMIT },
             { signal: controller.signal },
           ),
           api.searchProjects(
@@ -364,7 +405,11 @@ export default function SearchModal() {
           ),
         ]);
         if (!controller.signal.aborted) {
-          setResults({ issues: issueRes.issues, projects: projectRes.projects });
+          setResults({
+            issues: issueRes.issues,
+            epics: epicRes.epics,
+            projects: projectRes.projects,
+          });
           setIsLoading(false);
         }
       } catch {
@@ -386,7 +431,9 @@ export default function SearchModal() {
 
   const trimmedQuery = query.trim();
   const hasResults =
-    results.issues.length > 0 || results.projects.length > 0;
+    results.issues.length > 0 ||
+    results.epics.length > 0 ||
+    results.projects.length > 0;
 
   // Build the FlatList data. One flat array of discriminated rows means a
   // single virtualised list covers Recent (empty-state) and (Projects +
@@ -410,8 +457,19 @@ export default function SearchModal() {
         items.push({ kind: "project", key: `p-${p.id}`, project: p, query: trimmedQuery });
       }
     }
+    if (results.epics.length > 0) {
+      items.push({ kind: "header", key: "h-epics", title: "Epics" });
+      for (const epic of results.epics) {
+        items.push({
+          kind: "epic",
+          key: `e-${epic.id}`,
+          epic,
+          query: trimmedQuery,
+        });
+      }
+    }
     if (results.issues.length > 0) {
-      items.push({ kind: "header", key: "h-issues", title: "Issues" });
+      items.push({ kind: "header", key: "h-issues", title: "Work items" });
       for (const it of results.issues) {
         items.push({ kind: "issue", key: `i-${it.id}`, issue: it, query: trimmedQuery });
       }
@@ -430,6 +488,8 @@ export default function SearchModal() {
           );
         case "issue":
           return <SearchIssueRow item={item.issue} query={item.query} slug={slug} />;
+        case "epic":
+          return <SearchEpicRow item={item.epic} query={item.query} slug={slug} />;
         case "project":
           return <SearchProjectRow item={item.project} query={item.query} slug={slug} />;
         case "recent":
@@ -451,7 +511,7 @@ export default function SearchModal() {
           <TextInput
             value={query}
             onChangeText={handleChange}
-            placeholder="Search issues and projects"
+            placeholder="Search projects, Epics, and work items"
             placeholderTextColor="#a1a1aa"
             autoFocus
             autoCorrect={false}
@@ -483,7 +543,7 @@ export default function SearchModal() {
             ) : !trimmedQuery && recentIssues.length === 0 ? (
               <View className="items-center justify-center py-12 px-6">
                 <Text className="text-sm text-muted-foreground text-center">
-                  Type to search issues and projects.
+                  Type to search projects, Epics, and work items.
                 </Text>
               </View>
             ) : null

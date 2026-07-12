@@ -8,7 +8,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
+	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
 )
 
 // RecoverOrphanedTasks is called by the daemon at startup for each runtime
@@ -119,7 +119,7 @@ type RerunIssueRequest struct {
 // output.)
 func (h *Handler) RerunIssue(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	issue, ok := h.loadIssueForUser(w, r, id)
+	issue, ok := h.loadExecutableIssueForUser(w, r, id)
 	if !ok {
 		return
 	}

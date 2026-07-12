@@ -4,11 +4,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/multica-ai/multica/server/internal/events"
-	"github.com/multica-ai/multica/server/internal/handler"
-	"github.com/multica-ai/multica/server/internal/util"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
-	"github.com/multica-ai/multica/server/pkg/protocol"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/events"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/handler"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/util"
+	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
+	"github.com/chenin0931/oh-my-agent-team/server/pkg/protocol"
 )
 
 // subscriberTest helpers — reuse the integration test fixtures from TestMain
@@ -60,6 +60,53 @@ func cleanupTestUser(t *testing.T, email string) {
 	testPool.Exec(context.Background(), `DELETE FROM "user" WHERE email = $1`, email)
 }
 
+func addTestMember(t *testing.T, workspaceID, userID string) {
+	t.Helper()
+	_, err := testPool.Exec(context.Background(), `
+		INSERT INTO member (workspace_id, user_id, role)
+		VALUES ($1, $2, 'member')
+	`, workspaceID, userID)
+	if err != nil {
+		t.Fatalf("addTestMember: %v", err)
+	}
+	t.Cleanup(func() {
+		testPool.Exec(context.Background(), `DELETE FROM member WHERE workspace_id = $1 AND user_id = $2`, workspaceID, userID)
+	})
+}
+
+func createTestOwnedAgent(t *testing.T, workspaceID, ownerID, name string) string {
+	t.Helper()
+	ctx := context.Background()
+	var runtimeID string
+	if err := testPool.QueryRow(ctx, `
+		INSERT INTO agent_runtime (
+			workspace_id, daemon_id, name, runtime_mode, provider, status, device_info, metadata, owner_id, last_seen_at
+		)
+		VALUES ($1, NULL, $2, 'cloud', $3, 'online', $4, '{}'::jsonb, $5, now())
+		RETURNING id
+	`, workspaceID, name+" Runtime", "subscriber_agent_owner_test", "subscriber test runtime", ownerID).Scan(&runtimeID); err != nil {
+		t.Fatalf("createTestOwnedAgent runtime: %v", err)
+	}
+
+	var agentID string
+	if err := testPool.QueryRow(ctx, `
+		INSERT INTO agent (
+			workspace_id, name, description, runtime_mode, runtime_config,
+			runtime_id, visibility, max_concurrent_tasks, owner_id
+		)
+		VALUES ($1, $2, '', 'cloud', '{}'::jsonb, $3, 'workspace', 1, $4)
+		RETURNING id
+	`, workspaceID, name, runtimeID, ownerID).Scan(&agentID); err != nil {
+		t.Fatalf("createTestOwnedAgent agent: %v", err)
+	}
+
+	t.Cleanup(func() {
+		testPool.Exec(context.Background(), `DELETE FROM agent WHERE id = $1`, agentID)
+		testPool.Exec(context.Background(), `DELETE FROM agent_runtime WHERE id = $1`, runtimeID)
+	})
+	return agentID
+}
+
 func isSubscribed(t *testing.T, queries *db.Queries, issueID, userType, userID string) bool {
 	t.Helper()
 	subscribed, err := queries.IsIssueSubscriber(context.Background(), db.IsIssueSubscriberParams{
@@ -80,6 +127,18 @@ func subscriberCount(t *testing.T, queries *db.Queries, issueID string) int {
 		t.Fatalf("ListIssueSubscribers: %v", err)
 	}
 	return len(subs)
+}
+
+func subscriberReason(t *testing.T, issueID, userType, userID string) string {
+	t.Helper()
+	var reason string
+	if err := testPool.QueryRow(context.Background(), `
+		SELECT reason FROM issue_subscriber
+		WHERE issue_id = $1 AND user_type = $2 AND user_id = $3
+	`, issueID, userType, userID).Scan(&reason); err != nil {
+		t.Fatalf("subscriberReason: %v", err)
+	}
+	return reason
 }
 
 func TestSubscriberIssueCreated_CreatorSubscribed(t *testing.T) {
@@ -122,7 +181,7 @@ func TestSubscriberIssueCreated_CreatorAndAssignee(t *testing.T) {
 	bus := events.New()
 	registerSubscriberListeners(bus, queries)
 
-	assigneeEmail := "subscriber-assignee-test@multica.ai"
+	assigneeEmail := "subscriber-assignee-test@ohmyagentteam.com"
 	assigneeID := createTestUser(t, assigneeEmail)
 	t.Cleanup(func() { cleanupTestUser(t, assigneeEmail) })
 
@@ -158,6 +217,55 @@ func TestSubscriberIssueCreated_CreatorAndAssignee(t *testing.T) {
 	}
 	if count := subscriberCount(t, queries, issueID); count != 2 {
 		t.Fatalf("expected 2 subscribers, got %d", count)
+	}
+}
+
+func TestSubscriberIssueCreated_AgentAssigneeOwnerSubscribed(t *testing.T) {
+	queries := db.New(testPool)
+	bus := events.New()
+	registerSubscriberListeners(bus, queries)
+
+	ownerEmail := "subscriber-agent-owner-created@ohmyagentteam.com"
+	ownerID := createTestUser(t, ownerEmail)
+	t.Cleanup(func() { cleanupTestUser(t, ownerEmail) })
+	addTestMember(t, testWorkspaceID, ownerID)
+	agentID := createTestOwnedAgent(t, testWorkspaceID, ownerID, "Subscriber Owner Agent")
+
+	issueID := createTestIssue(t, testWorkspaceID, testUserID)
+	t.Cleanup(func() { cleanupTestIssue(t, issueID) })
+
+	assigneeType := "agent"
+	bus.Publish(events.Event{
+		Type:        protocol.EventIssueCreated,
+		WorkspaceID: testWorkspaceID,
+		ActorType:   "member",
+		ActorID:     testUserID,
+		Payload: map[string]any{
+			"issue": handler.IssueResponse{
+				ID:           issueID,
+				WorkspaceID:  testWorkspaceID,
+				Title:        "agent owner subscriber test issue",
+				Status:       "todo",
+				Priority:     "medium",
+				CreatorType:  "member",
+				CreatorID:    testUserID,
+				AssigneeType: &assigneeType,
+				AssigneeID:   &agentID,
+			},
+		},
+	})
+
+	if !isSubscribed(t, queries, issueID, "agent", agentID) {
+		t.Fatal("expected assignee agent to be subscribed")
+	}
+	if !isSubscribed(t, queries, issueID, "member", ownerID) {
+		t.Fatal("expected assignee agent owner to be subscribed as a member")
+	}
+	if got := subscriberReason(t, issueID, "member", ownerID); got != "assignee" {
+		t.Fatalf("owner subscriber reason = %q, want assignee", got)
+	}
+	if count := subscriberCount(t, queries, issueID); count != 3 {
+		t.Fatalf("expected creator + agent + agent owner subscribers, got %d", count)
 	}
 }
 
@@ -206,7 +314,7 @@ func TestSubscriberIssueUpdated_AssigneeChanged(t *testing.T) {
 	bus := events.New()
 	registerSubscriberListeners(bus, queries)
 
-	assigneeEmail := "subscriber-new-assignee-test@multica.ai"
+	assigneeEmail := "subscriber-new-assignee-test@ohmyagentteam.com"
 	assigneeID := createTestUser(t, assigneeEmail)
 	t.Cleanup(func() { cleanupTestUser(t, assigneeEmail) })
 
@@ -237,6 +345,53 @@ func TestSubscriberIssueUpdated_AssigneeChanged(t *testing.T) {
 
 	if !isSubscribed(t, queries, issueID, "member", assigneeID) {
 		t.Fatal("expected new assignee to be subscribed after assignee change")
+	}
+}
+
+func TestSubscriberIssueUpdated_AgentAssigneeOwnerSubscribed(t *testing.T) {
+	queries := db.New(testPool)
+	bus := events.New()
+	registerSubscriberListeners(bus, queries)
+
+	ownerEmail := "subscriber-agent-owner-updated@ohmyagentteam.com"
+	ownerID := createTestUser(t, ownerEmail)
+	t.Cleanup(func() { cleanupTestUser(t, ownerEmail) })
+	addTestMember(t, testWorkspaceID, ownerID)
+	agentID := createTestOwnedAgent(t, testWorkspaceID, ownerID, "Subscriber Updated Owner Agent")
+
+	issueID := createTestIssue(t, testWorkspaceID, testUserID)
+	t.Cleanup(func() { cleanupTestIssue(t, issueID) })
+
+	assigneeType := "agent"
+	bus.Publish(events.Event{
+		Type:        protocol.EventIssueUpdated,
+		WorkspaceID: testWorkspaceID,
+		ActorType:   "member",
+		ActorID:     testUserID,
+		Payload: map[string]any{
+			"issue": handler.IssueResponse{
+				ID:           issueID,
+				WorkspaceID:  testWorkspaceID,
+				Title:        "agent owner reassignment test issue",
+				Status:       "todo",
+				Priority:     "medium",
+				CreatorType:  "member",
+				CreatorID:    testUserID,
+				AssigneeType: &assigneeType,
+				AssigneeID:   &agentID,
+			},
+			"assignee_changed": true,
+		},
+	})
+
+	if !isSubscribed(t, queries, issueID, "agent", agentID) {
+		t.Fatal("expected new assignee agent to be subscribed")
+	}
+	if !isSubscribed(t, queries, issueID, "member", ownerID) {
+		t.Fatal("expected new assignee agent owner to be subscribed")
+	}
+	if got := subscriberReason(t, issueID, "member", ownerID); got != "assignee" {
+		t.Fatalf("owner subscriber reason = %q, want assignee", got)
 	}
 }
 
@@ -280,7 +435,7 @@ func TestSubscriberCommentCreated_CommenterSubscribed(t *testing.T) {
 	bus := events.New()
 	registerSubscriberListeners(bus, queries)
 
-	commenterEmail := "subscriber-commenter-test@multica.ai"
+	commenterEmail := "subscriber-commenter-test@ohmyagentteam.com"
 	commenterID := createTestUser(t, commenterEmail)
 	t.Cleanup(func() { cleanupTestUser(t, commenterEmail) })
 

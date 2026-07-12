@@ -1,15 +1,15 @@
 import type { Metadata } from "next";
-import { MulticaLanding } from "@/features/landing/components/multica-landing";
+import { OhMyAgentTeamLanding } from "@/features/landing/components/ohmyagentteam-landing";
 import { RedirectIfAuthenticated } from "@/features/landing/components/redirect-if-authenticated";
 
 export const metadata: Metadata = {
   title: {
-    absolute: "Multica — Project Management for Human + Agent Teams",
+    absolute: "OhMyAgentTeam — People and agents, one team",
   },
   description:
-    "Open-source platform that turns coding agents into real teammates. Assign tasks, track progress, compound skills.",
+    "Plan work, delegate to people or agents, and collaborate in one shared workspace.",
   openGraph: {
-    title: "Multica — Project Management for Human + Agent Teams",
+    title: "OhMyAgentTeam — People and agents, one team",
     description:
       "Manage your human + agent workforce in one place.",
     url: "/",
@@ -23,7 +23,7 @@ export default function LandingPage() {
   return (
     <>
       <RedirectIfAuthenticated />
-      <MulticaLanding />
+      <OhMyAgentTeamLanding />
     </>
   );
 }

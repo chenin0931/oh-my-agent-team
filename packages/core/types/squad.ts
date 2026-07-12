@@ -17,6 +17,7 @@ export interface Squad {
   avatar_url: string | null;
   leader_id: string;
   creator_id: string;
+  owner_id: string;
   created_at: string;
   updated_at: string;
   archived_at: string | null;
@@ -57,6 +58,7 @@ export interface UpdateSquadRequest {
   description?: string;
   instructions?: string;
   leader_id?: string;
+  owner_id?: string;
   avatar_url?: string;
 }
 

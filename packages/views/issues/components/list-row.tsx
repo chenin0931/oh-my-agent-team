@@ -4,12 +4,13 @@ import { memo, type Ref } from "react";
 import { useSortable, defaultAnimateLayoutChanges } from "@dnd-kit/sortable";
 import type { AnimateLayoutChanges } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { FolderMinus } from "lucide-react";
 import { AppLink } from "../../navigation";
-import type { Issue, Project } from "@multica/core/types";
-import { formatDateOnly } from "@multica/core/issues/date";
+import type { Issue, Project } from "@ohmyagentteam/core/types";
+import { formatDateOnly } from "@ohmyagentteam/core/issues/date";
 import { ActorAvatar } from "../../common/actor-avatar";
-import { useWorkspacePaths } from "@multica/core/paths";
-import { useViewStore } from "@multica/core/issues/stores/view-store-context";
+import { useWorkspacePaths } from "@ohmyagentteam/core/paths";
+import { useViewStore } from "@ohmyagentteam/core/issues/stores/view-store-context";
 import { ProjectIcon } from "../../projects/components/project-icon";
 import { PriorityIcon } from "./priority-icon";
 import { ProgressRing } from "./progress-ring";
@@ -17,6 +18,7 @@ import { IssueActionsContextMenu } from "../actions";
 import { LabelChip } from "../../labels/label-chip";
 import { IssueAgentActivityIndicator } from "./issue-agent-activity-indicator";
 import { useIssueSurfaceSelection } from "../surface/selection-context";
+import { useT } from "../../i18n";
 
 export interface ChildProgress {
   done: number;
@@ -46,6 +48,7 @@ function ListRowContent({
   containerProps?: Record<string, unknown>;
   checkboxProps?: Pick<React.HTMLAttributes<HTMLDivElement>, "onClick" | "onMouseDown" | "onPointerDown">;
 }) {
+  const { t } = useT("issues");
   const selection = useIssueSurfaceSelection();
   const selected = selection.selectedIds.has(issue.id);
   const toggle = selection.toggle;
@@ -53,7 +56,8 @@ function ListRowContent({
   const storeProperties = useViewStore((s) => s.cardProperties);
   const labels = issue.labels ?? [];
 
-  const showProject = storeProperties.project && project;
+  const showProject =
+    storeProperties.project && (!!project || !issue.project_id);
   const showChildProgress = storeProperties.childProgress && childProgress;
   const showAssignee = storeProperties.assignee && issue.assignee_type && issue.assignee_id;
   const showStartDate = storeProperties.startDate && issue.start_date;
@@ -121,8 +125,14 @@ function ListRowContent({
           </span>
           {showProject && (
             <span className="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground max-w-[140px]">
-              <ProjectIcon project={project} size="sm" />
-              <span className="truncate">{project!.title}</span>
+              {project ? (
+                <ProjectIcon project={project} size="sm" />
+              ) : (
+                <FolderMinus className="size-3 shrink-0" />
+              )}
+              <span className="truncate">
+                {project ? project.title : t(($) => $.filters.no_project)}
+              </span>
             </span>
           )}
           {showStartDate && (

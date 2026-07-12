@@ -17,18 +17,116 @@
   "new_page": {
     "back": "返回",
     "log_out": "退出登录",
-    "title": "欢迎使用 Multica",
+    "title": "欢迎使用 OhMyAgentTeam",
     "description": "一个工作区，让你和 AI 队友并肩协作——一起处理 issue、留下评论、共享同一份上下文。",
     "invite_hint": "工作区创建后可邀请队友加入。"
   },
   "creation_disabled": {
     "title": "已禁用创建工作区",
-    "description": "该 Multica 实例不允许创建新的工作区，请联系管理员邀请你加入已有工作区。"
+    "description": "该 OhMyAgentTeam 实例不允许创建新的工作区，请联系管理员邀请你加入已有工作区。"
   },
   "no_access": {
     "title": "工作区不可用",
     "description": "该工作区不存在，或你没有访问权限。",
     "go_to_workspaces": "前往我的工作区",
     "sign_in_different": "使用其他账号登录"
+  },
+  "product_tour": {
+    "skip": "跳过",
+    "back": "上一步",
+    "next": "下一步",
+    "finish": "开始协作",
+    "go_to_slide": "前往第 {{count}} 幅",
+    "slides": {
+      "network": {
+        "eyebrow": "协作网络",
+        "title": "把人和 Agent 放进同一个团队",
+        "description": "OhMyAgentTeam 让真人、自己的 Agent 和其他成员的 Agent 围绕同一份工作上下文协作。",
+        "bullet_1": "真人负责目标、判断和最终决策。",
+        "bullet_2": "Agent 负责规划、执行、评论和交付。"
+      },
+      "projects": {
+        "eyebrow": "项目与工作项",
+        "title": "项目定义目标，工作项承载执行",
+        "description": "项目汇总业务目标和整体进度；工作项才是可以分配、推进和完成的执行单元。",
+        "bullet_1": "一个项目可以包含多个工作项。",
+        "bullet_2": "尚未确定归属的工作可以保留在“未归入项目”。"
+      },
+      "planning": {
+        "eyebrow": "智能规划",
+        "title": "说出目标，让 Agent 帮你拆解和分配",
+        "description": "在顶部输入一个目标，规划 Agent 会拆成可独立负责的工作项，并按内容分配给最合适的人、Agent 或小队。",
+        "bullet_1": "一次可以规划并创建多个工作项。",
+        "bullet_2": "所有规划结果先进入待规划，等待确认。"
+      },
+      "workflow": {
+        "eyebrow": "安全执行",
+        "title": "进入待办，Agent 才会开始工作",
+        "description": "状态既是项目进度，也是执行开关。待规划不会触发 Agent，明确推进到待办后才开始处理。",
+        "bullet_1": "订阅和查看动态不会触发执行。",
+        "bullet_2": "过程、评论和结果都保留在工作项动态中。"
+      },
+      "human": {
+        "eyebrow": "真人协作",
+        "title": "人做决定，Agent 在旁边提供建议",
+        "description": "工作分配给真人后会进入行动中心；该成员的顾问 Agent 可以留下各自的建议，但不能替真人改变任务。",
+        "bullet_1": "真人拥有状态和最终处理权。",
+        "bullet_2": "顾问 Agent 只能评论和订阅，不会自动执行。"
+      },
+      "runtime": {
+        "eyebrow": "执行能力",
+        "title": "连接工具，组建你的 Agent 团队",
+        "description": "执行能力连接 Codex、Claude Code、WorkBuddy 与兼容 CLI；Agent 定义角色和专长；小队把多个 Agent 组织成协作单元。",
+        "bullet_1": "一个运行时可以承载多个专业 Agent。",
+        "bullet_2": "Agent 和小队都能成为工作项负责人。"
+      }
+    },
+    "visual": {
+      "project_title": "新品发布计划",
+      "project_summary": "4 个工作项 · 2 个已完成",
+      "project_item_1": "定义产品范围",
+      "project_item_2": "确认采购方案",
+      "project_item_3": "准备上线传播",
+      "complete": "已完成",
+      "planning_prompt": "规划一场客户圆桌活动，并分配给合适的人和 Agent",
+      "analyzing": "正在拆解并匹配负责人",
+      "plan_item_1": "设计活动议程",
+      "plan_item_2": "准备邀约内容",
+      "plan_item_3": "确认活动场地",
+      "product_agent": "产品规划 Agent",
+      "growth_agent": "增长 Agent",
+      "research_agent": "研究 Agent",
+      "you": "你",
+      "backlog": "待规划",
+      "status": {
+        "backlog": "待规划",
+        "todo": "待办",
+        "in_progress": "进行中",
+        "in_review": "审核中",
+        "done": "已完成"
+      },
+      "execution_rule": "执行规则",
+      "backlog_waits": "待规划：只整理",
+      "todo_starts": "待办：开始执行",
+      "activity_started": "工作项推进到待办",
+      "activity_agent": "Agent 已开始处理",
+      "activity_result": "Agent 留下执行结果",
+      "just_now": "刚刚",
+      "running": "运行中",
+      "activity_feed": "动态",
+      "action_center": "行动中心",
+      "assigned_to_you": "分配给你",
+      "human_task": "确认年度采购预算",
+      "agent_advice": "Agent 建议",
+      "advice_1": "我整理了三种采购方案及主要风险。",
+      "advice_2": "建议先确认预算上限，再进入供应商谈判。",
+      "human_decides": "由你确认并推进状态",
+      "runtime_name": "Codex · 本机运行时",
+      "runtime_description": "提供真实工具和本地执行环境",
+      "online": "在线",
+      "virtual_member": "虚拟成员",
+      "squad": "发布协作小队",
+      "squad_summary": "3 个 Agent 协同工作"
+    }
   }
 }

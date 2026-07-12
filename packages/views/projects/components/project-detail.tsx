@@ -4,51 +4,51 @@ import { useMemo, useState, useCallback, useRef, useEffect } from "react";
 import { useDefaultLayout, usePanelRef } from "react-resizable-panels";
 import { Check, ChevronRight, Link2, MoreHorizontal, PanelRight, Pin, PinOff, Trash2, UserMinus } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { cn } from "@multica/ui/lib/utils";
-import { copyText } from "@multica/ui/lib/clipboard";
+import { cn } from "@ohmyagentteam/ui/lib/utils";
+import { copyText } from "@ohmyagentteam/ui/lib/clipboard";
 import { toast } from "sonner";
-import type { ProjectStatus, ProjectPriority } from "@multica/core/types";
-import { useAuthStore } from "@multica/core/auth";
-import { projectDetailOptions } from "@multica/core/projects/queries";
-import { useUpdateProject, useDeleteProject } from "@multica/core/projects/mutations";
-import { pinListOptions } from "@multica/core/pins";
-import { useCreatePin, useDeletePin } from "@multica/core/pins";
-import { memberListOptions, agentListOptions } from "@multica/core/workspace/queries";
-import { useWorkspaceId } from "@multica/core/hooks";
-import { useRecentContextStore } from "@multica/core/chat";
-import { useWorkspacePaths } from "@multica/core/paths";
-import { useActorName } from "@multica/core/workspace/hooks";
-import { PROJECT_STATUS_ORDER, PROJECT_STATUS_CONFIG, PROJECT_PRIORITY_ORDER } from "@multica/core/projects/config";
+import type { ProjectStatus, ProjectPriority } from "@ohmyagentteam/core/types";
+import { useAuthStore } from "@ohmyagentteam/core/auth";
+import { projectDetailOptions } from "@ohmyagentteam/core/projects/queries";
+import { useUpdateProject, useDeleteProject } from "@ohmyagentteam/core/projects/mutations";
+import { pinListOptions } from "@ohmyagentteam/core/pins";
+import { useCreatePin, useDeletePin } from "@ohmyagentteam/core/pins";
+import { memberListOptions, agentListOptions } from "@ohmyagentteam/core/workspace/queries";
+import { useWorkspaceId } from "@ohmyagentteam/core/hooks";
+import { useRecentContextStore } from "@ohmyagentteam/core/chat";
+import { useWorkspacePaths } from "@ohmyagentteam/core/paths";
+import { useActorName } from "@ohmyagentteam/core/workspace/hooks";
+import { PROJECT_STATUS_ORDER, PROJECT_STATUS_CONFIG, PROJECT_PRIORITY_ORDER } from "@ohmyagentteam/core/projects/config";
 import { getProjectIssueMetrics } from "./project-issue-metrics";
 import { ActorAvatar } from "../../common/actor-avatar";
 import { useNavigation } from "../../navigation";
 import { TitleEditor, ContentEditor, type ContentEditorRef } from "../../editor";
 import { PriorityIcon } from "../../issues/components/priority-icon";
 import { ProjectResourcesSection } from "./project-resources-section";
-import { IssueSurface } from "../../issues/surface/issue-surface";
-import { Skeleton } from "@multica/ui/components/ui/skeleton";
-import { Button } from "@multica/ui/components/ui/button";
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@multica/ui/components/ui/resizable";
-import { Sheet, SheetContent } from "@multica/ui/components/ui/sheet";
-import { useIsMobile } from "@multica/ui/hooks/use-mobile";
+import { ProjectWorkspace } from "./project-workspace";
+import { Skeleton } from "@ohmyagentteam/ui/components/ui/skeleton";
+import { Button } from "@ohmyagentteam/ui/components/ui/button";
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@ohmyagentteam/ui/components/ui/resizable";
+import { Sheet, SheetContent } from "@ohmyagentteam/ui/components/ui/sheet";
+import { useIsMobile } from "@ohmyagentteam/ui/hooks/use-mobile";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@multica/ui/components/ui/dropdown-menu";
+} from "@ohmyagentteam/ui/components/ui/dropdown-menu";
 import {
   Popover,
   PopoverTrigger,
   PopoverContent,
-} from "@multica/ui/components/ui/popover";
+} from "@ohmyagentteam/ui/components/ui/popover";
 import {
   Tooltip,
   TooltipTrigger,
   TooltipContent,
-} from "@multica/ui/components/ui/tooltip";
-import { EmojiPicker } from "@multica/ui/components/common/emoji-picker";
+} from "@ohmyagentteam/ui/components/ui/tooltip";
+import { EmojiPicker } from "@ohmyagentteam/ui/components/common/emoji-picker";
 import { BreadcrumbHeader } from "../../layout/breadcrumb-header";
 import {
   AnimatedRightSidebar,
@@ -65,7 +65,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@multica/ui/components/ui/alert-dialog";
+} from "@ohmyagentteam/ui/components/ui/alert-dialog";
 import { useT } from "../../i18n";
 import { useProjectStatusLabels, useProjectPriorityLabels } from "./labels";
 import { matchesPinyin } from "../../editor/extensions/pinyin-match";
@@ -116,11 +116,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
         projectStatus: project.status,
       });
     }
-  }, [project?.id, project?.title, project?.description, project?.icon, project?.status, recordRecentContext, wsId]);
-  const issueScope = useMemo(
-    () => ({ type: "project" as const, projectId }),
-    [projectId],
-  );
+  }, [project, recordRecentContext, wsId]);
   const { data: members = [] } = useQuery(memberListOptions(wsId));
   const { data: agents = [] } = useQuery(agentListOptions(wsId));
   const { getActorName } = useActorName();
@@ -148,7 +144,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
 
   // Sidebar panel
   const { defaultLayout, onLayoutChanged } = useDefaultLayout({
-    id: "multica_project_detail_layout",
+    id: "omat_project_detail_layout",
   });
   const sidebarRef = usePanelRef();
   const desktopSidebarInitialOpen = getAnimatedRightSidebarInitialOpen(
@@ -263,7 +259,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
           key={`title-${projectId}`}
           defaultValue={project.title}
           placeholder={t(($) => $.detail.title_placeholder)}
-          className="mt-2 w-full text-base font-semibold leading-snug tracking-tight"
+          className="mt-2 w-full text-base font-semibold leading-snug"
           onBlur={(value) => {
             const trimmed = value.trim();
             if (trimmed && trimmed !== project.title) handleUpdateField({ title: trimmed });
@@ -534,10 +530,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
             }
           />
 
-          <IssueSurface
-            scope={issueScope}
-            modes={["board", "list", "swimlane", "gantt"]}
-          />
+          <ProjectWorkspace project={project} />
           </div>
         </ResizablePanel>
         {!isMobile && <ResizableHandle />}

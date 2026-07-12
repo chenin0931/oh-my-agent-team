@@ -4,16 +4,16 @@ import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Tag, Plus, Settings2 } from "lucide-react";
 import { toast } from "sonner";
-import type { Label } from "@multica/core/types";
-import { Dialog, DialogContent, DialogTitle } from "@multica/ui/components/ui/dialog";
-import { useWorkspaceId } from "@multica/core/hooks";
+import type { Label } from "@ohmyagentteam/core/types";
+import { Dialog, DialogContent, DialogTitle } from "@ohmyagentteam/ui/components/ui/dialog";
+import { useWorkspaceId } from "@ohmyagentteam/core/hooks";
 import {
   labelListOptions,
   issueLabelsOptions,
   useAttachLabel,
   useDetachLabel,
   useCreateLabel,
-} from "@multica/core/labels";
+} from "@ohmyagentteam/core/labels";
 import { LabelChip } from "../../../labels/label-chip";
 import { LabelsPanel } from "../labels-panel";
 import {
@@ -31,6 +31,8 @@ interface LabelPickerProps {
    * issue once it's created.
    */
   issueId?: string;
+  /** Route attached-mode reads and writes through the Epic collaboration API. */
+  targetType?: "issue" | "epic";
   /** Draft-mode selection. Ignored when `issueId` is set. */
   selectedIds?: string[];
   /** Draft-mode change handler. Ignored when `issueId` is set. */
@@ -89,6 +91,7 @@ function pickInlineColor(name: string): string {
  */
 export function LabelPicker({
   issueId,
+  targetType = "issue",
   selectedIds = [],
   onSelectedIdsChange,
   open: controlledOpen,
@@ -119,12 +122,14 @@ export function LabelPicker({
   const { data: allLabels = [] } = useQuery(labelListOptions(wsId));
   // `issueLabelsOptions` disables itself for an empty id, so the draft path
   // never fires the by-issue read.
-  const { data: attachedLabels = [] } = useQuery(issueLabelsOptions(wsId, issueId ?? ""));
+  const { data: attachedLabels = [] } = useQuery(
+    issueLabelsOptions(wsId, issueId ?? "", targetType),
+  );
 
   // Hooks must run unconditionally; in draft mode the empty id is never used
   // because toggle/create route through onSelectedIdsChange instead.
-  const attach = useAttachLabel(issueId ?? "");
-  const detach = useDetachLabel(issueId ?? "");
+  const attach = useAttachLabel(issueId ?? "", targetType);
+  const detach = useDetachLabel(issueId ?? "", targetType);
   const create = useCreateLabel();
 
   // The selected set drives both the trigger chips and the list checkmarks.

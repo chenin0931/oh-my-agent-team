@@ -1,8 +1,8 @@
 {
   "fab": {
-    "running": "Multica が作業中です...",
+    "running": "OhMyAgentTeam が作業中です...",
     "unread_other": "未読のチャット {{count}}件",
-    "default": "Multica に質問"
+    "default": "OhMyAgentTeam に質問"
   },
   "input": {
     "placeholder_no_agent": "チャットを始めるにはエージェントを作成してください",
@@ -90,11 +90,11 @@
   "empty_state": {
     "first_time_title": "エージェントとチャット",
     "first_time_intro": "✨ エージェントはあなたのワークスペースを把握しています —",
-    "first_time_pillars": "イシュー、プロジェクト、スキル",
+    "first_time_pillars": "作業項目、プロジェクト、スキル",
     "first_time_pillars_suffix": "。",
     "first_time_actions": "要約を頼んだり、今日の予定を立てたり、簡単なタスクを任せたりしてみましょう。",
     "returning_title_named": "こんにちは、{{name}} です",
-    "returning_title_default": "Multica へようこそ",
+    "returning_title_default": "OhMyAgentTeam へようこそ",
     "returning_subtitle": "こう聞いてみましょう"
   },
   "starter_prompts": {

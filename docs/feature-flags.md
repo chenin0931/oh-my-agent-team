@@ -1,9 +1,9 @@
 # Feature Flags
 
-Multica ships a framework-level feature flag implementation:
+OhMyAgentTeam ships a framework-level feature flag implementation:
 
 - **Backend**: `server/pkg/featureflag` — Go package.
-- **Frontend**: `@multica/core/feature-flags` — TypeScript module with React hooks.
+- **Frontend**: `@ohmyagentteam/core/feature-flags` — TypeScript module with React hooks.
 
 Both sides share the same vocabulary (`Decision`, `EvalContext`, `Rule`, `PercentRollout`) and the same FNV-1a percent bucketing, so a flag evaluated on the server and on the client lands in the same bucket for the same user.
 
@@ -50,11 +50,11 @@ if err != nil {
 }
 ```
 
-`NewServiceFromEnv` reads two env vars — both follow the same `MULTICA_*_FILE` / `FF_*` conventions documented in `.env.example`:
+`NewServiceFromEnv` reads two env vars — both follow the same `OMAT_*_FILE` / `FF_*` conventions documented in `.env.example`:
 
 | Env var | Role |
 |---|---|
-| `MULTICA_FEATURE_FLAGS_FILE` | Path to the YAML rule set (optional; absent = no static rules). |
+| `OMAT_FEATURE_FLAGS_FILE` | Path to the YAML rule set (optional; absent = no static rules). |
 | `FF_<FLAG_KEY>` | Per-flag runtime override. `FF_BILLING_NEW_INVOICE_EMAIL=false` / `25%` / `experiment-v2`. Beats the YAML, no redeploy. |
 
 The provider chain is `EnvProvider → YAML StaticProvider`. The server can boot with zero flag config — every `IsEnabled` call falls back to the caller's default until someone authors a rule.
@@ -114,7 +114,7 @@ flag evaluation.
 ### YAML schema
 
 ```yaml
-# /etc/multica/feature-flags.yaml
+# /etc/ohmyagentteam/feature-flags.yaml
 billing_new_invoice_email:
   default: true
 
@@ -187,7 +187,7 @@ import {
   FeatureFlagsProvider,
   FeatureFlagService,
   StaticProvider,
-} from "@multica/core/feature-flags";
+} from "@ohmyagentteam/core/feature-flags";
 
 const service = new FeatureFlagService(
   new StaticProvider({
@@ -212,7 +212,7 @@ When the backend pushes a fresh rule set (via an API response or WebSocket), cal
 ### Toggle point in a component
 
 ```tsx
-import { useFlag, useVariant } from "@multica/core/feature-flags";
+import { useFlag, useVariant } from "@ohmyagentteam/core/feature-flags";
 
 function BillingPage() {
   const showV2 = useFlag("billing_v2_dashboard", false);

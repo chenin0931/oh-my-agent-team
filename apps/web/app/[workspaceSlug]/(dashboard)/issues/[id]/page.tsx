@@ -1,8 +1,8 @@
 "use client";
 
 import { use } from "react";
-import { IssueDetail } from "@multica/views/issues/components";
-import { ErrorBoundary } from "@multica/ui/components/common/error-boundary";
+import { IssueDetailEntry } from "@ohmyagentteam/views/issues/components";
+import { ErrorBoundary } from "@ohmyagentteam/ui/components/common/error-boundary";
 
 export default function IssueDetailPage({
   params,
@@ -12,7 +12,7 @@ export default function IssueDetailPage({
   const { id } = use(params);
   return (
     <ErrorBoundary resetKeys={[id]}>
-      <IssueDetail issueId={id} />
+      <IssueDetailEntry issueId={id} />
     </ErrorBoundary>
   );
 }

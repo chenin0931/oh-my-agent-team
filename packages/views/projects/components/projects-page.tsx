@@ -3,11 +3,13 @@
 import { useCallback, useMemo, useState, type MouseEvent } from "react";
 import {
   ArrowDown,
+  ArrowRight,
   ArrowUp,
   ChevronDown,
   Filter,
   FolderKanban,
   LayoutGrid,
+  ListTodo,
   MoreHorizontal,
   Pin,
   PinOff,
@@ -27,25 +29,25 @@ import {
   type ProjectColumnKey,
   type ProjectListFilters,
   type ProjectSortField,
-} from "@multica/core/projects";
+} from "@ohmyagentteam/core/projects";
 import {
   pinListOptions,
   useCreatePin,
   useDeletePin,
-} from "@multica/core/pins";
-import { useWorkspaceId } from "@multica/core/hooks";
-import { useWorkspacePaths } from "@multica/core/paths";
-import { useAuthStore } from "@multica/core/auth";
-import { useActorName } from "@multica/core/workspace/hooks";
-import { memberListOptions } from "@multica/core/workspace/queries";
-import { useModalStore } from "@multica/core/modals";
+} from "@ohmyagentteam/core/pins";
+import { useWorkspaceId } from "@ohmyagentteam/core/hooks";
+import { useWorkspacePaths } from "@ohmyagentteam/core/paths";
+import { useAuthStore } from "@ohmyagentteam/core/auth";
+import { useActorName } from "@ohmyagentteam/core/workspace/hooks";
+import { memberListOptions } from "@ohmyagentteam/core/workspace/queries";
+import { useModalStore } from "@ohmyagentteam/core/modals";
 import { AppLink, useRowLink } from "../../navigation";
 import { ActorAvatar } from "../../common/actor-avatar";
 import { FILTER_ITEM_CLASS, HoverCheck } from "../../common/hover-check";
-import { Skeleton } from "@multica/ui/components/ui/skeleton";
-import { Button } from "@multica/ui/components/ui/button";
-import { Checkbox } from "@multica/ui/components/ui/checkbox";
-import { Input } from "@multica/ui/components/ui/input";
+import { Skeleton } from "@ohmyagentteam/ui/components/ui/skeleton";
+import { Button } from "@ohmyagentteam/ui/components/ui/button";
+import { Checkbox } from "@ohmyagentteam/ui/components/ui/checkbox";
+import { Input } from "@ohmyagentteam/ui/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -53,7 +55,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@multica/ui/components/ui/dialog";
+} from "@ohmyagentteam/ui/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -66,7 +68,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-} from "@multica/ui/components/ui/dropdown-menu";
+} from "@ohmyagentteam/ui/components/ui/dropdown-menu";
 import {
   ListGrid,
   ListGridCell,
@@ -75,25 +77,25 @@ import {
   ListGridRow,
   LIST_GRID_BOTTOM_CLEARANCE,
   type ListGridSortDirection,
-} from "@multica/ui/components/ui/list-grid";
+} from "@ohmyagentteam/ui/components/ui/list-grid";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@multica/ui/components/ui/popover";
-import { Switch } from "@multica/ui/components/ui/switch";
+} from "@ohmyagentteam/ui/components/ui/popover";
+import { Switch } from "@ohmyagentteam/ui/components/ui/switch";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@multica/ui/components/ui/tooltip";
+} from "@ohmyagentteam/ui/components/ui/tooltip";
 import type {
   MemberWithUser,
   Project,
   ProjectPriority,
   ProjectStatus,
   UpdateProjectRequest,
-} from "@multica/core/types";
+} from "@ohmyagentteam/core/types";
 import { PageHeader } from "../../layout/page-header";
 import { ProjectIcon } from "./project-icon";
 import { useT } from "../../i18n";
@@ -355,6 +357,7 @@ function ProjectTableRow({
   rowHref: string;
   rowLink: ReturnType<typeof useRowLink>;
 }) {
+  const { t } = useT("projects");
   const formatRelativeDate = useFormatRelativeDate();
   const updateProject = useUpdateProject();
   const handleUpdate = useCallback(
@@ -364,14 +367,20 @@ function ProjectTableRow({
 
   return (
     <ListGridRow
-      className={`h-11 cursor-pointer ${selected ? "bg-accent/30" : ""}`}
+      className={`h-12 cursor-pointer ${selected ? "bg-accent/30" : ""}`}
       {...rowLink(rowHref)}
     >
       <CheckboxCell checked={selected} onToggle={onToggleSelect} />
       <ListGridCell className="gap-2">
         <ProjectIcon project={project} size="sm" />
-        <span className="min-w-0 truncate text-sm font-medium">
-          {project.title}
+        <span className="flex min-w-0 flex-1 flex-col justify-center">
+          <span className="truncate text-sm font-medium">{project.title}</span>
+          <span className="truncate text-[11px] leading-4 text-muted-foreground">
+            {t(($) => $.table.work_items_summary, {
+              count: project.issue_count,
+              done: project.done_count,
+            })}
+          </span>
         </span>
       </ListGridCell>
 
@@ -916,7 +925,7 @@ export function ProjectsPage() {
       <PageHeader className="justify-between px-5">
         <div className="flex items-center gap-2">
           <FolderKanban className="h-4 w-4 text-muted-foreground" />
-          <h1 className="text-sm font-medium">{t(($) => $.page.title)}</h1>
+          <h1 className="font-serif text-[15px] font-medium">{t(($) => $.page.title)}</h1>
           {projects.length > 0 && (
             <span className="font-mono text-xs tabular-nums text-muted-foreground/70">
               {projects.length}
@@ -936,12 +945,44 @@ export function ProjectsPage() {
       </PageHeader>
 
       {showEmpty ? (
-        <div className="flex flex-1 flex-col items-center justify-center py-24 text-muted-foreground">
-          <FolderKanban className="mb-3 h-10 w-10 opacity-30" />
-          <p className="text-sm">{t(($) => $.page.empty)}</p>
-          <Button size="sm" variant="outline" className="mt-3" onClick={openCreateProject}>
-            {t(($) => $.page.create_first)}
-          </Button>
+        <div className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
+          <FolderKanban className="size-9 text-muted-foreground/50" />
+          <h2 className="mt-4 font-serif text-2xl font-medium">
+            {t(($) => $.page.empty)}
+          </h2>
+          <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
+            {t(($) => $.page.empty_description)}
+          </p>
+          <div className="mt-7 flex w-full max-w-lg items-center justify-center gap-4 border-y py-5 text-left">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <FolderKanban className="size-5 shrink-0" />
+              <div>
+                <p className="text-sm font-medium">{t(($) => $.page.empty_project)}</p>
+                <p className="text-xs text-muted-foreground">{t(($) => $.page.empty_project_hint)}</p>
+              </div>
+            </div>
+            <ArrowRight className="size-4 shrink-0 text-muted-foreground" />
+            <div className="flex min-w-0 items-center gap-2.5">
+              <ListTodo className="size-5 shrink-0" />
+              <div>
+                <p className="text-sm font-medium">{t(($) => $.page.empty_work_items)}</p>
+                <p className="text-xs text-muted-foreground">{t(($) => $.page.empty_work_items_hint)}</p>
+              </div>
+            </div>
+          </div>
+          <p className="mt-4 text-xs text-muted-foreground">
+            {t(($) => $.page.empty_unassigned_hint)}
+          </p>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+            <Button size="sm" onClick={openCreateProject}>
+              <Plus className="size-3.5" />
+              {t(($) => $.page.create_first)}
+            </Button>
+            <Button size="sm" variant="outline" render={<AppLink href={wsPaths.issues()} />}>
+              <ListTodo className="size-3.5" />
+              {t(($) => $.page.view_work_items)}
+            </Button>
+          </div>
         </div>
       ) : (
         <>

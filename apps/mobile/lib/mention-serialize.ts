@@ -20,11 +20,11 @@
 
 const SENTINEL = "⁣";
 
-export type MentionType = "member" | "agent" | "squad" | "all" | "issue";
+export type MentionType = "member" | "agent" | "squad" | "all" | "epic" | "issue";
 
 export interface MentionMarker {
   type: MentionType;
-  /** UUID for member/agent/squad/issue, the literal "all" for @all. */
+  /** UUID for member/agent/squad/Epic/issue, the literal "all" for @all. */
   id: string;
   /** Display name without the leading `@`. For issues this is the
    *  identifier (e.g. "MUL-123"). May contain non-ASCII chars. */
@@ -158,10 +158,10 @@ export function serializeMentions(
       break;
     }
 
-    // Issues render without the leading `@` in the link label (mirrors
+    // Epics and issues render without the leading `@` in the link label (mirrors
     // web's mention-extension.ts:67-74). Members / agents / @all keep it.
     const label =
-      marker.type === "issue" ? marker.name : `@${marker.name}`;
+      marker.type === "issue" || marker.type === "epic" ? marker.name : `@${marker.name}`;
     out.push(`[${label}](mention://${marker.type}/${marker.id})`);
     markerIndex++;
     cursor = wordEnd;

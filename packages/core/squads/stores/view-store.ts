@@ -12,12 +12,12 @@ import { defaultStorage } from "../../platform/storage";
 // Persisted per workspace, per user/device. No filters (the set is tiny);
 // no search (scope-bearing list). Mirrors the agents/skills view stores.
 
-// Scope is the ownership lens (creator-based). No "archived" scope: the
+// Scope is the ownership lens (owner-based). No "archived" scope: the
 // list endpoint hard-filters archived squads and there is no restore
 // endpoint, so archived squads can't be surfaced or managed.
-export type SquadsScope = "mine" | "all";
+export type SquadsScope = "mine" | "others" | "all";
 
-export const SQUAD_SCOPES: SquadsScope[] = ["mine", "all"];
+export const SQUAD_SCOPES: SquadsScope[] = ["mine", "others", "all"];
 
 export type SquadSortField = "name" | "members" | "created";
 
@@ -35,26 +35,24 @@ export const SQUAD_SORT_DEFAULT_DIRECTION: Record<
 
 // User-hideable columns. Name and leader (the squad's defining relationship)
 // are always visible.
-export type SquadColumnKey = "members" | "creator" | "created";
+export type SquadColumnKey = "members" | "owner" | "created";
 
-/** Created (date) is opt-in. Creator ("Created by") is shown by default —
- *  the user wants to see who made each squad. Note it's "Created by", NOT
- *  "Owner": the squad creator holds no management rights (archiving is
- *  workspace-admin only), so labelling it Owner would mislead. */
+/** Created (date) is opt-in. Owner is shown by default because ownership is
+ *  the management boundary for a squad and may differ from its creator. */
 export const SQUAD_DEFAULT_HIDDEN_COLUMNS: SquadColumnKey[] = ["created"];
 
-/** Multi-select filters — the categorical columns (leader, creator). Empty
+/** Multi-select filters — the categorical columns (leader, owner). Empty
  *  array per dimension = inactive. */
 export interface SquadListFilters {
   /** Leader agent ids. */
   leaders: string[];
-  /** Creator member user ids. */
-  creators: string[];
+  /** Owner member user ids. */
+  owners: string[];
 }
 
 export const EMPTY_SQUAD_FILTERS: SquadListFilters = {
   leaders: [],
-  creators: [],
+  owners: [],
 };
 
 export interface SquadsViewState {
@@ -126,7 +124,7 @@ export const useSquadsViewStore = create<SquadsViewState>()(
       clearFilters: () => set({ filters: EMPTY_SQUAD_FILTERS }),
     }),
     {
-      name: "multica_squads_view",
+      name: "omat_squads_view",
       storage: createJSONStorage(() =>
         createWorkspaceAwareStorage(defaultStorage),
       ),

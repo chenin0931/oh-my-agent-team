@@ -1,7 +1,7 @@
 /**
  * Frontend mirror of the server's MinQuickCreateCLIVersion gate. The
  * agent-create flow (Quick Create modal) requires the daemon's bundled
- * multica CLI to be at least this version — older daemons either
+ * ohmyagentteam CLI to be at least this version — older daemons either
  * double-create issues on partial CLI failures, drop quick-create attachment
  * bindings, or mishandle pasted screenshot URLs (see PR #1851 / MUL-1496).
  *
@@ -11,6 +11,7 @@
  * "your daemon needs an upgrade" before they hit submit.
  */
 export const MIN_QUICK_CREATE_CLI_VERSION = "0.2.21";
+export const MIN_PLANNING_QUICK_CREATE_CLI_VERSION = "0.3.43";
 
 export type CliVersionState = "ok" | "too_old" | "missing";
 
@@ -51,20 +52,28 @@ function lessThan(a: [number, number, number], b: [number, number, number]) {
  * Dev-built daemons (git-describe shape) are always OK — the version string
  * itself is the shared signal, so frontend and server agree by construction.
  */
-export function checkQuickCreateCliVersion(detected: string | undefined | null): CliVersionCheck {
+function checkCliVersion(detected: string | undefined | null, minVersion: string): CliVersionCheck {
   const current = (detected ?? "").trim();
   if (DEV_DESCRIBE_RE.test(current)) {
-    return { state: "ok", current, min: MIN_QUICK_CREATE_CLI_VERSION };
+    return { state: "ok", current, min: minVersion };
   }
   const parsed = current ? parseSemver(current) : null;
   if (!parsed) {
-    return { state: "missing", current, min: MIN_QUICK_CREATE_CLI_VERSION };
+    return { state: "missing", current, min: minVersion };
   }
-  const min = parseSemver(MIN_QUICK_CREATE_CLI_VERSION)!;
+  const min = parseSemver(minVersion)!;
   if (lessThan(parsed, min)) {
-    return { state: "too_old", current, min: MIN_QUICK_CREATE_CLI_VERSION };
+    return { state: "too_old", current, min: minVersion };
   }
-  return { state: "ok", current, min: MIN_QUICK_CREATE_CLI_VERSION };
+  return { state: "ok", current, min: minVersion };
+}
+
+export function checkQuickCreateCliVersion(detected: string | undefined | null): CliVersionCheck {
+  return checkCliVersion(detected, MIN_QUICK_CREATE_CLI_VERSION);
+}
+
+export function checkPlanningQuickCreateCliVersion(detected: string | undefined | null): CliVersionCheck {
+  return checkCliVersion(detected, MIN_PLANNING_QUICK_CREATE_CLI_VERSION);
 }
 
 /** Pull `cli_version` off a runtime row's loosely-typed metadata bag. */
@@ -76,7 +85,7 @@ export function readRuntimeCliVersion(metadata: Record<string, unknown> | undefi
 /**
  * Frontend mirror of the server's `MinHandoffCLIVersion` soft gate
  * (`server/pkg/agent/version.go`). The assignment handoff note is only rendered
- * into the run's opening prompt by daemons at or above this multica CLI version
+ * into the run's opening prompt by daemons at or above this ohmyagentteam CLI version
  * (MUL-3375); older daemons silently drop it. Unlike the quick-create gate this
  * never blocks the assignment — the UI just grays out the note box and warns.
  *

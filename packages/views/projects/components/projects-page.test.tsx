@@ -2,7 +2,7 @@ import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { Project } from "@multica/core/types";
+import type { Project } from "@ohmyagentteam/core/types";
 import { renderWithI18n } from "../../test/i18n";
 import { NavigationProvider, type NavigationAdapter } from "../../navigation";
 import { ProjectsPage } from "./projects-page";
@@ -52,7 +52,7 @@ vi.mock("@tanstack/react-query", () => ({
   },
 }));
 
-vi.mock("@multica/core/projects", () => ({
+vi.mock("@ohmyagentteam/core/projects", () => ({
   projectListOptions: () => ({ queryKey: ["projects"] }),
   useUpdateProject: () => ({ mutate: mocks.updateProject }),
   useDeleteProject: () => ({ mutate: mocks.deleteProject }),
@@ -60,17 +60,17 @@ vi.mock("@multica/core/projects", () => ({
     selector(mocks.projectViewState),
 }));
 
-vi.mock("@multica/core/pins", () => ({
+vi.mock("@ohmyagentteam/core/pins", () => ({
   pinListOptions: () => ({ queryKey: ["pins"] }),
   useCreatePin: () => ({ mutate: mocks.createPin }),
   useDeletePin: () => ({ mutate: mocks.deletePin }),
 }));
 
-vi.mock("@multica/core/hooks", () => ({
+vi.mock("@ohmyagentteam/core/hooks", () => ({
   useWorkspaceId: () => "workspace-1",
 }));
 
-vi.mock("@multica/core/paths", () => ({
+vi.mock("@ohmyagentteam/core/paths", () => ({
   useWorkspacePaths: () => ({
     projectDetail: (id: string) => `/test-workspace/projects/${id}`,
     memberDetail: (id: string) => `/test-workspace/members/${id}`,
@@ -78,17 +78,17 @@ vi.mock("@multica/core/paths", () => ({
   }),
 }));
 
-vi.mock("@multica/core/auth", () => ({
+vi.mock("@ohmyagentteam/core/auth", () => ({
   useAuthStore: (selector: (state: unknown) => unknown) =>
     selector({ user: { id: "user-1" } }),
 }));
 
-vi.mock("@multica/core/workspace/queries", () => ({
+vi.mock("@ohmyagentteam/core/workspace/queries", () => ({
   memberListOptions: () => ({ queryKey: ["members"] }),
   agentListOptions: () => ({ queryKey: ["agents"] }),
 }));
 
-vi.mock("@multica/core/workspace/hooks", () => ({
+vi.mock("@ohmyagentteam/core/workspace/hooks", () => ({
   useActorName: () => ({
     getActorName: () => "Test Lead",
     getActorInitials: () => "TL",
@@ -96,13 +96,13 @@ vi.mock("@multica/core/workspace/hooks", () => ({
   }),
 }));
 
-vi.mock("@multica/core/modals", () => ({
+vi.mock("@ohmyagentteam/core/modals", () => ({
   useModalStore: {
     getState: () => ({ open: mocks.openModal }),
   },
 }));
 
-vi.mock("@multica/ui/components/ui/dropdown-menu", () => ({
+vi.mock("@ohmyagentteam/ui/components/ui/dropdown-menu", () => ({
   DropdownMenu: ({ children }: { children: React.ReactNode }) => (
     <>{children}</>
   ),
@@ -160,7 +160,7 @@ vi.mock("@multica/ui/components/ui/dropdown-menu", () => ({
   ),
 }));
 
-vi.mock("@multica/ui/components/ui/popover", () => ({
+vi.mock("@ohmyagentteam/ui/components/ui/popover", () => ({
   Popover: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   PopoverTrigger: ({ render }: { render: React.ReactNode }) => <>{render}</>,
   PopoverContent: ({ children }: { children: React.ReactNode }) => (
@@ -168,7 +168,7 @@ vi.mock("@multica/ui/components/ui/popover", () => ({
   ),
 }));
 
-vi.mock("@multica/ui/components/ui/tooltip", () => ({
+vi.mock("@ohmyagentteam/ui/components/ui/tooltip", () => ({
   Tooltip: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   TooltipTrigger: ({ render }: { render: React.ReactNode }) => <>{render}</>,
   TooltipContent: ({ children }: { children: React.ReactNode }) => (
@@ -242,6 +242,14 @@ beforeEach(() => {
 });
 
 describe("ProjectsPage compact row navigation", () => {
+  it("shows the project-to-work-item relationship in the compact row", () => {
+    renderProjects();
+
+    expect(
+      within(projectRow()).getByText("3 work items · 1 done"),
+    ).toBeInTheDocument();
+  });
+
   it("renders the project name as text, not a title link", () => {
     renderProjects();
 

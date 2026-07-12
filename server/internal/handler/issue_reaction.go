@@ -6,9 +6,9 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/multica-ai/multica/server/internal/logger"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
-	"github.com/multica-ai/multica/server/pkg/protocol"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/logger"
+	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
+	"github.com/chenin0931/oh-my-agent-team/server/pkg/protocol"
 )
 
 type IssueReactionResponse struct {
@@ -33,8 +33,11 @@ func issueReactionToResponse(r db.IssueReaction) IssueReactionResponse {
 
 func (h *Handler) AddIssueReaction(w http.ResponseWriter, r *http.Request) {
 	issueID := chi.URLParam(r, "id")
-	issue, ok := h.loadIssueForUser(w, r, issueID)
+	issue, ok := h.loadCollaborativeTargetForRoute(w, r, issueID)
 	if !ok {
+		return
+	}
+	if h.rejectMemberAssigneeAdvisorMutation(w, r, issue.ID, false) {
 		return
 	}
 
@@ -85,8 +88,11 @@ func (h *Handler) AddIssueReaction(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) RemoveIssueReaction(w http.ResponseWriter, r *http.Request) {
 	issueID := chi.URLParam(r, "id")
-	issue, ok := h.loadIssueForUser(w, r, issueID)
+	issue, ok := h.loadCollaborativeTargetForRoute(w, r, issueID)
 	if !ok {
+		return
+	}
+	if h.rejectMemberAssigneeAdvisorMutation(w, r, issue.ID, false) {
 		return
 	}
 

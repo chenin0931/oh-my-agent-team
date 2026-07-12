@@ -7,6 +7,7 @@
     "commands": "コマンド",
     "members": "メンバー",
     "projects": "プロジェクト",
+    "epics": "Epic",
     "issues": "イシュー",
     "recent": "最近の項目"
   },
@@ -24,6 +25,7 @@
     "current_theme_aria": "現在のテーマ",
     "new_issue": "新規イシュー",
     "new_project": "新規プロジェクト",
+    "new_epic": "新規 Epic",
     "copy_issue_link": "イシューのリンクをコピー",
     "copy_identifier": "識別子をコピー ({{identifier}})",
     "switch_to_light": "ライトテーマに切り替え",

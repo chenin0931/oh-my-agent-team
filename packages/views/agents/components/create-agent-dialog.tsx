@@ -1,18 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { Globe, Lock } from "lucide-react";
+import { ArrowRight, Globe, Lock, MonitorCog } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ModelDropdown } from "./model-dropdown";
 import { RuntimePicker, isRuntimeUsableForUser } from "./runtime-picker";
 import { InstructionsEditor } from "./instructions-editor";
 import { SkillMultiSelect } from "./skill-multi-select";
 import { AvatarPicker } from "./avatar-picker";
-import { api } from "@multica/core/api";
-import { useWorkspaceId } from "@multica/core/hooks";
-import { useFeatureEnabled } from "@multica/core/config";
-import { COMPOSIO_MCP_APPS_FLAG } from "@multica/core/feature-flags";
-import { workspaceKeys } from "@multica/core/workspace/queries";
+import { api } from "@ohmyagentteam/core/api";
+import { useWorkspaceId } from "@ohmyagentteam/core/hooks";
+import { useWorkspacePaths } from "@ohmyagentteam/core/paths";
+import { useFeatureEnabled } from "@ohmyagentteam/core/config";
+import { COMPOSIO_MCP_APPS_FLAG } from "@ohmyagentteam/core/feature-flags";
+import { workspaceKeys } from "@ohmyagentteam/core/workspace/queries";
 import type {
   Agent,
   AgentInvocationTargetInput,
@@ -21,28 +22,29 @@ import type {
   RuntimeDevice,
   MemberWithUser,
   CreateAgentRequest,
-} from "@multica/core/types";
-import { isImeComposing } from "@multica/core/utils";
+} from "@ohmyagentteam/core/types";
+import { isImeComposing } from "@ohmyagentteam/core/utils";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from "@multica/ui/components/ui/dialog";
-import { Button } from "@multica/ui/components/ui/button";
-import { Checkbox } from "@multica/ui/components/ui/checkbox";
-import { Input } from "@multica/ui/components/ui/input";
-import { Label } from "@multica/ui/components/ui/label";
+} from "@ohmyagentteam/ui/components/ui/dialog";
+import { Button } from "@ohmyagentteam/ui/components/ui/button";
+import { Checkbox } from "@ohmyagentteam/ui/components/ui/checkbox";
+import { Input } from "@ohmyagentteam/ui/components/ui/input";
+import { Label } from "@ohmyagentteam/ui/components/ui/label";
 import { toast } from "sonner";
 import {
   AGENT_DESCRIPTION_MAX_LENGTH,
   VISIBILITY_DESCRIPTION,
   VISIBILITY_LABEL,
-} from "@multica/core/agents";
+} from "@ohmyagentteam/core/agents";
 import { ActorAvatar } from "../../common/actor-avatar";
 import { CharCounter } from "./char-counter";
 import { useT } from "../../i18n";
+import { AppLink } from "../../navigation";
 
 export function CreateAgentDialog({
   runtimes,
@@ -83,6 +85,7 @@ export function CreateAgentDialog({
   const isDuplicate = !!template;
   const queryClient = useQueryClient();
   const wsId = useWorkspaceId();
+  const paths = useWorkspacePaths();
   // MUL-4010: rolls out the private / public_to access model in the create
   // flow to match the AccessPicker on the agent detail page. Shares the
   // `composio_mcp_apps` switch with the Composio rollout — the MUL-3963
@@ -170,6 +173,10 @@ export function CreateAgentDialog({
   const selectedRuntimeLocked =
     selectedRuntime != null &&
     !isRuntimeUsableForUser(selectedRuntime, currentUserId);
+  const codexModelPending =
+    selectedRuntime?.provider === "codex" &&
+    selectedRuntime.status === "online" &&
+    !model;
 
   // Shared squad-join follow-up. Returns nothing — the caller has
   // already shown its create-success toast; we only need to surface a
@@ -202,7 +209,12 @@ export function CreateAgentDialog({
   };
 
   const handleSubmit = async () => {
-    if (!name.trim() || !selectedRuntime || selectedRuntimeLocked) return;
+    if (
+      !name.trim() ||
+      !selectedRuntime ||
+      selectedRuntimeLocked ||
+      codexModelPending
+    ) return;
     setCreating(true);
 
     try {
@@ -417,14 +429,42 @@ export function CreateAgentDialog({
               </div>
             )}
 
-            <RuntimePicker
-              runtimes={runtimes}
-              runtimesLoading={runtimesLoading}
-              members={members}
-              currentUserId={currentUserId}
-              selectedRuntimeId={selectedRuntimeId}
-              onSelect={setSelectedRuntimeId}
-            />
+            {runtimes.length === 0 && !runtimesLoading ? (
+              <div className="flex items-center gap-3 rounded-md border bg-muted/20 px-3 py-3">
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-md border bg-background text-muted-foreground">
+                  <MonitorCog className="size-4" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium">
+                    {t(($) => $.create_dialog.no_runtime_title)}
+                  </p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {t(($) => $.create_dialog.no_runtime_description)}
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  render={<AppLink href={paths.runtimes()} />}
+                  onClick={onClose}
+                >
+                  {t(($) => $.create_dialog.open_execution_tools)}
+                  <ArrowRight className="size-3.5" />
+                </Button>
+              </div>
+            ) : (
+              <RuntimePicker
+                runtimes={runtimes}
+                runtimesLoading={runtimesLoading}
+                members={members}
+                currentUserId={currentUserId}
+                selectedRuntimeId={selectedRuntimeId}
+                onSelect={(runtimeId) => {
+                  if (runtimeId !== selectedRuntimeId) setModel("");
+                  setSelectedRuntimeId(runtimeId);
+                }}
+              />
+            )}
 
             <ModelDropdown
               runtimeId={selectedRuntime?.id ?? null}
@@ -432,6 +472,7 @@ export function CreateAgentDialog({
               value={model}
               onChange={setModel}
               disabled={!selectedRuntime}
+              preferDiscoveredDefault={selectedRuntime?.provider === "codex"}
             />
 
             {/* --- Optional sections (instructions / skills) ---
@@ -467,11 +508,17 @@ export function CreateAgentDialog({
           <Button
             onClick={handleSubmit}
             disabled={
-              creating || !name.trim() || !selectedRuntime || selectedRuntimeLocked
+              creating ||
+              !name.trim() ||
+              !selectedRuntime ||
+              selectedRuntimeLocked ||
+              codexModelPending
             }
             title={
               selectedRuntimeLocked
                 ? t(($) => $.create_dialog.runtime_private_locked_tooltip)
+                : codexModelPending
+                  ? t(($) => $.pickers.model_discovering)
                 : undefined
             }
           >

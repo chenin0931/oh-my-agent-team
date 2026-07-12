@@ -8,13 +8,13 @@ import type {
   AgentPermissionMode,
   AgentVisibility,
   MemberWithUser,
-} from "@multica/core/types";
-import { Checkbox } from "@multica/ui/components/ui/checkbox";
+} from "@ohmyagentteam/core/types";
+import { Checkbox } from "@ohmyagentteam/ui/components/ui/checkbox";
 import {
   Tooltip,
   TooltipTrigger,
   TooltipContent,
-} from "@multica/ui/components/ui/tooltip";
+} from "@ohmyagentteam/ui/components/ui/tooltip";
 import {
   PickerItem,
   PropertyPicker,

@@ -53,7 +53,7 @@ const runtimeConfig = fetchRuntimeConfig();
 // Read the OS-preferred locale that main injected via additionalArguments.
 // Zero IPC, zero blocking — process.argv is populated before preload runs.
 function fetchSystemLocale(): string {
-  const arg = process.argv.find((a) => a.startsWith("--multica-locale="));
+  const arg = process.argv.find((a) => a.startsWith("--ohmyagentteam-locale="));
   return arg?.split("=")[1] ?? "en";
 }
 
@@ -130,6 +130,7 @@ const desktopAPI = {
     slug: string;
     itemId: string;
     issueKey: string;
+    targetType?: "issue" | "epic";
     title: string;
     body: string;
   }) => ipcRenderer.send("notification:show", payload),
@@ -150,11 +151,12 @@ const desktopAPI = {
       slug: string;
       itemId: string;
       issueKey: string;
+      targetType?: "issue" | "epic";
     }) => void,
   ) => {
     const handler = (
       _event: Electron.IpcRendererEvent,
-      payload: { slug: string; itemId: string; issueKey: string },
+      payload: { slug: string; itemId: string; issueKey: string; targetType?: "issue" | "epic" },
     ) => callback(payload);
     ipcRenderer.on("inbox:open", handler);
     return () => {

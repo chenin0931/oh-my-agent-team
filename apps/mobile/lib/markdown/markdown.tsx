@@ -41,7 +41,7 @@ import { useCallback, useMemo } from "react";
 import { Linking, View } from "react-native";
 import { router } from "expo-router";
 import { EnrichedMarkdownText } from "react-native-enriched-markdown";
-import type { Attachment } from "@multica/core/types";
+import type { Attachment } from "@ohmyagentteam/core/types";
 import { useWorkspaceStore } from "@/data/workspace-store";
 import { preprocessMobileMarkdown } from "./preprocess";
 import { useMarkdownStyle } from "./markdown-style";
@@ -142,6 +142,7 @@ export function Markdown({
       // return without falling through to Linking.
       //
       //   mention://issue/<uuid>   → navigate to that issue detail
+      //   mention://epic/<uuid>    → navigate to that Epic planning container
       //   mention://member/<uuid>  → no-op (no member profile screen yet)
       //   mention://agent/<uuid>   → no-op (no agent profile screen yet)
       //   mention://squad/<uuid>   → no-op (no squad profile screen yet)
@@ -155,6 +156,8 @@ export function Markdown({
         const id = rest.slice(slash + 1);
         if (type === "issue" && id && wsSlug) {
           router.push(`/${wsSlug}/issue/${id}`);
+        } else if (type === "epic" && id && wsSlug) {
+          router.push(`/${wsSlug}/epic/${id}`);
         }
         return;
       }

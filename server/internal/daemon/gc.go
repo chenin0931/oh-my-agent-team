@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/multica-ai/multica/server/internal/daemon/execenv"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/daemon/execenv"
 )
 
 // gcLoop periodically scans local workspace directories and removes those

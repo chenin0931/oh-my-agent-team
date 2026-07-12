@@ -8,7 +8,7 @@ package execenv
 // branches inline from raw ctx fields, the way it has shipped to
 // production for the last two years.
 //
-// Five kinds, mutually exclusive in practice. classifyTask documents the
+// Six kinds, mutually exclusive in practice. classifyTask documents the
 // tiebreak rule that applies if a future caller accidentally violates the
 // mutex.
 type taskKind int
@@ -27,13 +27,16 @@ const (
 	kindQuickCreate
 	// kindChat: interactive chat session, no issue.
 	kindChat
+	// kindMemberAssigneeAdvisor: one-shot comment-only advice from an agent
+	// owned by the human member who was assigned the issue.
+	kindMemberAssigneeAdvisor
 )
 
 // classifyTask maps a TaskContextForEnv to the single taskKind the slim
 // brief should be assembled for. Precedence (documented for the tiebreak
 // case, although the daemon never sets two specific-kind flags at once):
-// chat → quick-create → autopilot run-only → comment-triggered →
-// assignment-triggered.
+// chat → quick-create → autopilot run-only → member-assignee advisor →
+// comment-triggered → assignment-triggered.
 func classifyTask(ctx TaskContextForEnv) taskKind {
 	switch {
 	case ctx.ChatSessionID != "":
@@ -42,6 +45,8 @@ func classifyTask(ctx TaskContextForEnv) taskKind {
 		return kindQuickCreate
 	case ctx.AutopilotRunID != "":
 		return kindAutopilotRunOnly
+	case ctx.MemberAssigneeAdvisor:
+		return kindMemberAssigneeAdvisor
 	case ctx.TriggerCommentID != "":
 		return kindCommentTriggered
 	default:
@@ -49,7 +54,7 @@ func classifyTask(ctx TaskContextForEnv) taskKind {
 	}
 }
 
-// hasIssueContext returns true for the kinds that operate on a real Multica
+// hasIssueContext returns true for the kinds that operate on a real OhMyAgentTeam
 // issue and therefore can read / pin issue-scoped state. The slim
 // dispatcher gates these three sections on this predicate:
 //
@@ -65,7 +70,7 @@ func classifyTask(ctx TaskContextForEnv) taskKind {
 // dispatch them otherwise), and the other three kinds never do.
 func (k taskKind) hasIssueContext() bool {
 	switch k {
-	case kindCommentTriggered, kindAssignmentTriggered:
+	case kindCommentTriggered, kindAssignmentTriggered, kindMemberAssigneeAdvisor:
 		return true
 	default:
 		return false

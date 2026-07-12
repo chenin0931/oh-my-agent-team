@@ -1,9 +1,9 @@
 "use client";
 
 import { ArrowLeft, LogOut } from "lucide-react";
-import { Button } from "@multica/ui/components/ui/button";
-import type { Workspace } from "@multica/core/types";
-import { useConfigStore } from "@multica/core/config";
+import { Button } from "@ohmyagentteam/ui/components/ui/button";
+import type { Workspace } from "@ohmyagentteam/core/types";
+import { useConfigStore } from "@ohmyagentteam/core/config";
 import { useLogout } from "../auth";
 import { DragStrip } from "../platform";
 import { useT } from "../i18n";
@@ -61,7 +61,7 @@ export function NewWorkspacePage({
         <div className="flex w-full max-w-md flex-col items-center gap-6">
           {workspaceCreationDisabled ? (
             <div className="text-center">
-              <h1 className="text-3xl font-semibold tracking-tight">
+              <h1 className="text-3xl font-semibold">
                 {t(($) => $.creation_disabled.title)}
               </h1>
               <p className="mt-3 text-muted-foreground">
@@ -71,7 +71,7 @@ export function NewWorkspacePage({
           ) : (
             <>
               <div className="text-center">
-                <h1 className="text-3xl font-semibold tracking-tight">
+                <h1 className="text-3xl font-semibold">
                   {t(($) => $.new_page.title)}
                 </h1>
                 <p className="mt-3 text-muted-foreground">

@@ -2,10 +2,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { I18nProvider } from "@multica/core/i18n/react";
-import enCommon from "@multica/views/locales/en/common.json";
-import enAuth from "@multica/views/locales/en/auth.json";
-import enSettings from "@multica/views/locales/en/settings.json";
+import { I18nProvider } from "@ohmyagentteam/core/i18n/react";
+import enCommon from "@ohmyagentteam/views/locales/en/common.json";
+import enAuth from "@ohmyagentteam/views/locales/en/auth.json";
+import enSettings from "@ohmyagentteam/views/locales/en/settings.json";
 import type { ReactNode } from "react";
 
 const TEST_RESOURCES = {
@@ -44,7 +44,7 @@ const {
     state: {
       sendCode: vi.fn(),
       verifyCode: vi.fn(),
-      user: null as null | { id: string; email: string; onboarded_at?: string | null },
+      user: null as null | { id: string; email: string },
       isLoading: false,
     },
   },
@@ -62,10 +62,10 @@ vi.mock("next/navigation", () => ({
 // web wrapper uses useAuthStore((s) => s.user/isLoading). Keep the real
 // sanitizeNextUrl so the redirect-sanitization rules are exercised rather
 // than silently drifting behind a mock reimplementation.
-vi.mock("@multica/core/auth", async () => {
+vi.mock("@ohmyagentteam/core/auth", async () => {
   const actual =
-    await vi.importActual<typeof import("@multica/core/auth")>(
-      "@multica/core/auth",
+    await vi.importActual<typeof import("@ohmyagentteam/core/auth")>(
+      "@ohmyagentteam/core/auth",
     );
   authStateRef.state.sendCode = mockSendCode;
   authStateRef.state.verifyCode = mockVerifyCode;
@@ -83,7 +83,7 @@ vi.mock("@/features/auth/auth-cookie", () => ({
 }));
 
 // Mock api
-vi.mock("@multica/core/api", () => ({
+vi.mock("@ohmyagentteam/core/api", () => ({
   api: {
     listWorkspaces: mockListWorkspaces,
     listMyInvitations: mockListMyInvitations,
@@ -109,7 +109,7 @@ describe("LoginPage", () => {
   it("renders login form with email input and continue button", () => {
     render(<LoginPage />, { wrapper: createWrapper() });
 
-    expect(screen.getByText("Sign in to Multica")).toBeInTheDocument();
+    expect(screen.getByText("Sign in to OhMyAgentTeam")).toBeInTheDocument();
     expect(screen.getByText("Enter your email to get a login code")).toBeInTheDocument();
     expect(screen.getByLabelText("Email")).toBeInTheDocument();
     expect(
@@ -130,11 +130,11 @@ describe("LoginPage", () => {
     const user = userEvent.setup();
     render(<LoginPage />, { wrapper: createWrapper() });
 
-    await user.type(screen.getByLabelText("Email"), "test@multica.ai");
+    await user.type(screen.getByLabelText("Email"), "test@ohmyagentteam.com");
     await user.click(screen.getByRole("button", { name: "Continue" }));
 
     await waitFor(() => {
-      expect(mockSendCode).toHaveBeenCalledWith("test@multica.ai");
+      expect(mockSendCode).toHaveBeenCalledWith("test@ohmyagentteam.com");
     });
   });
 
@@ -143,7 +143,7 @@ describe("LoginPage", () => {
     const user = userEvent.setup();
     render(<LoginPage />, { wrapper: createWrapper() });
 
-    await user.type(screen.getByLabelText("Email"), "test@multica.ai");
+    await user.type(screen.getByLabelText("Email"), "test@ohmyagentteam.com");
     await user.click(screen.getByRole("button", { name: "Continue" }));
 
     await waitFor(() => {
@@ -156,7 +156,7 @@ describe("LoginPage", () => {
     const user = userEvent.setup();
     render(<LoginPage />, { wrapper: createWrapper() });
 
-    await user.type(screen.getByLabelText("Email"), "test@multica.ai");
+    await user.type(screen.getByLabelText("Email"), "test@ohmyagentteam.com");
     await user.click(screen.getByRole("button", { name: "Continue" }));
 
     await waitFor(() => {
@@ -169,7 +169,7 @@ describe("LoginPage", () => {
     const user = userEvent.setup();
     render(<LoginPage />, { wrapper: createWrapper() });
 
-    await user.type(screen.getByLabelText("Email"), "test@multica.ai");
+    await user.type(screen.getByLabelText("Email"), "test@ohmyagentteam.com");
     await user.click(screen.getByRole("button", { name: "Continue" }));
 
     await waitFor(() => {
@@ -180,10 +180,10 @@ describe("LoginPage", () => {
   // Regression: MUL-1080 — if the user is already authenticated on the web
   // and the Desktop app redirects them to /login?platform=desktop, the web
   // must exchange the cookie session for a bearer token and hand it off via
-  // the multica:// deep link, not silently redirect to the workspace page.
+  // the branded deep link, not silently redirect to the workspace page.
   it("mints a token and deep-links to Desktop when already logged in with platform=desktop", async () => {
     searchParamsState.params = new URLSearchParams({ platform: "desktop" });
-    authStateRef.state.user = { id: "u1", email: "test@multica.ai" };
+    authStateRef.state.user = { id: "u1", email: "test@ohmyagentteam.com" };
     mockIssueCliToken.mockImplementation(() =>
       Promise.resolve({ token: "handoff-jwt" }),
     );
@@ -203,11 +203,13 @@ describe("LoginPage", () => {
       });
       await waitFor(() => {
         expect(hrefSetter).toHaveBeenCalledWith(
-          "multica://auth/callback?token=handoff-jwt",
+          "ohmyagentteam://auth/callback?token=handoff-jwt",
         );
       });
       expect(
-        await screen.findByRole("button", { name: "Open Multica Desktop" }),
+        await screen.findByRole("button", {
+          name: "Open OhMyAgentTeam Desktop",
+        }),
       ).toBeInTheDocument();
     } finally {
       Object.defineProperty(window, "location", {
@@ -224,10 +226,9 @@ describe("LoginPage", () => {
   // interleaving the user could end up stuck on the create-workspace page
   // despite having workspaces.
   describe("post-login redirect ownership (#5009)", () => {
-    const onboardedUser = {
+    const authenticatedUser = {
       id: "u1",
-      email: "test@multica.ai",
-      onboarded_at: "2026-01-01T00:00:00Z",
+      email: "test@ohmyagentteam.com",
     };
 
     it("does not redirect from the arrival effect when the user logs in via the form", async () => {
@@ -238,7 +239,7 @@ describe("LoginPage", () => {
       // verifyCode set the user; the workspace list fetch is still in flight
       // (cache cold). The arrival effect must stay silent — handleSuccess
       // owns this navigation.
-      authStateRef.state.user = onboardedUser;
+      authStateRef.state.user = authenticatedUser;
       rerender(<LoginPage />);
 
       await act(async () => {});
@@ -250,7 +251,7 @@ describe("LoginPage", () => {
     it("fetches the workspace list before redirecting a visitor who arrived authenticated", async () => {
       // Cold Query cache on a fresh page load: reading it would say "no
       // workspaces" and misroute to /workspaces/new. The effect must fetch.
-      authStateRef.state.user = onboardedUser;
+      authStateRef.state.user = authenticatedUser;
       mockListWorkspaces.mockResolvedValue([{ id: "ws-1", slug: "acme" }]);
 
       render(<LoginPage />, { wrapper: createWrapper() });
@@ -265,7 +266,7 @@ describe("LoginPage", () => {
       searchParamsState.params = new URLSearchParams({
         next: "/invite/abc",
       });
-      authStateRef.state.user = onboardedUser;
+      authStateRef.state.user = authenticatedUser;
 
       render(<LoginPage />, { wrapper: createWrapper() });
 

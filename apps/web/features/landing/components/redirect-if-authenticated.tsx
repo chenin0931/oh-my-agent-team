@@ -3,9 +3,9 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { useAuthStore } from "@multica/core/auth";
-import { workspaceListOptions } from "@multica/core/workspace";
-import { resolvePostAuthDestination, useHasOnboarded } from "@multica/core/paths";
+import { useAuthStore } from "@ohmyagentteam/core/auth";
+import { workspaceListOptions } from "@ohmyagentteam/core/workspace";
+import { resolvePostAuthDestination } from "@ohmyagentteam/core/paths";
 
 /**
  * Client-side fallback redirect for authenticated visitors on the landing page.
@@ -16,7 +16,7 @@ import { resolvePostAuthDestination, useHasOnboarded } from "@multica/core/paths
  * login* — before the user has ever visited a workspace — the cookie is
  * absent, so the proxy falls through to the landing page. This component
  * covers that gap: once auth is resolved and the workspace list has loaded,
- * push the user into their workspace (or /onboarding if they have none).
+ * push the user into their workspace or workspace creation.
  *
  * Renders nothing. Uses `router.replace` so the landing page never enters
  * browser history for authenticated users.
@@ -25,7 +25,6 @@ export function RedirectIfAuthenticated() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const isLoading = useAuthStore((s) => s.isLoading);
-  const hasOnboarded = useHasOnboarded();
 
   const { data: list = [], isFetched } = useQuery({
     ...workspaceListOptions(),
@@ -34,8 +33,8 @@ export function RedirectIfAuthenticated() {
 
   useEffect(() => {
     if (isLoading || !user || !isFetched) return;
-    router.replace(resolvePostAuthDestination(list, hasOnboarded));
-  }, [isLoading, user, isFetched, list, hasOnboarded, router]);
+    router.replace(resolvePostAuthDestination(list));
+  }, [isLoading, user, isFetched, list, router]);
 
   return null;
 }

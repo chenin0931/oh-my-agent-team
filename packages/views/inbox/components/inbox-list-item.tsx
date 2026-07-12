@@ -2,8 +2,8 @@
 
 import { StatusIcon } from "../../issues/components";
 import { ActorAvatar } from "../../common/actor-avatar";
-import { Archive } from "lucide-react";
-import type { InboxItem } from "@multica/core/types";
+import { Archive, CircleAlert } from "lucide-react";
+import type { InboxItem } from "@ohmyagentteam/core/types";
 import { InboxDetailLabel } from "./inbox-detail-label";
 import { getInboxDisplayTitle } from "./inbox-display";
 import { useT } from "../../i18n";
@@ -59,6 +59,12 @@ export function InboxListItem({
           <div className="flex min-w-0 items-center gap-1.5">
             {!item.read && (
               <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />
+            )}
+            {item.severity === "action_required" && (
+              <CircleAlert
+                className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400"
+                aria-label={t(($) => $.list.action_required)}
+              />
             )}
             <span
               className={`truncate text-sm ${!item.read ? "font-medium" : "text-muted-foreground"}`}

@@ -17,18 +17,18 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/multica-ai/multica/server/internal/analytics"
-	"github.com/multica-ai/multica/server/internal/auth"
-	"github.com/multica-ai/multica/server/internal/daemonws"
-	"github.com/multica-ai/multica/server/internal/integrations/slack"
-	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
-	"github.com/multica-ai/multica/server/internal/middleware"
-	"github.com/multica-ai/multica/server/internal/runtimeapps"
-	"github.com/multica-ai/multica/server/internal/service"
-	"github.com/multica-ai/multica/server/internal/util"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
-	"github.com/multica-ai/multica/server/pkg/protocol"
-	"github.com/multica-ai/multica/server/pkg/redact"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/analytics"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/auth"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/daemonws"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/integrations/slack"
+	obsmetrics "github.com/chenin0931/oh-my-agent-team/server/internal/metrics"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/middleware"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/runtimeapps"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/service"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/util"
+	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
+	"github.com/chenin0931/oh-my-agent-team/server/pkg/protocol"
+	"github.com/chenin0931/oh-my-agent-team/server/pkg/redact"
 )
 
 // ---------------------------------------------------------------------------
@@ -176,7 +176,7 @@ type DaemonRegisterRequest struct {
 	// and tasks keep working without manual intervention.
 	LegacyDaemonIDs []string `json:"legacy_daemon_ids"`
 	DeviceName      string   `json:"device_name"`
-	CLIVersion      string   `json:"cli_version"` // multica CLI version
+	CLIVersion      string   `json:"cli_version"` // ohmyagentteam CLI version
 	LaunchedBy      string   `json:"launched_by"` // "desktop" when spawned by the Electron app
 	Runtimes        []struct {
 		Name    string `json:"name"`
@@ -1580,7 +1580,7 @@ func (h *Handler) ClaimTaskByRuntime(w http.ResponseWriter, r *http.Request) {
 							Label:        label,
 						})
 						// Lift github_repo resources into the daemon's repo list
-						// so `multica repo checkout` and the meta-skill render
+						// so `omat repo checkout` and the meta-skill render
 						// them as the issue's repos.
 						if row.ResourceType == "github_repo" {
 							var payload struct {
@@ -1712,8 +1712,8 @@ func (h *Handler) ClaimTaskByRuntime(w http.ResponseWriter, r *http.Request) {
 			resp.ThreadName = cs.Title
 			// Flag a channel-backed session so the daemon makes the agent aware
 			// it is operating inside Slack — read this conversation's history
-			// from the channel via `multica chat history` / `multica chat thread`,
-			// not from Multica (MUL-3871). Empty for a web-only chat session.
+			// from the channel via `omat chat history` / `omat chat thread`,
+			// not from OhMyAgentTeam (MUL-3871). Empty for a web-only chat session.
 			// ChatInThread tells the agent which command to start with: the
 			// latest trigger was a thread reply iff its reply-target thread
 			// (last_thread_id) differs from its own message id (a top-level
@@ -1767,7 +1767,7 @@ func (h *Handler) ClaimTaskByRuntime(w http.ResponseWriter, r *http.Request) {
 			// messages after the last assistant message (every completed or
 			// failed run writes an assistant row, so that anchor advances each
 			// turn). Attachments are collected from each included message so
-			// the agent can `multica attachment download <id>` — the markdown
+			// the agent can `omat attachment download <id>` — the markdown
 			// URL alone is signed and 30-min expiring on the private CDN.
 			if msgs, err := h.Queries.ListChatMessages(r.Context(), cs.ID); err == nil && len(msgs) > 0 {
 				unanswered := trailingUserMessages(msgs)
@@ -1841,14 +1841,35 @@ func (h *Handler) ClaimTaskByRuntime(w http.ResponseWriter, r *http.Request) {
 		if json.Unmarshal(task.Context, &qc) == nil && qc.Type == service.QuickCreateContextType {
 			hasQuickCreate = true
 			resp.QuickCreatePrompt = qc.Prompt
+			resp.QuickCreateMode = qc.Mode
+			resp.QuickCreateDefaultStatus = qc.DefaultStatus
 			resp.QuickCreateAttachmentIDs = append([]string(nil), qc.AttachmentIDs...)
 			resp.ThreadName = qc.Prompt
 			resp.WorkspaceID = qc.WorkspaceID
 
+			if wsUUID, err := util.ParseUUID(qc.WorkspaceID); err == nil {
+				if agents, err := h.Queries.ListAgents(r.Context(), wsUUID); err == nil && len(agents) > 0 {
+					resp.QuickCreateAvailableAgents = make([]QuickCreateAvailableAgentData, 0, len(agents))
+					for _, agent := range agents {
+						resp.QuickCreateAvailableAgents = append(resp.QuickCreateAvailableAgents, QuickCreateAvailableAgentData{
+							ID:          uuidToString(agent.ID),
+							Name:        agent.Name,
+							Description: strings.TrimSpace(agent.Description),
+						})
+					}
+				} else if err != nil {
+					slog.Warn("quick-create claim: failed to load available agents",
+						"task_id", uuidToString(task.ID),
+						"workspace_id", qc.WorkspaceID,
+						"error", err,
+					)
+				}
+			}
+
 			// When the user picked a project in the modal, surface its title
 			// and resources to the daemon so the agent has the same context
 			// it would for an issue-bound task: the prompt template can name
-			// the project, and `multica repo checkout` sees the project's
+			// the project, and `omat repo checkout` sees the project's
 			// github_repo resources instead of the workspace fallback.
 			var projectRepos []RepoData
 			if qc.ProjectID != "" {
@@ -1963,7 +1984,7 @@ func (h *Handler) ClaimTaskByRuntime(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Workspace isolation check: the daemon uses this response's workspace_id
-	// as the only authority for MULTICA_WORKSPACE_ID in the agent env. An
+	// as the only authority for OMAT_WORKSPACE_ID in the agent env. An
 	// empty value would make the CLI silently fall back to the user-global
 	// config and talk to whatever workspace the user happened to last
 	// configure; a value that doesn't match the runtime's workspace means
@@ -2009,7 +2030,7 @@ func (h *Handler) ClaimTaskByRuntime(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Mint a task-scoped `mat_` token bound to (agent, task, workspace,
-	// owner). The daemon will inject this as MULTICA_TOKEN into the agent
+	// owner). The daemon will inject this as OMAT_TOKEN into the agent
 	// process instead of its own credential, so any API call the agent
 	// makes — even one that strips X-Agent-ID / X-Task-ID headers — is
 	// recognized server-side as actor=agent, closing the lateral-movement
@@ -2693,7 +2714,7 @@ func (h *Handler) ListTaskMessages(w http.ResponseWriter, r *http.Request) {
 // Returns { tasks: [...] } array (may be empty).
 func (h *Handler) GetActiveTaskForIssue(w http.ResponseWriter, r *http.Request) {
 	issueID := chi.URLParam(r, "id")
-	issue, ok := h.loadIssueForUser(w, r, issueID)
+	issue, ok := h.loadExecutableIssueForUser(w, r, issueID)
 	if !ok {
 		return
 	}
@@ -2718,7 +2739,7 @@ func (h *Handler) GetActiveTaskForIssue(w http.ResponseWriter, r *http.Request) 
 // issue (in any workspace) must not be cancellable through this route.
 func (h *Handler) CancelTask(w http.ResponseWriter, r *http.Request) {
 	issueID := chi.URLParam(r, "id")
-	issue, ok := h.loadIssueForUser(w, r, issueID)
+	issue, ok := h.loadExecutableIssueForUser(w, r, issueID)
 	if !ok {
 		return
 	}
@@ -2744,7 +2765,7 @@ func (h *Handler) CancelTask(w http.ResponseWriter, r *http.Request) {
 // ListTasksByIssue returns all tasks (any status) for an issue — used for execution history.
 func (h *Handler) ListTasksByIssue(w http.ResponseWriter, r *http.Request) {
 	issueID := chi.URLParam(r, "id")
-	issue, ok := h.loadIssueForUser(w, r, issueID)
+	issue, ok := h.loadExecutableIssueForUser(w, r, issueID)
 	if !ok {
 		return
 	}
@@ -2822,7 +2843,7 @@ func (h *Handler) ListTaskMessagesByUser(w http.ResponseWriter, r *http.Request)
 // GetIssueUsage returns aggregated token usage for all tasks belonging to an issue.
 func (h *Handler) GetIssueUsage(w http.ResponseWriter, r *http.Request) {
 	issueID := chi.URLParam(r, "id")
-	issue, ok := h.loadIssueForUser(w, r, issueID)
+	issue, ok := h.loadExecutableIssueForUser(w, r, issueID)
 	if !ok {
 		return
 	}

@@ -1,8 +1,8 @@
 import { forwardRef, useRef, useImperativeHandle } from "react";
 import { beforeEach, describe, it, expect, vi } from "vitest";
 import { act, render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { I18nProvider } from "@multica/core/i18n/react";
-import type { UploadResult } from "@multica/core/hooks/use-file-upload";
+import { I18nProvider } from "@ohmyagentteam/core/i18n/react";
+import type { UploadResult } from "@ohmyagentteam/core/hooks/use-file-upload";
 import enCommon from "../../locales/en/common.json";
 import enChat from "../../locales/en/chat.json";
 
@@ -117,7 +117,7 @@ vi.mock("../../editor", () => ({
 
 // Mock chat store with an in-memory implementation that supports both
 // (selector) calls and getState().
-vi.mock("@multica/core/chat", () => {
+vi.mock("@ohmyagentteam/core/chat", () => {
   const state = {
     activeSessionId: null as string | null,
     selectedAgentId: "agent-1",
@@ -140,7 +140,7 @@ vi.mock("@multica/core/chat", () => {
 });
 
 import { ChatInput } from "./chat-input";
-import { useChatStore } from "@multica/core/chat";
+import { useChatStore } from "@ohmyagentteam/core/chat";
 
 type ChatInputOnSend = React.ComponentProps<typeof ChatInput>["onSend"];
 type ChatInputCommit = Parameters<ChatInputOnSend>[2];
@@ -196,7 +196,7 @@ function renderInput(props: Partial<React.ComponentProps<typeof ChatInput>> = {}
     );
   render(
     <I18nProvider locale="en" resources={TEST_RESOURCES}>
-      <ChatInput onSend={onSend} onUploadFile={onUploadFile} agentName="Multica" {...props} />
+      <ChatInput onSend={onSend} onUploadFile={onUploadFile} agentName="OhMyAgentTeam" {...props} />
     </I18nProvider>,
   );
   return { onSend, onUploadFile };
@@ -529,7 +529,7 @@ describe("ChatInput session-aware restore", () => {
   function element(props: Partial<React.ComponentProps<typeof ChatInput>>) {
     return (
       <I18nProvider locale="en" resources={TEST_RESOURCES}>
-        <ChatInput onSend={vi.fn()} onUploadFile={vi.fn()} agentName="Multica" {...props} />
+        <ChatInput onSend={vi.fn()} onUploadFile={vi.fn()} agentName="OhMyAgentTeam" {...props} />
       </I18nProvider>
     );
   }

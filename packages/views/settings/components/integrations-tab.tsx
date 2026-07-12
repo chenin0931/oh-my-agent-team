@@ -4,10 +4,10 @@ import { useQuery } from "@tanstack/react-query";
 import { LarkTab } from "./lark-tab";
 import { ComposioTab } from "./composio-tab";
 import { SlackTab } from "./slack-tab";
-import { ApiError } from "@multica/core/api";
-import { composioToolkitsOptions } from "@multica/core/composio";
-import { useFeatureEnabled } from "@multica/core/config";
-import { COMPOSIO_MCP_APPS_FLAG } from "@multica/core/feature-flags";
+import { ApiError } from "@ohmyagentteam/core/api";
+import { composioToolkitsOptions } from "@ohmyagentteam/core/composio";
+import { useFeatureEnabled } from "@ohmyagentteam/core/config";
+import { COMPOSIO_MCP_APPS_FLAG } from "@ohmyagentteam/core/feature-flags";
 import { useT } from "../../i18n";
 
 // Integrations is the umbrella tab for third-party platform connections.

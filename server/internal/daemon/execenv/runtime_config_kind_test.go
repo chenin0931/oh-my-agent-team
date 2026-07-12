@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/multica-ai/multica/server/pkg/featureflag"
+	"github.com/chenin0931/oh-my-agent-team/server/pkg/featureflag"
 )
 
 // withSlimBrief enables the `runtime_brief_slim` feature flag for the
@@ -24,7 +24,7 @@ func withSlimBrief(t *testing.T) {
 	t.Cleanup(func() { runtimeFlags.Store(saved) })
 }
 
-// TestClassifyTask pins the precedence rule on classifyTask. All five
+// TestClassifyTask pins the precedence rule on classifyTask. All six
 // kinds plus tiebreak cases for safety.
 func TestClassifyTask(t *testing.T) {
 	t.Parallel()
@@ -36,11 +36,14 @@ func TestClassifyTask(t *testing.T) {
 		{"chat", TaskContextForEnv{ChatSessionID: "c"}, kindChat},
 		{"quick-create", TaskContextForEnv{QuickCreatePrompt: "p"}, kindQuickCreate},
 		{"autopilot", TaskContextForEnv{AutopilotRunID: "r"}, kindAutopilotRunOnly},
+		{"member-assignee-advisor", TaskContextForEnv{IssueID: "i", MemberAssigneeAdvisor: true}, kindMemberAssigneeAdvisor},
 		{"comment-triggered", TaskContextForEnv{IssueID: "i", TriggerCommentID: "c"}, kindCommentTriggered},
 		{"assignment-triggered", TaskContextForEnv{IssueID: "i"}, kindAssignmentTriggered},
 		{"assignment-bare", TaskContextForEnv{}, kindAssignmentTriggered},
 		{"tiebreak-chat-vs-quick", TaskContextForEnv{ChatSessionID: "c", QuickCreatePrompt: "p"}, kindChat},
 		{"tiebreak-quick-vs-autopilot", TaskContextForEnv{QuickCreatePrompt: "p", AutopilotRunID: "r"}, kindQuickCreate},
+		{"tiebreak-autopilot-vs-advisor", TaskContextForEnv{AutopilotRunID: "r", IssueID: "i", MemberAssigneeAdvisor: true}, kindAutopilotRunOnly},
+		{"tiebreak-advisor-vs-comment", TaskContextForEnv{IssueID: "i", MemberAssigneeAdvisor: true, TriggerCommentID: "c"}, kindMemberAssigneeAdvisor},
 		{"tiebreak-autopilot-vs-comment", TaskContextForEnv{AutopilotRunID: "r", IssueID: "i", TriggerCommentID: "c"}, kindAutopilotRunOnly},
 	}
 	for _, tc := range cases {
@@ -64,6 +67,7 @@ func TestTaskKindHasIssueContext(t *testing.T) {
 	}{
 		{kindCommentTriggered, true},
 		{kindAssignmentTriggered, true},
+		{kindMemberAssigneeAdvisor, true},
 		{kindAutopilotRunOnly, false},
 		{kindQuickCreate, false},
 		{kindChat, false},
@@ -117,7 +121,7 @@ func TestSlimFlagOnUsesSlim(t *testing.T) {
 	// Slim Available Commands description for `issue get` is "full
 	// issue."; legacy is "Get full issue details." Distinct enough that
 	// either is decisive.
-	if !strings.Contains(out, "- `multica issue get <id> --output json` — full issue.\n") {
+	if !strings.Contains(out, "- `omat issue get <id> --output json` — full issue.\n") {
 		t.Errorf("flag-on path should render SLIM brief, but the slim `issue get` one-liner is missing\n---\n%s", out)
 	}
 	if strings.Contains(out, "Get full issue details.") {
@@ -148,12 +152,12 @@ func TestBuildMetaSkillContentSlimKindMatrix(t *testing.T) {
 		kindCommentTriggered: true, kindAssignmentTriggered: true,
 	}
 	checks := []sectionCheck{
-		{"# Multica Agent Runtime", allKinds},
+		{"# OhMyAgentTeam Agent Runtime", allKinds},
 		{"## Background Task Safety", allKinds},
 		{"## Agent Identity", allKinds},
 		{"## Available Commands", allKinds},
 		{"### Workflow", allKinds},
-		{"## Important: Always Use the `multica` CLI", allKinds},
+		{"## Important: Always Use the `ohmyagentteam` CLI", allKinds},
 		{"## Output", allKinds},
 		{"## Comment Formatting", issueKinds},
 		{"## Repositories", map[taskKind]bool{
@@ -214,8 +218,8 @@ func TestSlimQuickCreateAvailableCommands(t *testing.T) {
 
 	for _, want := range []string{
 		"## Available Commands",
-		"multica issue create --title",
-		"`multica --help`",
+		"omat issue create --title",
+		"`ohmyagentteam --help`",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("quick_create slim Available Commands missing %q", want)
@@ -223,21 +227,60 @@ func TestSlimQuickCreateAvailableCommands(t *testing.T) {
 	}
 
 	for _, banned := range []string{
-		"multica issue get <id>",
-		"multica issue comment list <issue-id>",
-		"multica issue update <id>",
-		"multica issue status <id> <status>",
-		"multica issue comment add <issue-id>",
-		"multica issue metadata list <issue-id>",
-		"multica issue metadata set <issue-id>",
-		"multica issue metadata delete <issue-id>",
-		"multica issue children <id>",
-		"multica repo checkout <url>",
+		"omat issue get <id>",
+		"omat issue comment list <issue-id>",
+		"omat issue update <id>",
+		"omat issue status <id> <status>",
+		"omat issue comment add <issue-id>",
+		"omat issue metadata list <issue-id>",
+		"omat issue metadata set <issue-id>",
+		"omat issue metadata delete <issue-id>",
+		"omat issue children <id>",
+		"omat repo checkout <url>",
 		"### Squad maintenance",
-		"multica squad member set-role",
+		"omat squad member set-role",
 	} {
 		if strings.Contains(out, banned) {
 			t.Errorf("quick_create slim Available Commands should NOT advertise %q (hard guardrails forbid the call)", banned)
+		}
+	}
+}
+
+func TestPlanningQuickCreateBriefs(t *testing.T) {
+	ctx := TaskContextForEnv{
+		QuickCreatePrompt:        "Plan enterprise SSO",
+		QuickCreateMode:          "planning",
+		QuickCreateDefaultStatus: "backlog",
+		AgentName:                "Planner",
+		AgentID:                  "planner-1",
+	}
+
+	saved := runtimeFlags.Load()
+	runtimeFlags.Store(nil)
+	legacy := buildMetaSkillContent("codex", ctx)
+	runtimeFlags.Store(saved)
+	for _, want := range []string{
+		"Planning Quick Create",
+		"--status backlog",
+		"Planned <epic-count> epics, <issue-count> issues, <subtask-count> subtasks",
+	} {
+		if !strings.Contains(legacy, want) {
+			t.Errorf("legacy planning brief missing %q\n---\n%s", want, legacy)
+		}
+	}
+
+	withSlimBrief(t)
+	slim := buildMetaSkillContent("codex", ctx)
+	for _, want := range []string{
+		"Planning Quick Create",
+		"--status backlog",
+		"omat workspace member list --output json",
+		"omat agent list --output json",
+		"omat squad list --output json",
+		"Planned <epic-count> epics, <issue-count> issues, <subtask-count> subtasks",
+	} {
+		if !strings.Contains(slim, want) {
+			t.Errorf("slim planning brief missing %q\n---\n%s", want, slim)
 		}
 	}
 }
@@ -254,11 +297,11 @@ func TestSlimBriefIsSubstantiallyShorter(t *testing.T) {
 		AgentName: "Eve", AgentID: "eve-1",
 		InitiatorName: "Yushen", InitiatorType: "member", InitiatorEmail: "yushen@devv.ai",
 		Repos: []RepoContextForEnv{
-			{URL: "https://github.com/multica-ai/multica", Description: "Managed agents platform"},
-			{URL: "git@github.com:multica-ai/multica-cloud.git", Description: "Internal cloud platform"},
+			{URL: "https://github.com/chenin0931/oh-my-agent-team", Description: "Managed agents platform"},
+			{URL: "git@github.com:chenin0931/oh-my-agent-team-cloud.git", Description: "Internal cloud platform"},
 		},
 		AgentSkills: []SkillContextForEnv{
-			{Name: "Multica Git Workflow", Description: "Multica development workflow"},
+			{Name: "OhMyAgentTeam Git Workflow", Description: "OhMyAgentTeam development workflow"},
 			{Name: "PR review", Description: "Review PRs"},
 		},
 	}

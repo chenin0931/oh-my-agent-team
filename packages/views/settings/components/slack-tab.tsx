@@ -4,18 +4,18 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ChevronRight, ExternalLink, MessagesSquare, Trash2 } from "lucide-react";
-import { cn } from "@multica/ui/lib/utils";
-import { Button } from "@multica/ui/components/ui/button";
-import { Card, CardContent } from "@multica/ui/components/ui/card";
+import { cn } from "@ohmyagentteam/ui/lib/utils";
+import { Button } from "@ohmyagentteam/ui/components/ui/button";
+import { Card, CardContent } from "@ohmyagentteam/ui/components/ui/card";
 import {
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@multica/ui/components/ui/dialog";
-import { Input } from "@multica/ui/components/ui/input";
-import { Label } from "@multica/ui/components/ui/label";
+} from "@ohmyagentteam/ui/components/ui/dialog";
+import { Input } from "@ohmyagentteam/ui/components/ui/input";
+import { Label } from "@ohmyagentteam/ui/components/ui/label";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,14 +25,14 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@multica/ui/components/ui/alert-dialog";
-import { useAuthStore } from "@multica/core/auth";
-import { useWorkspaceId } from "@multica/core/hooks";
-import { memberListOptions } from "@multica/core/workspace/queries";
-import { useActorName } from "@multica/core/workspace/hooks";
-import { slackInstallationsOptions, slackKeys } from "@multica/core/slack";
-import { api } from "@multica/core/api";
-import type { SlackInstallation } from "@multica/core/types";
+} from "@ohmyagentteam/ui/components/ui/alert-dialog";
+import { useAuthStore } from "@ohmyagentteam/core/auth";
+import { useWorkspaceId } from "@ohmyagentteam/core/hooks";
+import { memberListOptions } from "@ohmyagentteam/core/workspace/queries";
+import { useActorName } from "@ohmyagentteam/core/workspace/hooks";
+import { slackInstallationsOptions, slackKeys } from "@ohmyagentteam/core/slack";
+import { api } from "@ohmyagentteam/core/api";
+import type { SlackInstallation } from "@ohmyagentteam/core/types";
 import { ActorAvatar } from "../../common/actor-avatar";
 import { openExternal } from "../../platform";
 import { useT } from "../../i18n";
@@ -42,7 +42,7 @@ import { useT } from "../../i18n";
 // enforces it; the UI hides the button for non-admins to match).
 //
 // Adding a new installation flows through the Agent detail page: the install
-// path is per-agent (each Multica agent gets exactly one bot — the
+// path is per-agent (each OhMyAgentTeam agent gets exactly one bot — the
 // (workspace_id, agent_id, channel_type) UNIQUE in channel_installation), so
 // asking the user to pick an agent here would re-create that page's picker.
 export function SlackTab() {
@@ -103,7 +103,7 @@ export function SlackTab() {
             <p className="text-xs text-muted-foreground">
               {t(($) => $.slack.not_enabled_description_prefix)}{" "}
               <code className="rounded bg-muted px-1 py-0.5 text-[10px]">
-                MULTICA_SLACK_SECRET_KEY
+                OMAT_SLACK_SECRET_KEY
               </code>{" "}
               {t(($) => $.slack.not_enabled_description_suffix)}{" "}
               {t(($) => $.slack.not_enabled_self_host_hint)}
@@ -253,7 +253,7 @@ function slackDocsUrl(lang: string | undefined): string {
       : lang?.startsWith("ko")
         ? "/ko"
         : "";
-  return `https://multica.ai/docs${prefix}/slack-bot-integration`;
+  return `https://ohmyagentteam.com/docs${prefix}/slack-bot-integration`;
 }
 
 // SlackAgentBindButton is the per-agent CTA exposed from the agent detail page.

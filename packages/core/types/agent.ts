@@ -252,6 +252,8 @@ export interface AgentTask {
    * back to the generic "initial run" label.
    */
   handoff_note?: string;
+  /** Optional focus supplied for a manually requested comment-only advisor run. */
+  advisor_instruction?: string;
   /**
    * Server-computed source discriminator used by the activity row to label
    * tasks that have no linked issue (so e.g. quick-create tasks render
@@ -420,7 +422,7 @@ export interface CreateAgentRequest {
   model?: string;
   /** Optional runtime-native reasoning/effort token. See `Agent.thinking_level`. */
   thinking_level?: string;
-  /** Optional template slug used by the onboarding agent picker. Surfaced
+  /** Optional template slug used by agent creation surfaces. Surfaced
    *  as the `template` property on the `agent_created` PostHog event. */
   template?: string;
 }
@@ -597,7 +599,7 @@ export interface UpdateAgentEnvRequest {
  * `GET /api/agents/:id/skills`). The full SKILL.md `content` is intentionally
  * omitted — bodies routinely run 50–200KB each and shipping them in list
  * payloads tripped CLI timeouts on high-latency links (GH
- * multica-ai/multica#2174). Use `Skill` from a detail endpoint when you need
+ * chenin0931/oh-my-agent-team#2174). Use `Skill` from a detail endpoint when you need
  * the body. For skills embedded in an `Agent` payload see `AgentSkillSummary`.
  */
 export interface SkillSummary {
@@ -788,7 +790,7 @@ export interface RuntimeModelThinking {
   supported_levels: RuntimeModelThinkingLevel[];
   /** Informational: the level the upstream CLI documents as its built-in
    *  default when no `--effort` flag is passed. Surfaced by the daemon
-   *  but not actively rendered today — Multica's empty `thinking_level`
+   *  but not actively rendered today — OhMyAgentTeam's empty `thinking_level`
    *  means "no override; let the local CLI config decide", which may
    *  itself differ from this value. */
   default_level?: string;

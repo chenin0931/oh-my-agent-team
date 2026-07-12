@@ -39,6 +39,11 @@ func TestParseMentions(t *testing.T) {
 			want:    []Mention{{Type: "issue", ID: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"}},
 		},
 		{
+			name:    "epic planning link without @",
+			content: "[MUL-99](mention://epic/cccccccc-cccc-cccc-cccc-cccccccccccc) is the outcome",
+			want:    []Mention{{Type: "epic", ID: "cccccccc-cccc-cccc-cccc-cccccccccccc"}},
+		},
+		{
 			name:    "member mention",
 			content: "[@Bob](mention://member/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa) look",
 			want:    []Mention{{Type: "member", ID: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"}},

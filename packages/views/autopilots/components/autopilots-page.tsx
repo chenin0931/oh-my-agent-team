@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { autopilotListOptions } from "@multica/core/autopilots/queries";
+import { autopilotListOptions } from "@ohmyagentteam/core/autopilots/queries";
 import {
   useAutopilotsViewStore,
   AUTOPILOT_DEFAULT_HIDDEN_COLUMNS,
@@ -26,13 +26,13 @@ import {
   type AutopilotColumnKey,
   type AutopilotScope,
   type AutopilotSortField,
-} from "@multica/core/autopilots/stores";
-import { useWorkspaceId } from "@multica/core/hooks";
-import { useWorkspacePaths } from "@multica/core/paths";
-import { useActorName } from "@multica/core/workspace/hooks";
-import type { Autopilot } from "@multica/core/types";
-import { Button } from "@multica/ui/components/ui/button";
-import { Checkbox } from "@multica/ui/components/ui/checkbox";
+} from "@ohmyagentteam/core/autopilots/stores";
+import { useWorkspaceId } from "@ohmyagentteam/core/hooks";
+import { useWorkspacePaths } from "@ohmyagentteam/core/paths";
+import { useActorName } from "@ohmyagentteam/core/workspace/hooks";
+import type { Autopilot } from "@ohmyagentteam/core/types";
+import { Button } from "@ohmyagentteam/ui/components/ui/button";
+import { Checkbox } from "@ohmyagentteam/ui/components/ui/checkbox";
 import {
   LIST_GRID_BOTTOM_CLEARANCE,
   ListGrid,
@@ -42,8 +42,8 @@ import {
   ListGridHeaderCell,
   ListGridRow,
   type ListGridSortDirection,
-} from "@multica/ui/components/ui/list-grid";
-import { Skeleton } from "@multica/ui/components/ui/skeleton";
+} from "@ohmyagentteam/ui/components/ui/list-grid";
+import { Skeleton } from "@ohmyagentteam/ui/components/ui/skeleton";
 import { useRowLink } from "../../navigation";
 import { ActorAvatar } from "../../common/actor-avatar";
 import { PageHeader } from "../../layout/page-header";
@@ -766,7 +766,7 @@ export function AutopilotsPage() {
       <PageHeader className="justify-between px-5">
         <div className="flex items-center gap-2">
           <Zap className="h-4 w-4 text-muted-foreground" />
-          <h1 className="text-sm font-medium">{t(($) => $.page.title)}</h1>
+          <h1 className="font-serif text-[15px] font-medium">{t(($) => $.page.title)}</h1>
           {totalCount > 0 && (
             <span className="font-mono text-xs tabular-nums text-muted-foreground/70">
               {totalCount}

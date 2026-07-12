@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/multica-ai/multica/server/internal/auth"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/auth"
 )
 
 func TestGetConfigReportsCdnSignedMode(t *testing.T) {
@@ -59,8 +59,8 @@ func TestGetConfigIncludesRuntimeAuthConfig(t *testing.T) {
 	t.Setenv("GOOGLE_CLIENT_ID", "google-client-id")
 	t.Setenv("POSTHOG_API_KEY", "phc_test")
 	t.Setenv("POSTHOG_HOST", "https://eu.i.posthog.com")
-	t.Setenv("MULTICA_PUBLIC_URL", "https://api.example.com/")
-	t.Setenv("MULTICA_APP_URL", "https://app.example.com/")
+	t.Setenv("OMAT_PUBLIC_URL", "https://api.example.com/")
+	t.Setenv("OMAT_APP_URL", "https://app.example.com/")
 
 	req := httptest.NewRequest(http.MethodGet, "/api/config", nil)
 	w := httptest.NewRecorder()
@@ -105,7 +105,7 @@ func TestGetConfigIncludesRuntimeAuthConfig(t *testing.T) {
 }
 
 func TestGetConfigUsesAppURLForSameOriginDaemonSetup(t *testing.T) {
-	t.Setenv("MULTICA_APP_URL", "https://multica.internal.example/")
+	t.Setenv("OMAT_APP_URL", "https://ohmyagentteam.internal.example/")
 
 	req := httptest.NewRequest(http.MethodGet, "/api/config", nil)
 	w := httptest.NewRecorder()
@@ -119,17 +119,17 @@ func TestGetConfigUsesAppURLForSameOriginDaemonSetup(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &cfg); err != nil {
 		t.Fatalf("decode config: %v", err)
 	}
-	if cfg.DaemonServerURL != "https://multica.internal.example" {
+	if cfg.DaemonServerURL != "https://ohmyagentteam.internal.example" {
 		t.Fatalf("daemon_server_url: want same-origin URL, got %q", cfg.DaemonServerURL)
 	}
-	if cfg.DaemonAppURL != "https://multica.internal.example" {
+	if cfg.DaemonAppURL != "https://ohmyagentteam.internal.example" {
 		t.Fatalf("daemon_app_url: want app URL, got %q", cfg.DaemonAppURL)
 	}
 }
 
 func TestGetConfigUsesFrontendOriginForSameOriginDaemonSetup(t *testing.T) {
-	t.Setenv("MULTICA_APP_URL", "")
-	t.Setenv("FRONTEND_ORIGIN", "https://multica.internal.example/")
+	t.Setenv("OMAT_APP_URL", "")
+	t.Setenv("FRONTEND_ORIGIN", "https://ohmyagentteam.internal.example/")
 
 	req := httptest.NewRequest(http.MethodGet, "/api/config", nil)
 	w := httptest.NewRecorder()
@@ -143,18 +143,43 @@ func TestGetConfigUsesFrontendOriginForSameOriginDaemonSetup(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &cfg); err != nil {
 		t.Fatalf("decode config: %v", err)
 	}
-	if cfg.DaemonServerURL != "https://multica.internal.example" {
+	if cfg.DaemonServerURL != "https://ohmyagentteam.internal.example" {
 		t.Fatalf("daemon_server_url: want same-origin URL, got %q", cfg.DaemonServerURL)
 	}
-	if cfg.DaemonAppURL != "https://multica.internal.example" {
+	if cfg.DaemonAppURL != "https://ohmyagentteam.internal.example" {
 		t.Fatalf("daemon_app_url: want frontend origin, got %q", cfg.DaemonAppURL)
 	}
 }
 
+func TestGetConfigUsesLoopbackAPIOriginForSplitLocalPorts(t *testing.T) {
+	t.Setenv("OMAT_PUBLIC_URL", "")
+	t.Setenv("OMAT_APP_URL", "http://localhost:3000")
+	t.Setenv("FRONTEND_ORIGIN", "")
+
+	req := httptest.NewRequest(http.MethodGet, "http://localhost:8080/api/config", nil)
+	w := httptest.NewRecorder()
+
+	testHandler.GetConfig(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("GetConfig: expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var cfg AppConfig
+	if err := json.Unmarshal(w.Body.Bytes(), &cfg); err != nil {
+		t.Fatalf("decode config: %v", err)
+	}
+	if cfg.DaemonServerURL != "http://localhost:8080" {
+		t.Fatalf("daemon_server_url: want local API origin, got %q", cfg.DaemonServerURL)
+	}
+	if cfg.DaemonAppURL != "http://localhost:3000" {
+		t.Fatalf("daemon_app_url: want local frontend origin, got %q", cfg.DaemonAppURL)
+	}
+}
+
 func TestGetConfigOmitsOfficialCloudDaemonSetup(t *testing.T) {
-	t.Setenv("MULTICA_PUBLIC_URL", "https://api.multica.ai")
-	t.Setenv("MULTICA_APP_URL", "")
-	t.Setenv("FRONTEND_ORIGIN", "https://multica.ai")
+	t.Setenv("OMAT_PUBLIC_URL", "https://api.ohmyagentteam.com")
+	t.Setenv("OMAT_APP_URL", "")
+	t.Setenv("FRONTEND_ORIGIN", "https://ohmyagentteam.com")
 
 	req := httptest.NewRequest(http.MethodGet, "/api/config", nil)
 	w := httptest.NewRecorder()
@@ -178,17 +203,17 @@ func TestGetConfigOmitsOfficialCloudDaemonSetup(t *testing.T) {
 
 // TestGetConfigOmitsCloudDaemonSetupWithoutPublicURL reproduces the production
 // regression behind the broken "Add a computer" command: the official cloud
-// frontend is multica.ai, but the deployment does not set MULTICA_PUBLIC_URL to
+// frontend is ohmyagentteam.com, but the deployment does not set OMAT_PUBLIC_URL to
 // the api host. Previously this fell through to the same-origin branch and
-// emitted daemon_server_url=https://multica.ai, which the dialog turned into
-// `multica setup self-host --server-url https://multica.ai` — pointing the
+// emitted daemon_server_url=https://ohmyagentteam.com, which the dialog turned into
+// `omat setup self-host --server-url https://ohmyagentteam.com` — pointing the
 // daemon's backend at the frontend (no /health, no WebSocket proxy). The
 // official cloud must be recognised by its frontend host alone so the daemon
-// setup URLs are omitted and the dialog falls back to `multica setup`.
+// setup URLs are omitted and the dialog falls back to `omat setup`.
 func TestGetConfigOmitsCloudDaemonSetupWithoutPublicURL(t *testing.T) {
-	t.Setenv("MULTICA_PUBLIC_URL", "")
-	t.Setenv("MULTICA_APP_URL", "")
-	t.Setenv("FRONTEND_ORIGIN", "https://multica.ai")
+	t.Setenv("OMAT_PUBLIC_URL", "")
+	t.Setenv("OMAT_APP_URL", "")
+	t.Setenv("FRONTEND_ORIGIN", "https://ohmyagentteam.com")
 
 	req := httptest.NewRequest(http.MethodGet, "/api/config", nil)
 	w := httptest.NewRecorder()
@@ -210,11 +235,11 @@ func TestGetConfigOmitsCloudDaemonSetupWithoutPublicURL(t *testing.T) {
 	}
 }
 
-// TestGetConfigOmitsCloudDaemonSetupForAppSubdomain covers the app.multica.ai
+// TestGetConfigOmitsCloudDaemonSetupForAppSubdomain covers the app.ohmyagentteam.com
 // frontend variant of the official cloud.
 func TestGetConfigOmitsCloudDaemonSetupForAppSubdomain(t *testing.T) {
-	t.Setenv("MULTICA_PUBLIC_URL", "")
-	t.Setenv("MULTICA_APP_URL", "https://app.multica.ai")
+	t.Setenv("OMAT_PUBLIC_URL", "")
+	t.Setenv("OMAT_APP_URL", "https://app.ohmyagentteam.com")
 	t.Setenv("FRONTEND_ORIGIN", "")
 
 	req := httptest.NewRequest(http.MethodGet, "/api/config", nil)
@@ -243,17 +268,17 @@ func TestURLHostEqualsCanonicalizesCommonHostForms(t *testing.T) {
 		raw  string
 		want bool
 	}{
-		{name: "full URL", raw: "https://api.multica.ai", want: true},
-		{name: "bare host", raw: "api.multica.ai", want: true},
-		{name: "host port", raw: "api.multica.ai:8080", want: true},
-		{name: "trailing dot", raw: "https://api.multica.ai.", want: true},
+		{name: "full URL", raw: "https://api.ohmyagentteam.com", want: true},
+		{name: "bare host", raw: "api.ohmyagentteam.com", want: true},
+		{name: "host port", raw: "api.ohmyagentteam.com:8080", want: true},
+		{name: "trailing dot", raw: "https://api.ohmyagentteam.com.", want: true},
 		{name: "different host", raw: "https://evil.example", want: false},
 		{name: "empty", raw: "", want: false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := urlHostEquals(tt.raw, "api.multica.ai"); got != tt.want {
+			if got := urlHostEquals(tt.raw, "api.ohmyagentteam.com"); got != tt.want {
 				t.Fatalf("urlHostEquals(%q): want %v, got %v", tt.raw, tt.want, got)
 			}
 		})

@@ -1,6 +1,6 @@
 -- name: CreateSquad :one
-INSERT INTO squad (workspace_id, name, description, leader_id, creator_id, avatar_url)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO squad (workspace_id, name, description, leader_id, creator_id, owner_id, avatar_url)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING *;
 
 -- name: GetSquad :one
@@ -45,6 +45,21 @@ ORDER BY
 -- name: ListAllSquads :many
 SELECT * FROM squad WHERE workspace_id = $1 ORDER BY created_at ASC;
 
+-- name: CountSquadsByOwner :one
+SELECT count(*) FROM squad
+WHERE workspace_id = $1 AND owner_id = $2;
+
+-- name: TransferSquadsToOwner :execrows
+UPDATE squad
+SET owner_id = $3, updated_at = now()
+WHERE workspace_id = $1 AND owner_id = $2;
+
+-- name: TransferSquadOwnership :one
+UPDATE squad
+SET owner_id = $2, updated_at = now()
+WHERE id = $1
+RETURNING *;
+
 -- name: UpdateSquad :one
 UPDATE squad SET
     name = COALESCE(sqlc.narg('name'), name),
@@ -52,6 +67,7 @@ UPDATE squad SET
     leader_id = COALESCE(sqlc.narg('leader_id'), leader_id),
     avatar_url = COALESCE(sqlc.narg('avatar_url'), avatar_url),
     instructions = COALESCE(sqlc.narg('instructions'), instructions),
+    owner_id = COALESCE(sqlc.narg('owner_id'), owner_id),
     updated_at = now()
 WHERE id = $1
 RETURNING *;

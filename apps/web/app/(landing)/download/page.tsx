@@ -9,13 +9,13 @@ import { DownloadClient } from "./download-client";
 export const revalidate = 300;
 
 export const metadata: Metadata = {
-  title: "Download Multica",
+  title: "Download OhMyAgentTeam",
   description:
-    "Download Multica for macOS, Windows, or Linux — or install the CLI for servers and remote dev boxes.",
+    "Download OhMyAgentTeam for macOS, Windows, or Linux — or install the CLI on another computer.",
   openGraph: {
-    title: "Download Multica",
+    title: "Download OhMyAgentTeam",
     description:
-      "Get the Multica desktop app with a bundled daemon, or install the CLI for servers and remote dev boxes.",
+      "Get the OhMyAgentTeam desktop app, or install the CLI on servers and remote computers.",
     url: "/download",
   },
   alternates: {

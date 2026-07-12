@@ -17,7 +17,14 @@
     "no_matches": "No projects match",
     "selected_one": "{{count}} selected",
     "selected_other": "{{count}} selected",
-    "clear_selection": "Clear selection"
+    "clear_selection": "Clear selection",
+    "empty_description": "A project is a shared delivery outcome. It brings related work items, people, and Agents into one place.",
+    "empty_project": "Project",
+    "empty_project_hint": "The outcome and context",
+    "empty_work_items": "Work items",
+    "empty_work_items_hint": "The work that moves it",
+    "empty_unassigned_hint": "Work items can stay unassigned to a project and be organized later.",
+    "view_work_items": "View all work items"
   },
   "table": {
     "name": "Name",
@@ -26,7 +33,8 @@
     "progress": "Progress",
     "lead": "Lead",
     "created": "Created",
-    "issues": "Issues"
+    "issues": "Work items",
+    "work_items_summary": "{{count}} work items · {{done}} done"
   },
   "status": {
     "planned": "Planned",
@@ -70,13 +78,72 @@
     "section_description": "Description",
     "description_placeholder": "Add description...",
     "description_hint": "Shared with agents as context for every task in this project.",
-    "empty_issues_title": "No issues linked",
-    "empty_issues_hint": "Create a new issue or assign existing ones to this project.",
-    "empty_issues_new_button": "New Issue",
-    "no_issues_yet": "No issues yet",
+    "empty_issues_title": "No work items in this project",
+    "empty_issues_hint": "Create a work item or assign an existing one to this project.",
+    "empty_issues_new_button": "New work item",
+    "no_issues_yet": "No work items in this project",
     "toast_link_copied": "Link copied",
     "toast_project_deleted": "Project deleted",
     "toast_move_issue_failed": "Failed to move issue"
+  },
+  "workspace": {
+    "tabs": {
+      "overview": "Overview",
+      "backlog": "Backlog",
+      "board": "Board",
+      "roadmap": "Roadmap",
+      "activity": "Activity"
+    },
+    "overview": {
+      "progress": "Progress",
+      "description": "Description",
+      "no_description": "No project description yet."
+    },
+    "backlog": {
+      "title": "Project backlog",
+      "summary": "{{epics}} epics · {{issues}} issues · {{subtasks}} subtasks",
+      "epic": "Epic",
+      "issue": "Issue",
+      "add_issue": "Add issue",
+      "add_subtask": "Add subtask",
+      "ungrouped": "Issues without epic",
+      "empty": "No backlog work yet."
+    },
+    "activity": {
+      "title": "Recent project activity",
+      "empty": "No project activity yet.",
+      "actions": {
+        "created": "Created the work item",
+        "status_changed": "Changed status",
+        "priority_changed": "Changed priority",
+        "assignee_changed": "Changed assignee",
+        "start_date_changed": "Changed the start date",
+        "due_date_changed": "Changed the due date",
+        "title_changed": "Renamed the work item",
+        "description_updated": "Updated the description",
+        "squad_leader_evaluated": "Squad leader evaluated the work",
+        "comment_created": "Added a comment",
+        "task_queued": "Agent task queued",
+        "task_dispatched": "Agent task assigned",
+        "task_running": "Agent is working",
+        "task_waiting_local_directory": "Waiting for local directory",
+        "task_deferred": "Agent task deferred",
+        "task_completed": "Agent task completed",
+        "task_failed": "Agent task failed",
+        "task_cancelled": "Agent task cancelled",
+        "updated": "Updated the work item"
+      }
+    },
+    "roadmap": {
+      "title": "Epic roadmap",
+      "summary": "{{epics}} epics · {{done}}/{{total}} issues complete",
+      "epic": "Epic",
+      "timeline": "Timeline and progress",
+      "start_not_set": "Start not set",
+      "due_not_set": "Due not set",
+      "done": "{{done}}/{{total}} done",
+      "empty": "Create an epic to start the roadmap."
+    }
   },
   "resources": {
     "section_header": "Resources",
@@ -122,12 +189,80 @@
     "cancel": "Cancel"
   },
   "picker": {
+    "loading": "Loading project…",
     "no_project": "No project",
     "remove": "Remove from project",
     "empty": "No projects yet"
   },
   "chip": {
     "fallback_label": "Project"
+  },
+  "epic": {
+    "title": "Epic",
+    "planning_container": "Planning container",
+    "create": "New epic",
+    "create_title": "Create epic",
+    "create_description": "Define the outcome before breaking it into executable work.",
+    "title_placeholder": "Outcome to deliver",
+    "description": "Goal and scope",
+    "description_placeholder": "What outcome should this epic deliver? What is in and out of scope?",
+    "success_criteria": "Success criteria",
+    "success_placeholder": "What observable result means this epic is complete?",
+    "project": "Project",
+    "owner": "Planning owner",
+    "unassigned": "Unassigned",
+    "lifecycle": "Lifecycle",
+    "health": "Health",
+    "health_none": "Not assessed",
+    "overview": "Overview",
+    "work_items": "Work items",
+    "updates": "Updates",
+    "progress": "Delivery progress",
+    "completion": "{{done}} of {{total}} issues done",
+    "blocked": "{{count}} blocked",
+    "status_distribution": "Status distribution",
+    "no_description": "No goal or scope has been written yet.",
+    "no_success": "No success criteria have been written yet.",
+    "no_work_items": "No work items in this epic yet.",
+    "add_issue": "Create backlog issue",
+    "attach_existing": "Add existing issue",
+    "detach": "Remove from epic",
+    "start_date": "Start date",
+    "target_date": "Target date",
+    "priority": "Importance",
+    "advisors": "Planning advisors",
+    "choose_agent": "Choose an Agent",
+    "advisor_prompt": "What should the Agent analyze?",
+    "analyze": "Ask Agent to analyze",
+    "advisor_queued": "Agent analysis queued",
+    "subscribers": "Subscribers",
+    "subscribe": "Subscribe",
+    "unsubscribe": "Unsubscribe",
+    "labels": "Labels",
+    "attachments": "Attachments",
+    "delete": "Delete epic",
+    "delete_confirm": "Delete this epic? Its work items will remain in the project without an epic.",
+    "created": "Epic created",
+    "create_failed": "Failed to create epic",
+    "update_failed": "Failed to update epic",
+    "load_failed": "Couldn't load this epic",
+    "load_failed_description": "It may have been removed, or the connection may be unavailable.",
+    "retry": "Try again",
+    "comment_placeholder": "Share a planning update or @mention an Agent...",
+    "send": "Post update",
+    "no_updates": "No planning updates yet.",
+    "statuses": {
+      "planned": "Planned",
+      "in_progress": "In progress",
+      "paused": "Paused",
+      "completed": "Completed",
+      "cancelled": "Cancelled"
+    },
+    "healths": {
+      "on_track": "On track",
+      "at_risk": "At risk",
+      "off_track": "Off track"
+    }
   },
   "toolbar": {
     "result_count_title": "Matching projects / all projects",

@@ -1,4 +1,5 @@
 import type { Label } from "./label";
+import type { Epic, QuickCreateCreatedItem } from "./epic";
 
 export type IssueStatus =
   | "backlog"
@@ -12,6 +13,8 @@ export type IssueStatus =
 export type IssuePriority = "urgent" | "high" | "medium" | "low" | "none";
 
 export type IssueAssigneeType = "member" | "agent" | "squad";
+
+export type IssueType = "epic" | "issue" | "subtask";
 
 export interface IssueReaction {
   id: string;
@@ -37,8 +40,12 @@ export interface Issue {
   workspace_id: string;
   number: number;
   identifier: string;
+  /** Defaults to `issue` when omitted by an older server. */
+  issue_type?: IssueType;
+  epic_id?: string | null;
   title: string;
   description: string | null;
+  acceptance_criteria?: string | null;
   status: IssueStatus;
   priority: IssuePriority;
   assignee_type: IssueAssigneeType | null;
@@ -53,7 +60,7 @@ export interface Issue {
   // finishes; see server/internal/handler/issue_child_done.go.
   stage: number | null;
   // Calendar days as date-only "YYYY-MM-DD" (no time, no timezone). Use the
-  // helpers in @multica/core/issues/date to format/compare — never `new Date()`
+  // helpers in @ohmyagentteam/core/issues/date to format/compare — never `new Date()`
   // + local formatting, which shifts the day by the viewer's offset.
   start_date: string | null;
   due_date: string | null;
@@ -62,4 +69,24 @@ export interface Issue {
   labels?: Label[];
   created_at: string;
   updated_at: string;
+}
+
+export interface QuickCreateIssueStatus {
+  task_id: string;
+  status: string;
+  mode?: string;
+  default_status?: string;
+  epics: Epic[];
+  issues: Issue[];
+  created_items: QuickCreateCreatedItem[];
+  epic_count: number;
+  issue_count: number;
+  subtask_count: number;
+  work_item_count: number;
+  agent_assignment_count: number;
+  member_assignment_count: number;
+  squad_assignment_count: number;
+  all_backlog: boolean;
+  terminal: boolean;
+  error?: string | null;
 }

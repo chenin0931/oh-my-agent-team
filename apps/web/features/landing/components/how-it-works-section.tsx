@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useAuthStore } from "@multica/core/auth";
+import { useAuthStore } from "@ohmyagentteam/core/auth";
 import { docsHrefForLocale, useLocale } from "../i18n";
 import { GitHubMark, githubUrl, heroButtonClassName } from "./shared";
 
@@ -12,10 +12,10 @@ export function HowItWorksSection() {
   return (
     <section id="how-it-works" className="bg-[#05070b] text-white">
       <div className="mx-auto max-w-[1320px] px-4 py-24 sm:px-6 sm:py-32 lg:px-8 lg:py-40">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/40">
+        <p className="text-[11px] font-semibold uppercase text-white/40">
           {t.howItWorks.label}
         </p>
-        <h2 className="mt-4 font-[family-name:var(--font-serif)] text-[2.6rem] leading-[1.05] tracking-[-0.03em] sm:text-[3.4rem] lg:text-[4.2rem]">
+        <h2 className="mt-4 font-[family-name:var(--font-serif)] text-[2.6rem] leading-[1.05] sm:text-[3.4rem] lg:text-[4.2rem]">
           {t.howItWorks.headlineMain}
           <br />
           <span className="text-white/40">{t.howItWorks.headlineFaded}</span>

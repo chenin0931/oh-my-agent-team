@@ -54,29 +54,31 @@ func createSquadAs(t *testing.T, userID, name, leaderID string) SquadResponse {
 	return resp
 }
 
-// TestCreateSquad_PlainMemberBecomesCreator verifies the gate change: a plain
-// workspace member (not owner/admin) can create a squad and is recorded as its
-// creator.
-func TestCreateSquad_PlainMemberBecomesCreator(t *testing.T) {
+// TestCreateSquad_PlainMemberBecomesOwner verifies a plain workspace member
+// can create a squad and becomes both its immutable creator and initial owner.
+func TestCreateSquad_PlainMemberBecomesOwner(t *testing.T) {
 	if testHandler == nil || testPool == nil {
 		t.Skip("database not available")
 	}
-	memberID := createPlainMember(t, "squad-creator@multica.test")
+	memberID := createPlainMember(t, "squad-creator@ohmyagentteam.test")
 	leaderID := createHandlerTestAgent(t, "squad-creator-leader", nil)
 
 	squad := createSquadAs(t, memberID, "Member Owned Squad", leaderID)
 	if squad.CreatorID != memberID {
 		t.Fatalf("expected creator_id=%s, got %s", memberID, squad.CreatorID)
 	}
+	if squad.OwnerID != memberID {
+		t.Fatalf("expected owner_id=%s, got %s", memberID, squad.OwnerID)
+	}
 }
 
-// TestManageSquad_CreatorCanManageOwn verifies a creator can update, add a
+// TestManageSquad_OwnerCanManageOwn verifies an owner can update, add a
 // member to, and archive their own squad.
-func TestManageSquad_CreatorCanManageOwn(t *testing.T) {
+func TestManageSquad_OwnerCanManageOwn(t *testing.T) {
 	if testHandler == nil || testPool == nil {
 		t.Skip("database not available")
 	}
-	memberID := createPlainMember(t, "squad-owner-manage@multica.test")
+	memberID := createPlainMember(t, "squad-owner-manage@ohmyagentteam.test")
 	leaderID := createHandlerTestAgent(t, "squad-owner-manage-leader", nil)
 	worker := createHandlerTestAgent(t, "squad-owner-manage-worker", nil)
 
@@ -110,14 +112,121 @@ func TestManageSquad_CreatorCanManageOwn(t *testing.T) {
 	}
 }
 
+func TestTransferSquadOwnership_ChangesManagementBoundary(t *testing.T) {
+	if testHandler == nil || testPool == nil {
+		t.Skip("database not available")
+	}
+	ownerID := createPlainMember(t, "squad-transfer-owner@ohmyagentteam.test")
+	nextOwnerID := createPlainMember(t, "squad-transfer-next@ohmyagentteam.test")
+	leaderID := createHandlerTestAgent(t, "squad-transfer-leader", nil)
+	squad := createSquadAs(t, ownerID, "Transferable Squad", leaderID)
+
+	w := httptest.NewRecorder()
+	testHandler.UpdateSquad(w, squadScopeReq(ownerID, "PATCH", "/api/squads", map[string]any{
+		"owner_id": nextOwnerID,
+	}, map[string]string{"id": squad.ID}))
+	if w.Code != http.StatusOK {
+		t.Fatalf("transfer owner: expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var transferred SquadResponse
+	if err := json.NewDecoder(w.Body).Decode(&transferred); err != nil {
+		t.Fatalf("decode transferred squad: %v", err)
+	}
+	if transferred.OwnerID != nextOwnerID {
+		t.Fatalf("expected owner_id=%s, got %s", nextOwnerID, transferred.OwnerID)
+	}
+	if transferred.CreatorID != ownerID {
+		t.Fatalf("creator audit changed: expected %s, got %s", ownerID, transferred.CreatorID)
+	}
+
+	w = httptest.NewRecorder()
+	testHandler.UpdateSquad(w, squadScopeReq(ownerID, "PATCH", "/api/squads", map[string]any{
+		"name": "Old owner cannot edit",
+	}, map[string]string{"id": squad.ID}))
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("old owner update: expected 403, got %d: %s", w.Code, w.Body.String())
+	}
+
+	w = httptest.NewRecorder()
+	testHandler.UpdateSquad(w, squadScopeReq(nextOwnerID, "PATCH", "/api/squads", map[string]any{
+		"name": "Managed By New Owner",
+	}, map[string]string{"id": squad.ID}))
+	if w.Code != http.StatusOK {
+		t.Fatalf("new owner update: expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestTransferSquadOwnership_RejectsNonMember(t *testing.T) {
+	if testHandler == nil || testPool == nil {
+		t.Skip("database not available")
+	}
+	ownerID := createPlainMember(t, "squad-invalid-owner@ohmyagentteam.test")
+	leaderID := createHandlerTestAgent(t, "squad-invalid-owner-leader", nil)
+	squad := createSquadAs(t, ownerID, "Protected Ownership", leaderID)
+
+	var outsiderID string
+	if err := testPool.QueryRow(context.Background(),
+		`INSERT INTO "user" (name, email) VALUES ('Outside User', 'squad-outsider@ohmyagentteam.test') RETURNING id`,
+	).Scan(&outsiderID); err != nil {
+		t.Fatalf("create outsider: %v", err)
+	}
+	t.Cleanup(func() {
+		testPool.Exec(context.Background(), `DELETE FROM "user" WHERE id = $1`, outsiderID)
+	})
+
+	w := httptest.NewRecorder()
+	testHandler.UpdateSquad(w, squadScopeReq(ownerID, "PATCH", "/api/squads", map[string]any{
+		"owner_id": outsiderID,
+	}, map[string]string{"id": squad.ID}))
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("non-member owner: expected 400, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestRemoveMember_TransfersOwnedSquads(t *testing.T) {
+	if testHandler == nil || testPool == nil {
+		t.Skip("database not available")
+	}
+	ownerID := createPlainMember(t, "squad-departing-owner@ohmyagentteam.test")
+	leaderID := createHandlerTestAgent(t, "squad-departing-owner-leader", nil)
+	squad := createSquadAs(t, ownerID, "Departure Safe Squad", leaderID)
+
+	var memberID string
+	if err := testPool.QueryRow(context.Background(),
+		`SELECT id FROM member WHERE workspace_id = $1 AND user_id = $2`,
+		testWorkspaceID, ownerID,
+	).Scan(&memberID); err != nil {
+		t.Fatalf("load departing member: %v", err)
+	}
+	if _, err := testHandler.revokeAndRemoveMember(
+		context.Background(),
+		parseUUID(testWorkspaceID),
+		parseUUID(ownerID),
+		parseUUID(memberID),
+		parseUUID(testUserID),
+	); err != nil {
+		t.Fatalf("remove member: %v", err)
+	}
+
+	var actualOwner string
+	if err := testPool.QueryRow(context.Background(),
+		`SELECT owner_id FROM squad WHERE id = $1`, squad.ID,
+	).Scan(&actualOwner); err != nil {
+		t.Fatalf("load transferred owner: %v", err)
+	}
+	if actualOwner != testUserID {
+		t.Fatalf("expected workspace owner %s to inherit squad, got %s", testUserID, actualOwner)
+	}
+}
+
 // TestManageSquad_StrangerMemberForbidden verifies a plain member who did not
 // create the squad cannot manage it, while a workspace admin/owner still can.
 func TestManageSquad_StrangerMemberForbidden(t *testing.T) {
 	if testHandler == nil || testPool == nil {
 		t.Skip("database not available")
 	}
-	creatorID := createPlainMember(t, "squad-stranger-creator@multica.test")
-	strangerID := createPlainMember(t, "squad-stranger-other@multica.test")
+	creatorID := createPlainMember(t, "squad-stranger-creator@ohmyagentteam.test")
+	strangerID := createPlainMember(t, "squad-stranger-other@ohmyagentteam.test")
 	leaderID := createHandlerTestAgent(t, "squad-stranger-leader", nil)
 
 	squad := createSquadAs(t, creatorID, "Stranger Test Squad", leaderID)

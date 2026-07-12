@@ -15,7 +15,7 @@
  * Listing-level only; use-inbox-realtime wires these into the WS layer.
  */
 import type { QueryClient } from "@tanstack/react-query";
-import type { InboxItem, IssueStatus } from "@multica/core/types";
+import type { InboxItem, IssueStatus } from "@ohmyagentteam/core/types";
 import { inboxKeys } from "@/data/queries/inbox";
 
 export function patchInboxIssueStatus(
@@ -26,7 +26,10 @@ export function patchInboxIssueStatus(
 ) {
   qc.setQueryData<InboxItem[]>(inboxKeys.list(wsId), (old) =>
     old?.map((i) =>
-      i.issue_id === issueId ? { ...i, issue_status: status } : i,
+      (i.target_type ?? "issue") === "issue" &&
+      (i.target_id ?? i.issue_id) === issueId
+        ? { ...i, issue_status: status }
+        : i,
     ),
   );
 }
@@ -37,6 +40,25 @@ export function dropInboxItemsByIssue(
   issueId: string,
 ) {
   qc.setQueryData<InboxItem[]>(inboxKeys.list(wsId), (old) =>
-    old?.filter((i) => i.issue_id !== issueId),
+    old?.filter(
+      (i) =>
+        !(
+          (i.target_type ?? "issue") === "issue" &&
+          (i.target_id ?? i.issue_id) === issueId
+        ),
+    ),
+  );
+}
+
+export function dropInboxItemsByEpic(
+  qc: QueryClient,
+  wsId: string,
+  epicId: string,
+) {
+  qc.setQueryData<InboxItem[]>(inboxKeys.list(wsId), (old) =>
+    old?.filter(
+      (item) =>
+        !(item.target_type === "epic" && item.target_id === epicId),
+    ),
   );
 }

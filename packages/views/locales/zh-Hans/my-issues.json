@@ -1,9 +1,9 @@
 {
   "page": {
-    "breadcrumb": "我的 issue",
+    "breadcrumb": "我负责的工作",
     "workspace_fallback": "工作区",
-    "empty_title": "没有分配给你的 issue",
-    "empty_description": "你创建或被分配到的 issue 会显示在这里。"
+    "empty_title": "当前没有需要你关注的工作",
+    "empty_description": "你负责、创建或委派给自己 Agent 的工作会显示在这里。"
   },
   "header": {
     "scope": {

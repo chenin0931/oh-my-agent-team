@@ -11,6 +11,43 @@
     "list_load_failed_default": "エージェント一覧の取得中に問題が発生しました。",
     "try_again": "再試行"
   },
+  "network": {
+    "page_title": "コラボレーションネットワーク",
+    "view_network": "ネットワーク",
+    "view_directory": "一覧",
+    "metrics": {
+      "people": "メンバー",
+      "agents": "エージェント",
+      "squads": "スクワッド",
+      "active_work": "進行中の作業",
+      "capacity": "オンライン能力",
+      "shared_agents": "共有エージェント",
+      "online_hint": "{{count}} オンライン",
+      "working_hint": "{{count}} 稼働中"
+    },
+    "people_title": "メンバーと所有エージェント",
+    "people_subtitle": "所有関係、可用性、委任された作業をまとめて表示します。",
+    "my_team_title": "自分のチーム",
+    "my_team_description": "所有するエージェント、スクワッド、委任された作業を表示します。",
+    "my_team_empty": "このワークスペースにメンバープロフィールがありません。",
+    "other_teams_title": "ほかの人のチーム",
+    "other_teams_description": "各メンバーがネットワークに接続したエージェントとスクワッドの所有者として表示されます。",
+    "other_teams_empty": "ほかのメンバーはまだ参加していません。",
+    "workload_summary": "直接 {{direct}} · 委任 {{delegated}}",
+    "no_owned_agents": "所有エージェントなし",
+    "no_owned_team_assets": "エージェントやスクワッドはまだありません",
+    "unowned_agents": "所有者なし",
+    "squads_title": "スクワッド",
+    "no_leader": "リーダーなし",
+    "member_count_other": "{{count}} メンバー",
+    "no_squads": "アクティブなスクワッドなし",
+    "capacity_title": "実行能力",
+    "agent_count_other": "{{count}} エージェント",
+    "no_capacity": "ランタイム未接続",
+    "shared": "共有",
+    "squad_asset": "スクワッド",
+    "active_issue_count_other": "{{count}} 件の進行中作業"
+  },
   "scope": {
     "mine": "自分のもの",
     "all": "すべて",
@@ -40,7 +77,7 @@
   },
   "empty": {
     "title": "まだエージェントがいません",
-    "description": "チームメイトと同じように、エージェントを作成してイシューを割り当てましょう。ローカルエージェントは自分のマシンで、クラウドエージェントは Multica のランタイムで実行されます。"
+    "description": "チームメイトと同じように、エージェントを作成してイシューを割り当てましょう。ローカルエージェントは自分のマシンで、クラウドエージェントは OhMyAgentTeam のランタイムで実行されます。"
   },
   "no_matches": {
     "title": "一致する結果なし",
@@ -242,6 +279,9 @@
     "runtime_search_placeholder": "マシンを検索…",
     "runtime_no_results": "一致するマシンがありません",
     "runtime_group_online": "{{online}}/{{total}} オンライン",
+    "no_runtime_title": "まず実行能力を接続してください",
+    "no_runtime_description": "エージェントが作業を受け取るにはオンラインの CLI ランタイムが必要です。",
+    "open_execution_tools": "実行ツールへ",
     "duplicate_copy_suffix": " (コピー)",
     "create": "作成",
     "creating": "作成中...",

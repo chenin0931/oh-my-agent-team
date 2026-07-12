@@ -140,6 +140,13 @@ export default function WorkspaceLayout() {
           }}
         />
         <Stack.Screen
+          name="epic/[id]"
+          options={{
+            title: "Epic",
+            headerBackTitle: "Back",
+          }}
+        />
+        <Stack.Screen
           name="project/[id]"
           options={{
             title: "Project",

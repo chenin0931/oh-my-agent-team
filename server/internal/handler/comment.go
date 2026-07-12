@@ -12,11 +12,11 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/multica-ai/multica/server/internal/logger"
-	"github.com/multica-ai/multica/server/internal/service"
-	"github.com/multica-ai/multica/server/internal/util"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
-	"github.com/multica-ai/multica/server/pkg/protocol"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/logger"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/service"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/util"
+	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
+	"github.com/chenin0931/oh-my-agent-team/server/pkg/protocol"
 )
 
 type CommentResponse struct {
@@ -302,7 +302,7 @@ const commentHardCap = 2000
 //
 // Both values must be set together so the cursor can tie-break entries
 // landing in the same microsecond. The cursor for the next page is
-// emitted via the X-Multica-Next-Before / X-Multica-Next-Before-Id
+// emitted via the X-OhMyAgentTeam-Next-Before / X-OhMyAgentTeam-Next-Before-Id
 // response headers.
 //
 // Combination rules (kept narrow on purpose — Elon flagged the matrix risk):
@@ -328,7 +328,7 @@ const commentHardCap = 2000
 // sits at the tail, closest to "now" in an agent prompt.
 func (h *Handler) ListComments(w http.ResponseWriter, r *http.Request) {
 	issueID := chi.URLParam(r, "id")
-	issue, ok := h.loadIssueForUser(w, r, issueID)
+	issue, ok := h.loadCollaborativeTargetForRoute(w, r, issueID)
 	if !ok {
 		return
 	}
@@ -603,8 +603,8 @@ func (h *Handler) ListComments(w http.ResponseWriter, r *http.Request) {
 	// body so the default flat-array response shape — which the desktop UI
 	// and existing callers depend on — is unchanged.
 	if result.NextBefore != "" && result.NextBeforeID != "" {
-		w.Header().Set("X-Multica-Next-Before", result.NextBefore)
-		w.Header().Set("X-Multica-Next-Before-Id", result.NextBeforeID)
+		w.Header().Set("X-OhMyAgentTeam-Next-Before", result.NextBefore)
+		w.Header().Set("X-OhMyAgentTeam-Next-Before-Id", result.NextBeforeID)
 	}
 
 	writeJSON(w, http.StatusOK, resp)
@@ -1078,7 +1078,7 @@ func commentAgentTriggerToResponse(trigger commentAgentTrigger) CommentTriggerAg
 
 func (h *Handler) PreviewCommentTriggers(w http.ResponseWriter, r *http.Request) {
 	issueID := chi.URLParam(r, "id")
-	issue, ok := h.loadIssueForUser(w, r, issueID)
+	issue, ok := h.loadExecutableIssueForUser(w, r, issueID)
 	if !ok {
 		return
 	}
@@ -1146,7 +1146,16 @@ func (h *Handler) PreviewCommentTriggers(w http.ResponseWriter, r *http.Request)
 
 	actorType, actorID := h.resolveActor(r, userID, uuidToString(issue.WorkspaceID))
 	opts.OriginatorUserID = h.invokeOriginatorFromRequest(r, actorType, actorID)
-	triggers := h.computeCommentAgentTriggers(r.Context(), issue, content, parentComment, actorType, actorID, opts)
+	var triggers []commentAgentTrigger
+	if defaultIssueType(issue.IssueType) == service.IssueTypeEpic {
+		for _, trigger := range h.resolveMentionedAgentCommentTriggers(r.Context(), issue, util.ParseMentions(content), actorType, actorID, opts) {
+			if trigger.Source == commentTriggerSourceMentionAgent {
+				triggers = append(triggers, trigger)
+			}
+		}
+	} else {
+		triggers = h.computeCommentAgentTriggers(r.Context(), issue, content, parentComment, actorType, actorID, opts)
+	}
 	resp := CommentTriggerPreviewResponse{Agents: make([]CommentTriggerAgentResponse, 0, len(triggers))}
 	for _, trigger := range triggers {
 		resp.Agents = append(resp.Agents, commentAgentTriggerToResponse(trigger))
@@ -1156,7 +1165,7 @@ func (h *Handler) PreviewCommentTriggers(w http.ResponseWriter, r *http.Request)
 
 func (h *Handler) CreateComment(w http.ResponseWriter, r *http.Request) {
 	issueID := chi.URLParam(r, "id")
-	issue, ok := h.loadIssueForUser(w, r, issueID)
+	issue, ok := h.loadCollaborativeTargetForRoute(w, r, issueID)
 	if !ok {
 		return
 	}
@@ -1178,6 +1187,14 @@ func (h *Handler) CreateComment(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.Type == "" {
 		req.Type = "comment"
+	}
+	if defaultIssueType(issue.IssueType) == service.IssueTypeEpic {
+		for _, mention := range util.ParseMentions(req.Content) {
+			if mention.Type == "squad" {
+				writeError(w, http.StatusBadRequest, "epics can mention advisor agents, but cannot mention squads")
+				return
+			}
+		}
 	}
 
 	var parentID pgtype.UUID
@@ -1208,6 +1225,26 @@ func (h *Handler) CreateComment(w http.ResponseWriter, r *http.Request) {
 
 	// Determine author identity: agent (via X-Agent-ID header) or member.
 	authorType, authorID := h.resolveActor(r, userID, uuidToString(issue.WorkspaceID))
+	advisorTask, _, isAdvisorTask := h.memberAssigneeAdvisorTaskFromRequest(r)
+	if isAdvisorTask {
+		if !advisorTask.IssueID.Valid || advisorTask.IssueID != issue.ID {
+			writeError(w, http.StatusForbidden, "advisor tasks can only comment on their assigned issue")
+			return
+		}
+		if req.Type != "" && req.Type != "comment" {
+			writeError(w, http.StatusForbidden, "advisor tasks can only add ordinary comments")
+			return
+		}
+		if strings.TrimSpace(req.Content) == "" {
+			writeJSON(w, http.StatusOK, map[string]any{"skipped": true})
+			return
+		}
+	}
+	if defaultIssueType(issue.IssueType) == service.IssueTypeEpic && authorType == "agent" &&
+		(!isAdvisorTask || !service.IsEpicAdvisorTask(advisorTask)) {
+		writeError(w, http.StatusForbidden, "agents can comment on epics only from an explicit epic advisor task")
+		return
+	}
 
 	// Defense against resumed-session drift: when an agent posts from inside a
 	// comment-triggered task AND the comment is being posted on that same
@@ -1263,6 +1300,17 @@ func (h *Handler) CreateComment(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+	if isAdvisorTask && sourceTaskID.Valid {
+		hasComment, err := h.Queries.HasCommentBySourceTaskID(r.Context(), sourceTaskID)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to verify advisor comment limit")
+			return
+		}
+		if hasComment {
+			writeError(w, http.StatusConflict, "advisor tasks can leave at most one comment")
+			return
+		}
+	}
 
 	// NOTE: Comment content is stored as Markdown source. XSS is handled at the
 	// rendering layer (rehype-sanitize) and at the editor layer
@@ -1310,7 +1358,14 @@ func (h *Handler) CreateComment(w http.ResponseWriter, r *http.Request) {
 	resp := commentToResponse(comment, nil, groupedAtt[uuidToString(comment.ID)])
 	slog.Info("comment created", append(logger.RequestAttrs(r), "comment_id", uuidToString(comment.ID), "issue_id", issueID)...)
 	h.publish(protocol.EventCommentCreated, uuidToString(issue.WorkspaceID), authorType, authorID, map[string]any{
-		"comment":             resp,
+		"comment": resp,
+		"target_type": func() string {
+			if defaultIssueType(issue.IssueType) == service.IssueTypeEpic {
+				return "epic"
+			}
+			return "issue"
+		}(),
+		"target_id":           uuidToString(issue.ID),
 		"issue_title":         issue.Title,
 		"issue_assignee_type": textToPtr(issue.AssigneeType),
 		"issue_assignee_id":   uuidToPtr(issue.AssigneeID),
@@ -1327,9 +1382,35 @@ func (h *Handler) CreateComment(w http.ResponseWriter, r *http.Request) {
 	}
 
 	originatorUserID := h.invokeOriginatorFromRequest(r, authorType, authorID)
-	h.triggerTasksForComment(r.Context(), issue, comment, parentComment, authorType, authorID, originatorUserID, suppressAgentIDs)
+	if defaultIssueType(issue.IssueType) == service.IssueTypeEpic && !isAdvisorTask {
+		h.triggerEpicAdvisorMentions(r.Context(), issue, req.Content, authorType, authorID, originatorUserID, comment.ID)
+	} else if !isAdvisorTask {
+		h.triggerTasksForComment(r.Context(), issue, comment, parentComment, authorType, authorID, originatorUserID, suppressAgentIDs)
+	}
 
 	writeJSON(w, http.StatusCreated, resp)
+}
+
+func (h *Handler) triggerEpicAdvisorMentions(ctx context.Context, epic db.Issue, content, authorType, authorID, originatorUserID string, excludeCommentID pgtype.UUID) {
+	if authorType != "member" {
+		return
+	}
+	originatorID, err := util.ParseUUID(originatorUserID)
+	if err != nil {
+		return
+	}
+	for _, trigger := range h.resolveMentionedAgentCommentTriggers(ctx, epic, util.ParseMentions(content), authorType, authorID, commentTriggerComputeOptions{
+		ExcludeTriggerCommentID: excludeCommentID,
+		OriginatorUserID:        originatorUserID,
+	}) {
+		if trigger.Source != commentTriggerSourceMentionAgent || trigger.AlreadyPending {
+			continue
+		}
+		instruction := "Respond to the latest explicit @mention on this epic with at most one concrete planning recommendation. Do not change the epic or any work item."
+		if _, err := h.TaskService.EnqueueEpicAdvisor(ctx, epic, trigger.Agent.ID, originatorID, instruction); err != nil {
+			slog.Warn("enqueue epic advisor mention failed", "epic_id", uuidToString(epic.ID), "agent_id", uuidToString(trigger.Agent.ID), "error", err)
+		}
+	}
 }
 
 // noteCommentPrefix marks a comment as a human-only note. A comment whose first
@@ -1463,6 +1544,11 @@ func (h *Handler) enqueueCommentAgentTriggers(ctx context.Context, issue db.Issu
 }
 
 func (h *Handler) computeCommentAgentTriggers(ctx context.Context, issue db.Issue, content string, parentComment *db.Comment, actorType, actorID string, opts commentTriggerComputeOptions) []commentAgentTrigger {
+	// Epic discussion never enters the executable issue conversation router.
+	// Explicit Epic advisor actions use their own restricted task context.
+	if defaultIssueType(issue.IssueType) == service.IssueTypeEpic {
+		return nil
+	}
 	if isNoteComment(content) {
 		return nil
 	}
@@ -1889,6 +1975,9 @@ func (h *Handler) UpdateComment(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "comment not found")
 		return
 	}
+	if h.rejectMemberAssigneeAdvisorMutation(w, r, existing.IssueID, false) {
+		return
+	}
 
 	member, ok := h.workspaceMember(w, r, workspaceID)
 	if !ok {
@@ -1915,6 +2004,14 @@ func (h *Handler) UpdateComment(w http.ResponseWriter, r *http.Request) {
 	if req.Content == "" {
 		writeError(w, http.StatusBadRequest, "content is required")
 		return
+	}
+	if h.targetTypeForIssueID(r.Context(), existing.IssueID) == "epic" {
+		for _, mention := range util.ParseMentions(req.Content) {
+			if mention.Type == "squad" {
+				writeError(w, http.StatusBadRequest, "epics can mention advisor agents, but cannot mention squads")
+				return
+			}
+		}
 	}
 
 	var attachmentIDs []pgtype.UUID
@@ -1966,7 +2063,10 @@ func (h *Handler) UpdateComment(w http.ResponseWriter, r *http.Request) {
 	cid := uuidToString(comment.ID)
 	resp := commentToResponse(comment, grouped[cid], groupedAtt[cid])
 	slog.Info("comment updated", append(logger.RequestAttrs(r), "comment_id", commentId)...)
-	h.publish(protocol.EventCommentUpdated, workspaceID, actorType, actorID, map[string]any{"comment": resp})
+	targetType := h.targetTypeForIssueID(r.Context(), existing.IssueID)
+	h.publish(protocol.EventCommentUpdated, workspaceID, actorType, actorID, map[string]any{
+		"comment": resp, "target_type": targetType, "target_id": uuidToString(existing.IssueID),
+	})
 
 	if oldContent != comment.Content {
 		if err := h.TaskService.CancelTasksByTriggerComment(r.Context(), existing.ID); err != nil {
@@ -1985,7 +2085,12 @@ func (h *Handler) UpdateComment(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
-			h.triggerTasksForComment(r.Context(), issue, comment, parentComment, actorType, actorID, h.invokeOriginatorFromRequest(r, actorType, actorID), suppressAgentIDs)
+			originatorUserID := h.invokeOriginatorFromRequest(r, actorType, actorID)
+			if defaultIssueType(issue.IssueType) == service.IssueTypeEpic {
+				h.triggerEpicAdvisorMentions(r.Context(), issue, comment.Content, actorType, actorID, originatorUserID, comment.ID)
+			} else {
+				h.triggerTasksForComment(r.Context(), issue, comment, parentComment, actorType, actorID, originatorUserID, suppressAgentIDs)
+			}
 		}
 	}
 
@@ -2017,6 +2122,9 @@ func (h *Handler) DeleteComment(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		writeError(w, http.StatusNotFound, "comment not found")
+		return
+	}
+	if h.rejectMemberAssigneeAdvisorMutation(w, r, comment.IssueID, false) {
 		return
 	}
 
@@ -2056,8 +2164,10 @@ func (h *Handler) DeleteComment(w http.ResponseWriter, r *http.Request) {
 	h.deleteS3Objects(r.Context(), attachmentURLs)
 	slog.Info("comment deleted", append(logger.RequestAttrs(r), "comment_id", commentId, "issue_id", uuidToString(comment.IssueID))...)
 	h.publish(protocol.EventCommentDeleted, workspaceID, actorType, actorID, map[string]any{
-		"comment_id": uuidToString(comment.ID),
-		"issue_id":   uuidToString(comment.IssueID),
+		"comment_id":  uuidToString(comment.ID),
+		"issue_id":    uuidToString(comment.IssueID),
+		"target_type": h.targetTypeForIssueID(r.Context(), comment.IssueID),
+		"target_id":   uuidToString(comment.IssueID),
 	})
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -2104,7 +2214,11 @@ func (h *Handler) ResolveComment(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	if h.rejectMemberAssigneeAdvisorMutation(w, r, comment.IssueID, false) {
+		return
+	}
 	wasResolved := comment.ResolvedAt.Valid
+	targetType := h.targetTypeForIssueID(r.Context(), comment.IssueID)
 
 	actorUUID, err := util.ParseUUID(actorID)
 	if err != nil {
@@ -2162,7 +2276,9 @@ func (h *Handler) ResolveComment(w http.ResponseWriter, r *http.Request) {
 		clearedAtt := h.groupAttachments(r, []pgtype.UUID{c.ID})
 		clearedResp := commentToResponse(c, clearedReactions[clearedID], clearedAtt[clearedID])
 		slog.Info("comment unresolved (replaced)", append(logger.RequestAttrs(r), "comment_id", clearedID)...)
-		h.publish(protocol.EventCommentUnresolved, workspaceID, actorType, actorID, map[string]any{"comment": clearedResp})
+		h.publish(protocol.EventCommentUnresolved, workspaceID, actorType, actorID, map[string]any{
+			"comment": clearedResp, "target_type": targetType, "target_id": uuidToString(comment.IssueID),
+		})
 	}
 
 	grouped := h.groupReactions(r, []pgtype.UUID{updated.ID})
@@ -2175,7 +2291,9 @@ func (h *Handler) ResolveComment(w http.ResponseWriter, r *http.Request) {
 	// still get their own events above — those rows did change.
 	if !wasResolved {
 		slog.Info("comment resolved", append(logger.RequestAttrs(r), "comment_id", cid)...)
-		h.publish(protocol.EventCommentResolved, workspaceID, actorType, actorID, map[string]any{"comment": resp})
+		h.publish(protocol.EventCommentResolved, workspaceID, actorType, actorID, map[string]any{
+			"comment": resp, "target_type": targetType, "target_id": uuidToString(comment.IssueID),
+		})
 	}
 	writeJSON(w, http.StatusOK, resp)
 }
@@ -2185,7 +2303,11 @@ func (h *Handler) UnresolveComment(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	if h.rejectMemberAssigneeAdvisorMutation(w, r, comment.IssueID, false) {
+		return
+	}
 	wasResolved := comment.ResolvedAt.Valid
+	targetType := h.targetTypeForIssueID(r.Context(), comment.IssueID)
 
 	updated, err := h.Queries.UnresolveComment(r.Context(), comment.ID)
 	if err != nil {
@@ -2201,7 +2323,9 @@ func (h *Handler) UnresolveComment(w http.ResponseWriter, r *http.Request) {
 
 	if wasResolved {
 		slog.Info("comment unresolved", append(logger.RequestAttrs(r), "comment_id", cid)...)
-		h.publish(protocol.EventCommentUnresolved, workspaceID, actorType, actorID, map[string]any{"comment": resp})
+		h.publish(protocol.EventCommentUnresolved, workspaceID, actorType, actorID, map[string]any{
+			"comment": resp, "target_type": targetType, "target_id": uuidToString(comment.IssueID),
+		})
 	}
 	writeJSON(w, http.StatusOK, resp)
 }

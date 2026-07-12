@@ -3,20 +3,21 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { sanitizeNextUrl, useAuthStore } from "@multica/core/auth";
-import { workspaceKeys } from "@multica/core/workspace/queries";
-import { paths, resolvePostAuthDestination } from "@multica/core/paths";
-import { api } from "@multica/core/api";
-import { validateCliCallback, redirectToCliCallback } from "@multica/views/auth";
+import { sanitizeNextUrl, useAuthStore } from "@ohmyagentteam/core/auth";
+import { workspaceKeys } from "@ohmyagentteam/core/workspace/queries";
+import { paths, resolvePostAuthDestination } from "@ohmyagentteam/core/paths";
+import { api } from "@ohmyagentteam/core/api";
+import { validateCliCallback, redirectToCliCallback } from "@ohmyagentteam/views/auth";
 import {
   Card,
   CardHeader,
   CardTitle,
   CardDescription,
   CardContent,
-} from "@multica/ui/components/ui/card";
-import { Button } from "@multica/ui/components/ui/button";
+} from "@ohmyagentteam/ui/components/ui/card";
+import { Button } from "@ohmyagentteam/ui/components/ui/button";
 import { Loader2 } from "lucide-react";
+import { BRAND_DEEP_LINK_SCHEME, BRAND_NAME } from "@ohmyagentteam/core/brand";
 
 function CallbackContent() {
   const router = useRouter();
@@ -48,7 +49,7 @@ function CallbackContent() {
     const nextUrl = sanitizeNextUrl(nextPart ? nextPart.slice(5) : null);
 
     // CLI callback params — carried across the Google OAuth round-trip so
-    // headless/WSL2 `multica login` can receive the JWT after browser-based
+    // headless/WSL2 `omat login` can receive the JWT after browser-based
     // Google auth completes.
     const cliCallbackPart = stateParts.find((p) => p.startsWith("cli_callback:"));
     const cliStatePart = stateParts.find((p) => p.startsWith("cli_state:"));
@@ -85,7 +86,7 @@ function CallbackContent() {
         .googleLogin(code, redirectUri)
         .then(({ token }) => {
           setDesktopToken(token);
-          window.location.href = `multica://auth/callback?token=${encodeURIComponent(token)}`;
+          window.location.href = `${BRAND_DEEP_LINK_SCHEME}://auth/callback?token=${encodeURIComponent(token)}`;
         })
         .catch((err) => {
           setError(err instanceof Error ? err.message : "Login failed");
@@ -93,10 +94,9 @@ function CallbackContent() {
     } else {
       // Normal web flow
       loginWithGoogle(code, redirectUri)
-        .then(async (loggedInUser) => {
+        .then(async () => {
           const wsList = await api.listWorkspaces();
           qc.setQueryData(workspaceKeys.list(), wsList);
-          const onboarded = loggedInUser.onboarded_at != null;
 
           // 1. nextUrl wins: a `next=/invite/<id>` always survives the OAuth
           //    round-trip — the user clicked a specific link and we should
@@ -106,14 +106,10 @@ function CallbackContent() {
             return;
           }
 
-          // 2. Un-onboarded users may have pending invitations on their
-          //    email even when no `next=` was carried (came from a fresh
-          //    login on app.multica.ai instead of clicking the email link,
-          //    or `state` was lost across the round-trip). Look them up by
-          //    email and route to the batch /invitations page if any.
-          //    Already-onboarded users skip this lookup — their new invites
-          //    surface in the sidebar dropdown, not as a forced wall.
-          if (!onboarded) {
+          // 2. A user without a workspace may already have pending invites.
+          //    Surface those before asking them to create a workspace. Users
+          //    who already have a workspace see later invites in the sidebar.
+          if (wsList.length === 0) {
             try {
               const invites = await api.listMyInvitations();
               if (invites.length > 0) {
@@ -125,17 +121,12 @@ function CallbackContent() {
               // Network blip on the invite lookup is non-fatal — fall through
               // to the normal post-auth destination so the user isn't stuck
               // on a blank callback screen. Worst case they land on
-              // /onboarding and the sidebar will surface invites later.
+              // workspace creation and the sidebar can surface invites later.
             }
           }
 
-          // 3. Default: hand off to the resolver (onboarding for first-timers,
-          //    first workspace for returning users, /workspaces/new for
-          //    onboarded users with zero workspaces). Source-attribution
-          //    backfill for onboarded users with no recorded source is
-          //    handled by `<SourceBackfillModal />` inside the dashboard
-          //    shell — not a route detour, so we route straight to dest.
-          router.push(resolvePostAuthDestination(wsList, onboarded));
+          // 3. Default: enter the first workspace or create one.
+          router.push(resolvePostAuthDestination(wsList));
         })
         .catch((err) => {
           setError(err instanceof Error ? err.message : "Login failed");
@@ -148,9 +139,9 @@ function CallbackContent() {
       <div className="flex min-h-screen items-center justify-center">
         <Card className="w-full max-w-sm">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Opening Multica</CardTitle>
+            <CardTitle className="font-serif text-2xl">Opening {BRAND_NAME}</CardTitle>
             <CardDescription>
-              You should see a prompt to open the Multica desktop app. If
+              You should see a prompt to open the {BRAND_NAME} desktop app. If
               nothing happens, click the button below.
             </CardDescription>
           </CardHeader>
@@ -158,10 +149,10 @@ function CallbackContent() {
             <Button
               variant="outline"
               onClick={() => {
-                window.location.href = `multica://auth/callback?token=${encodeURIComponent(desktopToken)}`;
+                window.location.href = `${BRAND_DEEP_LINK_SCHEME}://auth/callback?token=${encodeURIComponent(desktopToken)}`;
               }}
             >
-              Open Multica Desktop
+              Open {BRAND_NAME} Desktop
             </Button>
           </CardContent>
         </Card>

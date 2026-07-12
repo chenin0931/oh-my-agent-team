@@ -16,12 +16,12 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/multica-ai/multica/server/internal/auth"
-	"github.com/multica-ai/multica/server/internal/daemonws"
-	"github.com/multica-ai/multica/server/internal/middleware"
-	"github.com/multica-ai/multica/server/internal/service"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
-	"github.com/multica-ai/multica/server/pkg/protocol"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/auth"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/daemonws"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/middleware"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/service"
+	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
+	"github.com/chenin0931/oh-my-agent-team/server/pkg/protocol"
 )
 
 func TestLogClaimEndpointSlowIncludesPayloadFields(t *testing.T) {
@@ -2602,7 +2602,7 @@ func TestClaimTaskByRuntime_TaskWorkspaceMismatch_CancelsAndRejects(t *testing.T
 // comment, threaded under the trigger. Before the fix, CompleteTask exempted
 // comment-triggered tasks from the auto-synthesis path, so a Claude Code /
 // Codex / etc. agent that ended its run with only terminal text (no
-// `multica issue comment add` call) left the user staring at a "Completed"
+// `omat issue comment add` call) left the user staring at a "Completed"
 // badge with no reply.
 func TestCompleteTask_CommentTriggered_SynthesizesCommentWhenAgentSilent(t *testing.T) {
 	if testHandler == nil {
@@ -2925,14 +2925,163 @@ func TestCompleteTask_AssignmentTriggered_DoesNotSuppressTrivialDoneOutput(t *te
 	}
 }
 
+func TestCompleteTask_MemberAssigneeAdvisorSuppressesEmptyAndTrivialOutput(t *testing.T) {
+	if testHandler == nil {
+		t.Skip("database not available")
+	}
+
+	ctx := context.Background()
+
+	var agentID, runtimeID string
+	if err := testPool.QueryRow(ctx, `
+		SELECT a.id, a.runtime_id FROM agent a WHERE a.workspace_id = $1 LIMIT 1
+	`, testWorkspaceID).Scan(&agentID, &runtimeID); err != nil {
+		t.Fatalf("setup: get agent: %v", err)
+	}
+
+	for _, tc := range []struct {
+		name   string
+		output string
+	}{
+		{name: "empty", output: "   \n\t"},
+		{name: "trivial done", output: "Done."},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var issueID string
+			if err := testPool.QueryRow(ctx, `
+				INSERT INTO issue (workspace_id, title, status, priority, creator_id, creator_type, number, position)
+				VALUES (
+					$1, $2, 'in_progress', 'none', $3, 'member',
+					(SELECT COALESCE(MAX(number), 81300) + 1 FROM issue WHERE workspace_id = $1),
+					0
+				)
+				RETURNING id
+			`, testWorkspaceID, "advisor suppression "+tc.name, testUserID).Scan(&issueID); err != nil {
+				t.Fatalf("setup: create issue: %v", err)
+			}
+			t.Cleanup(func() { testPool.Exec(ctx, `DELETE FROM issue WHERE id = $1`, issueID) })
+
+			advisorContext := fmt.Sprintf(`{"type":"member_assignee_advisor","assignee_user_id":%q}`, testUserID)
+			var taskID string
+			if err := testPool.QueryRow(ctx, `
+				INSERT INTO agent_task_queue (
+					agent_id, runtime_id, issue_id, status, priority, started_at, context
+				)
+				VALUES ($1, $2, $3, 'running', 0, now(), $4::jsonb)
+				RETURNING id
+			`, agentID, runtimeID, issueID, advisorContext).Scan(&taskID); err != nil {
+				t.Fatalf("setup: create advisor task: %v", err)
+			}
+			t.Cleanup(func() { testPool.Exec(ctx, `DELETE FROM agent_task_queue WHERE id = $1`, taskID) })
+
+			w := httptest.NewRecorder()
+			req := newDaemonTokenRequest("POST", "/api/daemon/tasks/"+taskID+"/complete",
+				map[string]any{"output": tc.output},
+				testWorkspaceID, "legit-daemon")
+			rctx := chi.NewRouteContext()
+			rctx.URLParams.Add("taskId", taskID)
+			req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+			testHandler.CompleteTask(w, req)
+			if w.Code != http.StatusOK {
+				t.Fatalf("CompleteTask: expected 200, got %d: %s", w.Code, w.Body.String())
+			}
+
+			var count int
+			if err := testPool.QueryRow(ctx, `
+				SELECT count(*) FROM comment
+				WHERE issue_id = $1 AND author_type = 'agent' AND author_id = $2
+			`, issueID, agentID).Scan(&count); err != nil {
+				t.Fatalf("count agent comments: %v", err)
+			}
+			if count != 0 {
+				t.Fatalf("expected no synthesized advisor comment, got %d", count)
+			}
+		})
+	}
+}
+
+func TestCompleteTask_MemberAssigneeAdvisorSynthesizesNonTrivialAdvice(t *testing.T) {
+	if testHandler == nil {
+		t.Skip("database not available")
+	}
+
+	ctx := context.Background()
+
+	var agentID, runtimeID string
+	if err := testPool.QueryRow(ctx, `
+		SELECT a.id, a.runtime_id FROM agent a WHERE a.workspace_id = $1 LIMIT 1
+	`, testWorkspaceID).Scan(&agentID, &runtimeID); err != nil {
+		t.Fatalf("setup: get agent: %v", err)
+	}
+
+	var issueID string
+	if err := testPool.QueryRow(ctx, `
+		INSERT INTO issue (workspace_id, title, status, priority, creator_id, creator_type, number, position)
+		VALUES (
+			$1, 'advisor fallback advice fixture', 'in_progress', 'none', $2, 'member',
+			(SELECT COALESCE(MAX(number), 81350) + 1 FROM issue WHERE workspace_id = $1),
+			0
+		)
+		RETURNING id
+	`, testWorkspaceID, testUserID).Scan(&issueID); err != nil {
+		t.Fatalf("setup: create issue: %v", err)
+	}
+	t.Cleanup(func() { testPool.Exec(ctx, `DELETE FROM issue WHERE id = $1`, issueID) })
+
+	advisorContext := fmt.Sprintf(`{"type":"member_assignee_advisor","assignee_user_id":%q}`, testUserID)
+	var taskID string
+	if err := testPool.QueryRow(ctx, `
+		INSERT INTO agent_task_queue (
+			agent_id, runtime_id, issue_id, status, priority, started_at, context
+		)
+		VALUES ($1, $2, $3, 'running', 0, now(), $4::jsonb)
+		RETURNING id
+	`, agentID, runtimeID, issueID, advisorContext).Scan(&taskID); err != nil {
+		t.Fatalf("setup: create advisor task: %v", err)
+	}
+	t.Cleanup(func() { testPool.Exec(ctx, `DELETE FROM agent_task_queue WHERE id = $1`, taskID) })
+
+	const advice = "Start by checking the API auth boundary and reproduce with a member token."
+	w := httptest.NewRecorder()
+	req := newDaemonTokenRequest("POST", "/api/daemon/tasks/"+taskID+"/complete",
+		map[string]any{"output": advice},
+		testWorkspaceID, "legit-daemon")
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("taskId", taskID)
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	testHandler.CompleteTask(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("CompleteTask: expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var content string
+	if err := testPool.QueryRow(ctx, `
+		SELECT content FROM comment
+		WHERE issue_id = $1 AND author_type = 'agent' AND author_id = $2
+		ORDER BY created_at DESC LIMIT 1
+	`, issueID, agentID).Scan(&content); err != nil {
+		t.Fatalf("query synthesized advisor comment: %v", err)
+	}
+	if content != advice {
+		t.Fatalf("synthesized advisor comment content = %q, want %q", content, advice)
+	}
+}
+
 type claimRuntimeGuardTask struct {
-	PriorSessionID           string   `json:"prior_session_id"`
-	PriorWorkDir             string   `json:"prior_work_dir"`
-	ChatMessage              string   `json:"chat_message"`
-	ThreadName               string   `json:"thread_name"`
-	QuickCreateAttachmentIDs []string `json:"quick_create_attachment_ids"`
-	ProjectID                string   `json:"project_id"`
-	ProjectDescription       string   `json:"project_description"`
+	PriorSessionID             string   `json:"prior_session_id"`
+	PriorWorkDir               string   `json:"prior_work_dir"`
+	ChatMessage                string   `json:"chat_message"`
+	ThreadName                 string   `json:"thread_name"`
+	QuickCreateAttachmentIDs   []string `json:"quick_create_attachment_ids"`
+	QuickCreateAvailableAgents []struct {
+		ID          string `json:"id"`
+		Name        string `json:"name"`
+		Description string `json:"description"`
+	} `json:"quick_create_available_agents"`
+	ProjectID          string `json:"project_id"`
+	ProjectDescription string `json:"project_description"`
 }
 
 func claimTaskForRuntimeGuard(t *testing.T, runtimeID, daemonID string) *claimRuntimeGuardTask {
@@ -3512,7 +3661,7 @@ func TestClaimTask_ChatPopulatesInitiator(t *testing.T) {
 	// A separate user stands in for the Lark group session creator (installer).
 	var installerID string
 	if err := testPool.QueryRow(ctx, `
-		INSERT INTO "user" (name, email) VALUES ('Installer User', 'installer-test@multica.ai')
+		INSERT INTO "user" (name, email) VALUES ('Installer User', 'installer-test@ohmyagentteam.com')
 		RETURNING id
 	`).Scan(&installerID); err != nil {
 		t.Fatalf("setup: create installer user: %v", err)
@@ -3602,6 +3751,56 @@ func TestClaimTask_QuickCreatePopulatesThreadName(t *testing.T) {
 	}
 	if len(task.QuickCreateAttachmentIDs) != 1 || task.QuickCreateAttachmentIDs[0] != attachmentID {
 		t.Fatalf("quick-create attachment ids = %#v, want [%q]", task.QuickCreateAttachmentIDs, attachmentID)
+	}
+}
+
+func TestClaimTask_QuickCreateIncludesAvailableAgentDescriptions(t *testing.T) {
+	if testHandler == nil {
+		t.Skip("database not available")
+	}
+
+	ctx := context.Background()
+	agentID, runtimeID, daemonID := createRuntimeGuardAgent(t, ctx)
+
+	frontendAgentID := createHandlerTestAgent(t, "QC Smart Frontend "+t.Name(), []byte("[]"))
+	backendAgentID := createHandlerTestAgent(t, "QC Smart Backend "+t.Name(), []byte("[]"))
+	const frontendDescription = "Owns React UI, visual polish, CSS, and design-system issues."
+	const backendDescription = "Owns API, database, auth, and server-side reliability issues."
+	if _, err := testPool.Exec(ctx, `
+		UPDATE agent
+		SET description = CASE id
+			WHEN $1 THEN $2
+			WHEN $3 THEN $4
+			ELSE description
+		END
+		WHERE id IN ($1, $3)
+	`, frontendAgentID, frontendDescription, backendAgentID, backendDescription); err != nil {
+		t.Fatalf("setup: update agent descriptions: %v", err)
+	}
+
+	quickContext, _ := json.Marshal(map[string]any{
+		"type":         "quick_create",
+		"prompt":       "create an issue for login API latency",
+		"requester_id": testUserID,
+		"workspace_id": testWorkspaceID,
+	})
+	if _, err := testPool.Exec(ctx, `
+		INSERT INTO agent_task_queue (agent_id, runtime_id, status, priority, context)
+		VALUES ($1, $2, 'queued', 2, $3)
+	`, agentID, runtimeID, quickContext); err != nil {
+		t.Fatalf("setup: create quick-create task: %v", err)
+	}
+
+	task := claimTaskForRuntimeGuard(t, runtimeID, daemonID)
+	seen := map[string]string{}
+	for _, a := range task.QuickCreateAvailableAgents {
+		seen[a.ID] = a.Description
+	}
+	if seen[frontendAgentID] != frontendDescription {
+		t.Fatalf("available frontend agent description = %q, want %q; agents=%#v", seen[frontendAgentID], frontendDescription, task.QuickCreateAvailableAgents)
+	}
+	if seen[backendAgentID] != backendDescription {
+		t.Fatalf("available backend agent description = %q, want %q; agents=%#v", seen[backendAgentID], backendDescription, task.QuickCreateAvailableAgents)
 	}
 }
 
@@ -3954,7 +4153,7 @@ func installFreshMembershipCache(t *testing.T) {
 // deletes it on test cleanup. Returns the user id as a string.
 func createEphemeralUser(t *testing.T, label string) string {
 	t.Helper()
-	email := fmt.Sprintf("membership-cache-%s-%s@multica.ai", label, uuid.NewString())
+	email := fmt.Sprintf("membership-cache-%s-%s@ohmyagentteam.com", label, uuid.NewString())
 	var userID string
 	if err := testPool.QueryRow(context.Background(), `
 		INSERT INTO "user" (name, email) VALUES ($1, $2) RETURNING id

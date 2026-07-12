@@ -278,6 +278,8 @@ var codexEffortLabel = map[string]string{
 type codexDebugModelsResponse struct {
 	Models []struct {
 		Slug                    string `json:"slug"`
+		DisplayName             string `json:"display_name"`
+		Visibility              string `json:"visibility"`
 		DefaultReasoningLevel   string `json:"default_reasoning_level"`
 		SupportedReasoningLevel []struct {
 			Effort      string `json:"effort"`

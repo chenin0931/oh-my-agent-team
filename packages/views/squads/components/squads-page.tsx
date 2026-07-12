@@ -15,17 +15,17 @@ import {
 } from "lucide-react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { useCurrentWorkspace, useWorkspacePaths } from "@multica/core/paths";
+import { useCurrentWorkspace, useWorkspacePaths } from "@ohmyagentteam/core/paths";
 import {
   agentListOptions,
   memberListOptions,
   squadListOptions,
   workspaceKeys,
-} from "@multica/core/workspace/queries";
-import { resolvePublicFileUrl } from "@multica/core/workspace/avatar-url";
-import { useAuthStore } from "@multica/core/auth";
-import { api } from "@multica/core/api";
-import { useModalStore } from "@multica/core/modals";
+} from "@ohmyagentteam/core/workspace/queries";
+import { resolvePublicFileUrl } from "@ohmyagentteam/core/workspace/avatar-url";
+import { useAuthStore } from "@ohmyagentteam/core/auth";
+import { api } from "@ohmyagentteam/core/api";
+import { useModalStore } from "@ohmyagentteam/core/modals";
 import {
   useSquadsViewStore,
   SQUAD_SCOPES,
@@ -34,9 +34,9 @@ import {
   type SquadListFilters,
   type SquadsScope,
   type SquadSortField,
-} from "@multica/core/squads/stores";
-import type { Agent, MemberWithUser, Squad } from "@multica/core/types";
-import { Button } from "@multica/ui/components/ui/button";
+} from "@ohmyagentteam/core/squads/stores";
+import type { Agent, MemberWithUser, Squad } from "@ohmyagentteam/core/types";
+import { Button } from "@ohmyagentteam/ui/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -44,7 +44,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@multica/ui/components/ui/dialog";
+} from "@ohmyagentteam/ui/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -56,7 +56,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-} from "@multica/ui/components/ui/dropdown-menu";
+} from "@ohmyagentteam/ui/components/ui/dropdown-menu";
 import {
   ListGrid,
   ListGridCell,
@@ -65,20 +65,20 @@ import {
   ListGridRow,
   LIST_GRID_BOTTOM_CLEARANCE,
   type ListGridSortDirection,
-} from "@multica/ui/components/ui/list-grid";
+} from "@ohmyagentteam/ui/components/ui/list-grid";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@multica/ui/components/ui/popover";
-import { Skeleton } from "@multica/ui/components/ui/skeleton";
-import { Switch } from "@multica/ui/components/ui/switch";
+} from "@ohmyagentteam/ui/components/ui/popover";
+import { Skeleton } from "@ohmyagentteam/ui/components/ui/skeleton";
+import { Switch } from "@ohmyagentteam/ui/components/ui/switch";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@multica/ui/components/ui/tooltip";
-import { ActorAvatar as ActorAvatarBase } from "@multica/ui/components/common/actor-avatar";
+} from "@ohmyagentteam/ui/components/ui/tooltip";
+import { ActorAvatar as ActorAvatarBase } from "@ohmyagentteam/ui/components/common/actor-avatar";
 import { ActorAvatar } from "../../common/actor-avatar";
 import { FILTER_ITEM_CLASS, HoverCheck } from "../../common/hover-check";
 import { useRowLink } from "../../navigation";
@@ -89,17 +89,17 @@ import { useT } from "../../i18n";
 // the fewest entity, 1-5 rows): subgrid template + var tracks + two-zone
 // responsiveness + single scroll container, but NO virtualization, checkbox,
 // or batch. Identity two-line rows (avatar + name + description, 64px) like
-// the agents list. Name + leader are the core set (<@2xl); members / creator
+// the agents list. Name + leader are the core set (<@2xl); members / owner
 // / created are @2xl. The kebab track collapses when the viewer can't manage
 // any squad (workspace admin only).
 const GRID_COLS =
   "grid-cols-[0.75rem_minmax(120px,1fr)_var(--sqc-leader)_var(--sqc-kebab)_0.75rem] " +
-  "@2xl:grid-cols-[0.75rem_minmax(200px,1fr)_var(--sqc-leader)_var(--sqc-members)_var(--sqc-creator)_var(--sqc-created)_var(--sqc-kebab)_0.75rem]";
+  "@2xl:grid-cols-[0.75rem_minmax(200px,1fr)_var(--sqc-leader)_var(--sqc-members)_var(--sqc-owner)_var(--sqc-created)_var(--sqc-kebab)_0.75rem]";
 
 const LEADER_WIDTH = 160;
 const COLUMN_WIDTHS: Record<SquadColumnKey, number> = {
   members: 120,
-  creator: 144,
+  owner: 144,
   created: 104,
 };
 
@@ -124,7 +124,7 @@ function columnTrackVars(
   return {
     "--sqc-leader": `${LEADER_WIDTH}px`,
     "--sqc-members": width("members"),
-    "--sqc-creator": width("creator"),
+    "--sqc-owner": width("owner"),
     "--sqc-created": width("created"),
     "--sqc-kebab": showActions ? "1.75rem" : "0px",
     "--sqc-minw": `${minWidth}px`,
@@ -383,9 +383,9 @@ function SquadListHeader({
       ) : (
         <ListGridHeaderCell className="hidden px-0 @2xl:flex" />
       )}
-      {isColVisible("creator") ? (
+      {isColVisible("owner") ? (
         <ListGridHeaderCell className="hidden @2xl:flex">
-          {t(($) => $.page.table.creator)}
+          {t(($) => $.page.table.owner)}
         </ListGridHeaderCell>
       ) : (
         <ListGridHeaderCell className="hidden px-0 @2xl:flex" />
@@ -407,7 +407,7 @@ function SquadListHeader({
   );
 }
 
-const COLUMN_KEYS: SquadColumnKey[] = ["members", "creator", "created"];
+const COLUMN_KEYS: SquadColumnKey[] = ["members", "owner", "created"];
 const SORT_FIELDS: SquadSortField[] = ["name", "members", "created"];
 
 interface ActorOption {
@@ -424,7 +424,7 @@ function SquadListToolbar({
   onToggleFilter,
   onClearFilters,
   leaderOptions,
-  creatorOptions,
+  ownerOptions,
   visibleCount,
   totalCount,
   sortField,
@@ -441,7 +441,7 @@ function SquadListToolbar({
   onToggleFilter: (key: keyof SquadListFilters, value: string) => void;
   onClearFilters: () => void;
   leaderOptions: ActorOption[];
-  creatorOptions: ActorOption[];
+  ownerOptions: ActorOption[];
   visibleCount: number;
   totalCount: number;
   sortField: SquadSortField;
@@ -454,13 +454,14 @@ function SquadListToolbar({
   const { t } = useT("squads");
   const activeFilterCount =
     (filters.leaders.length > 0 ? 1 : 0) +
-    (filters.creators.length > 0 ? 1 : 0);
+    (filters.owners.length > 0 ? 1 : 0);
   const hasActiveFilters = activeFilterCount > 0;
   const countBadge = (n: number) => (
     <span className="ml-auto pl-3 text-xs text-muted-foreground">{n}</span>
   );
   const SCOPE_LABELS: Record<SquadsScope, string> = {
     mine: t(($) => $.scope.mine),
+    others: t(($) => $.scope.others),
     all: t(($) => $.scope.all),
   };
   const SORT_LABELS: Record<SquadSortField, string> = {
@@ -470,7 +471,7 @@ function SquadListToolbar({
   };
   const COLUMN_LABELS: Record<SquadColumnKey, string> = {
     members: t(($) => $.page.table.members),
-    creator: t(($) => $.page.table.creator),
+    owner: t(($) => $.page.table.owner),
     created: t(($) => $.page.table.created),
   };
   const sortLabel = SORT_LABELS[sortField];
@@ -608,20 +609,20 @@ function SquadListToolbar({
           </DropdownMenuSub>
           <DropdownMenuSub>
             <DropdownMenuSubTrigger>
-              <span className="flex-1">{t(($) => $.page.table.creator)}</span>
-              {filters.creators.length > 0 && (
-                <span className="text-xs font-medium text-primary">{filters.creators.length}</span>
+              <span className="flex-1">{t(($) => $.page.table.owner)}</span>
+              {filters.owners.length > 0 && (
+                <span className="text-xs font-medium text-primary">{filters.owners.length}</span>
               )}
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent className="max-h-72 w-auto min-w-48 overflow-y-auto">
-              {creatorOptions.map((o) => (
+              {ownerOptions.map((o) => (
                 <DropdownMenuCheckboxItem
                   key={o.id}
-                  checked={filters.creators.includes(o.id)}
-                  onCheckedChange={() => onToggleFilter("creators", o.id)}
+                  checked={filters.owners.includes(o.id)}
+                  onCheckedChange={() => onToggleFilter("owners", o.id)}
                   className={FILTER_ITEM_CLASS}
                 >
-                  <HoverCheck checked={filters.creators.includes(o.id)} />
+                  <HoverCheck checked={filters.owners.includes(o.id)} />
                   <ActorAvatar actorType="member" actorId={o.id} size={16} />
                   <span className="min-w-0 truncate">{o.name}</span>
                   {countBadge(o.count)}
@@ -797,9 +798,9 @@ export function SquadsPage() {
   const scopeCounts = useMemo<Record<SquadsScope, number>>(() => {
     let mine = 0;
     if (currentUser) {
-      for (const s of squads) if (s.creator_id === currentUser.id) mine++;
+      for (const s of squads) if (s.owner_id === currentUser.id) mine++;
     }
-    return { mine, all: squads.length };
+    return { mine, others: squads.length - mine, all: squads.length };
   }, [squads, currentUser]);
 
   // Rows within the current scope, unfiltered — filter option lists + the
@@ -807,7 +808,10 @@ export function SquadsPage() {
   const scopeRows = useMemo<Squad[]>(() => {
     return squads.filter((s) => {
       if (scope === "mine") {
-        return !!currentUser && s.creator_id === currentUser.id;
+        return !!currentUser && s.owner_id === currentUser.id;
+      }
+      if (scope === "others") {
+        return !currentUser || s.owner_id !== currentUser.id;
       }
       return true;
     });
@@ -828,15 +832,15 @@ export function SquadsPage() {
     return [...m.values()];
   }, [scopeRows, agentsById]);
 
-  const creatorOptions = useMemo(() => {
+  const ownerOptions = useMemo(() => {
     const m = new Map<string, { id: string; name: string; count: number }>();
     for (const s of scopeRows) {
-      const e = m.get(s.creator_id);
+      const e = m.get(s.owner_id);
       if (e) e.count += 1;
       else
-        m.set(s.creator_id, {
-          id: s.creator_id,
-          name: membersById.get(s.creator_id)?.name ?? s.creator_id.slice(0, 8),
+        m.set(s.owner_id, {
+          id: s.owner_id,
+          name: membersById.get(s.owner_id)?.name ?? s.owner_id.slice(0, 8),
           count: 1,
         });
     }
@@ -849,8 +853,8 @@ export function SquadsPage() {
         return false;
       }
       if (
-        filters.creators.length > 0 &&
-        !filters.creators.includes(s.creator_id)
+        filters.owners.length > 0 &&
+        !filters.owners.includes(s.owner_id)
       ) {
         return false;
       }
@@ -876,11 +880,11 @@ export function SquadsPage() {
 
   // Reserve the row-actions (kebab) track when the current user can manage at
   // least one visible squad. Workspace admins manage all squads; a regular
-  // member manages the squads they created (MUL-4223).
+  // member manages the squads they own (MUL-4223).
   const canManageAnyRow = useMemo(
     () =>
       isWorkspaceAdmin ||
-      (!!currentUser && rows.some((s) => s.creator_id === currentUser.id)),
+      (!!currentUser && rows.some((s) => s.owner_id === currentUser.id)),
     [isWorkspaceAdmin, rows, currentUser],
   );
 
@@ -889,7 +893,7 @@ export function SquadsPage() {
       <PageHeader className="justify-between px-5">
         <div className="flex items-center gap-2">
           <Users className="h-4 w-4 text-muted-foreground" />
-          <h1 className="text-sm font-medium">{t(($) => $.page.title)}</h1>
+          <h1 className="font-serif text-[15px] font-medium">{t(($) => $.page.title)}</h1>
           {squads.length > 0 && (
             <span className="font-mono text-xs tabular-nums text-muted-foreground/70">
               {squads.length}
@@ -936,7 +940,7 @@ export function SquadsPage() {
             onToggleFilter={toggleFilter}
             onClearFilters={clearFilters}
             leaderOptions={leaderOptions}
-            creatorOptions={creatorOptions}
+            ownerOptions={ownerOptions}
             visibleCount={rows.length}
             totalCount={scopeRows.length}
             sortField={sortField}
@@ -981,16 +985,16 @@ export function SquadsPage() {
                     ) : (
                       <ListGridCell className="hidden px-0 @2xl:flex" />
                     )}
-                    {isColVisible("creator") ? (
+                    {isColVisible("owner") ? (
                       <ListGridCell className="hidden gap-1.5 @2xl:flex">
                         <ActorAvatar
                           actorType="member"
-                          actorId={squad.creator_id}
+                          actorId={squad.owner_id}
                           size={18}
                         />
                         <span className="min-w-0 truncate text-xs text-muted-foreground">
-                          {membersById.get(squad.creator_id)?.name ??
-                            squad.creator_id.slice(0, 8)}
+                          {membersById.get(squad.owner_id)?.name ??
+                            squad.owner_id.slice(0, 8)}
                         </span>
                       </ListGridCell>
                     ) : (
@@ -1005,7 +1009,7 @@ export function SquadsPage() {
                     )}
                     <ListGridCell className="justify-end px-0">
                       {isWorkspaceAdmin ||
-                      (!!currentUser && squad.creator_id === currentUser.id) ? (
+                      (!!currentUser && squad.owner_id === currentUser.id) ? (
                         <SquadRowActions squad={squad} />
                       ) : null}
                     </ListGridCell>

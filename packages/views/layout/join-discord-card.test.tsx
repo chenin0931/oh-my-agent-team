@@ -11,8 +11,8 @@ vi.mock("../i18n", () => ({
       sel({
         sidebar: {
           discord_card: {
-            title: "Join our Discord",
-            description: "Chat with the team and other builders.",
+            title: "Join the community",
+            description: "Ask questions and share feedback on GitHub Discussions.",
             dismiss: "Dismiss",
           },
         },
@@ -21,7 +21,7 @@ vi.mock("../i18n", () => ({
 }));
 
 const userId = { current: "user-1" as string | undefined };
-vi.mock("@multica/core/auth", () => ({
+vi.mock("@ohmyagentteam/core/auth", () => ({
   useAuthStore: (selector: (s: { user?: { id?: string } }) => unknown) =>
     selector({ user: userId.current ? { id: userId.current } : undefined }),
 }));
@@ -32,10 +32,10 @@ afterEach(() => {
 });
 
 describe("JoinDiscordCard", () => {
-  it("links to the Discord invite", () => {
+  it("links to GitHub Discussions", () => {
     render(<JoinDiscordCard />);
     const link = screen.getByRole("link", { name: /join our discord/i });
-    expect(link).toHaveAttribute("href", "https://discord.gg/W8gYBn226t");
+    expect(link).toHaveAttribute("href", "https://github.com/chenin0931/oh-my-agent-team/discussions");
     expect(link).toHaveAttribute("target", "_blank");
   });
 
@@ -44,12 +44,12 @@ describe("JoinDiscordCard", () => {
     const { unmount } = render(<JoinDiscordCard />);
 
     await user.click(screen.getByRole("button", { name: "Dismiss" }));
-    expect(screen.queryByText("Join our Discord")).not.toBeInTheDocument();
+    expect(screen.queryByText("Join the community")).not.toBeInTheDocument();
 
     // A fresh mount for the same user keeps the card hidden.
     unmount();
     render(<JoinDiscordCard />);
-    expect(screen.queryByText("Join our Discord")).not.toBeInTheDocument();
+    expect(screen.queryByText("Join the community")).not.toBeInTheDocument();
   });
 
   it("keeps the card visible for a different user", async () => {
@@ -60,6 +60,6 @@ describe("JoinDiscordCard", () => {
 
     userId.current = "user-2";
     render(<JoinDiscordCard />);
-    expect(screen.getByText("Join our Discord")).toBeInTheDocument();
+    expect(screen.getByText("Join the community")).toBeInTheDocument();
   });
 });

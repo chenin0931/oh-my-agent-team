@@ -2,14 +2,14 @@
 
 import { useCallback, useMemo, type ReactNode } from "react";
 import { ListTodo, Plus } from "lucide-react";
-import { Button } from "@multica/ui/components/ui/button";
-import { Skeleton } from "@multica/ui/components/ui/skeleton";
-import { cn } from "@multica/ui/lib/utils";
-import { useWorkspaceId } from "@multica/core/hooks";
-import { ViewStoreProvider } from "@multica/core/issues/stores/view-store-context";
-import { getIssueSurfaceViewStore } from "@multica/core/issues/stores/surface-view-store";
-import { issueScopeKey } from "@multica/core/issues/surface/scope";
-import type { Issue } from "@multica/core/types";
+import { Button } from "@ohmyagentteam/ui/components/ui/button";
+import { Skeleton } from "@ohmyagentteam/ui/components/ui/skeleton";
+import { cn } from "@ohmyagentteam/ui/lib/utils";
+import { useWorkspaceId } from "@ohmyagentteam/core/hooks";
+import { ViewStoreProvider } from "@ohmyagentteam/core/issues/stores/view-store-context";
+import { getIssueSurfaceViewStore } from "@ohmyagentteam/core/issues/stores/surface-view-store";
+import { issueScopeKey } from "@ohmyagentteam/core/issues/surface/scope";
+import type { Issue } from "@ohmyagentteam/core/types";
 import { BoardView } from "../components/board-view";
 import { BatchActionToolbar } from "../components/batch-action-toolbar";
 import { GanttView } from "../components/gantt-view";
@@ -34,6 +34,7 @@ interface IssueSurfaceComponentProps extends IssueSurfaceProps {
   renderHeader?: (context: IssueSurfaceRenderContext) => ReactNode;
   renderEmpty?: (context: IssueSurfaceRenderContext) => ReactNode;
   renderLoading?: (context: IssueSurfaceRenderContext) => ReactNode;
+  renderContent?: (context: IssueSurfaceRenderContext) => ReactNode;
   clientFilter?: (issue: Issue) => boolean;
   showClientEmpty?: (context: IssueSurfaceRenderContext) => boolean;
   batchToolbar?: "always" | "list" | "never";
@@ -48,6 +49,7 @@ export function IssueSurface({
   renderHeader,
   renderEmpty,
   renderLoading,
+  renderContent,
   clientFilter,
   showClientEmpty,
   batchToolbar = "always",
@@ -81,6 +83,7 @@ export function IssueSurface({
         renderHeader={renderHeader}
         renderEmpty={renderEmpty}
         renderLoading={renderLoading}
+        renderContent={renderContent}
         clientFilter={clientFilter}
         showClientEmpty={showClientEmpty}
         batchToolbar={batchToolbar}
@@ -97,6 +100,7 @@ function IssueSurfaceContent({
   renderHeader,
   renderEmpty,
   renderLoading,
+  renderContent,
   clientFilter,
   showClientEmpty,
   batchToolbar,
@@ -121,6 +125,10 @@ function IssueSurfaceContent({
         ? controller.swimlaneIssues.filter((issue) => clientFilter(issue))
         : controller.swimlaneIssues,
     [clientFilter, controller.swimlaneIssues],
+  );
+  const ganttIssues = useMemo(
+    () => clientFilter ? controller.filteredGanttIssues.filter(clientFilter) : controller.filteredGanttIssues,
+    [clientFilter, controller.filteredGanttIssues],
   );
   const renderContext = useMemo(
     () => ({ controller, issues }),
@@ -179,7 +187,7 @@ function IssueSurfaceContent({
           )
         ) : (
           <div className={cn("flex flex-col flex-1 min-h-0", contentClassName)}>
-            {controller.viewMode === "board" && (
+            {renderContent ? renderContent(renderContext) : controller.viewMode === "board" ? (
               <BoardView
                 issues={
                   controller.assigneeGroups
@@ -200,8 +208,7 @@ function IssueSurfaceContent({
                 projectId={controller.projectId}
                 onCreateIssue={openCreateIssue}
               />
-            )}
-            {controller.viewMode === "list" && (
+            ) : controller.viewMode === "list" ? (
               <ListView
                 issues={issues}
                 visibleStatuses={controller.visibleStatuses}
@@ -214,11 +221,9 @@ function IssueSurfaceContent({
                 onMoveIssue={controller.moveIssue}
                 onCreateIssue={openCreateIssue}
               />
-            )}
-            {controller.viewMode === "gantt" && (
-              <GanttView issues={controller.filteredGanttIssues} />
-            )}
-            {controller.viewMode === "swimlane" && (
+            ) : controller.viewMode === "gantt" ? (
+              <GanttView issues={ganttIssues} />
+            ) : controller.viewMode === "swimlane" ? (
               <SwimLaneView
                 issues={issues}
                 unfilteredIssues={swimlaneIssues}
@@ -235,7 +240,7 @@ function IssueSurfaceContent({
                 activityByIssueId={controller.activity.activityByIssueId}
                 onCreateIssue={openCreateIssue}
               />
-            )}
+            ) : null}
           </div>
         )}
         {shouldShowBatchToolbar && <BatchActionToolbar issues={issues} />}

@@ -15,8 +15,11 @@ import type {
   CreateBillingCheckoutSessionResponse,
   CreateBillingPortalSessionResponse,
   GroupedIssuesResponse,
+  Epic,
   InboxWorkspaceUnread,
+  ListEpicsResponse,
   ListIssuesResponse,
+  QuickCreateIssueStatus,
   ListWebhookDeliveriesResponse,
   SearchIssuesResponse,
   SearchProjectsResponse,
@@ -267,8 +270,11 @@ export const IssueSchema = z.object({
   workspace_id: z.string(),
   number: z.number(),
   identifier: z.string(),
+  issue_type: z.enum(["epic", "issue", "subtask"]).default("issue"),
+  epic_id: z.string().nullable().default(null),
   title: z.string(),
   description: z.string().nullable(),
+  acceptance_criteria: z.string().nullable().default(null),
   status: z.string(),
   priority: z.string(),
   assignee_type: z.string().nullable(),
@@ -299,6 +305,124 @@ export const EMPTY_LIST_ISSUES_RESPONSE: ListIssuesResponse = {
   issues: [],
   total: 0,
 };
+
+export const EpicSchema = z.object({
+  id: z.string(),
+  workspace_id: z.string(),
+  project_id: z.string(),
+  number: z.number(),
+  identifier: z.string(),
+  title: z.string(),
+  description: z.string().nullable(),
+  success_criteria: z.string().nullable(),
+  lifecycle: z.string(),
+  health: z.string().nullable(),
+  priority: z.string(),
+  owner_type: z.string().nullable(),
+  owner_id: z.string().nullable(),
+  start_date: z.string().nullable(),
+  target_date: z.string().nullable(),
+  creator_type: z.string(),
+  creator_id: z.string(),
+  total_issues: z.number().default(0),
+  done_issues: z.number().default(0),
+  blocked_issues: z.number().default(0),
+  completion_percent: z.number().default(0),
+  status_distribution: z.record(z.string(), z.number()).default({}),
+  labels: z.array(z.unknown()).default([]),
+  attachments: z.array(z.unknown()).default([]),
+  created_at: z.string(),
+  updated_at: z.string(),
+}).loose();
+
+export const ListEpicsResponseSchema = z.object({
+  epics: z.array(EpicSchema).default([]),
+  total: z.number().default(0),
+}).loose();
+
+export const EMPTY_LIST_EPICS_RESPONSE: ListEpicsResponse = {
+  epics: [],
+  total: 0,
+};
+
+export const EMPTY_EPIC: Epic = {
+  id: "",
+  workspace_id: "",
+  project_id: "",
+  number: 0,
+  identifier: "",
+  title: "",
+  description: null,
+  success_criteria: null,
+  lifecycle: "planned",
+  health: null,
+  priority: "none",
+  owner_type: null,
+  owner_id: null,
+  start_date: null,
+  target_date: null,
+  creator_type: "member",
+  creator_id: "",
+  total_issues: 0,
+  done_issues: 0,
+  blocked_issues: 0,
+  completion_percent: 0,
+  status_distribution: {},
+  labels: [],
+  attachments: [],
+  created_at: "",
+  updated_at: "",
+};
+
+const QuickCreateCreatedItemSchema = z.object({
+  id: z.string(),
+  identifier: z.string(),
+  title: z.string(),
+  target_type: z.enum(["epic", "issue"]),
+  item_type: z.enum(["epic", "issue", "subtask"]),
+  status: z.string(),
+  assignee_type: z.string().nullable().optional(),
+  assignee_id: z.string().nullable().optional(),
+}).loose();
+
+export const QuickCreateIssueStatusSchema = z.object({
+  task_id: z.string(),
+  status: z.string(),
+  mode: z.string().optional(),
+  default_status: z.string().optional(),
+  epics: z.array(EpicSchema).default([]),
+  issues: z.array(IssueSchema).default([]),
+  created_items: z.array(QuickCreateCreatedItemSchema).default([]),
+  epic_count: z.number().default(0),
+  issue_count: z.number().default(0),
+  subtask_count: z.number().default(0),
+  work_item_count: z.number().default(0),
+  agent_assignment_count: z.number().default(0),
+  member_assignment_count: z.number().default(0),
+  squad_assignment_count: z.number().default(0),
+  all_backlog: z.boolean().default(false),
+  terminal: z.boolean().default(false),
+  error: z.string().nullable().optional(),
+}).loose();
+
+export function emptyQuickCreateIssueStatus(taskId: string): QuickCreateIssueStatus {
+  return {
+    task_id: taskId,
+    status: "unknown",
+    epics: [],
+    issues: [],
+    created_items: [],
+    epic_count: 0,
+    issue_count: 0,
+    subtask_count: 0,
+    work_item_count: 0,
+    agent_assignment_count: 0,
+    member_assignment_count: 0,
+    squad_assignment_count: 0,
+    all_backlog: false,
+    terminal: false,
+  };
+}
 
 const SearchIssueResultSchema = IssueSchema.extend({
   match_source: z.string(),
@@ -723,13 +847,19 @@ export const SquadSchema = z.object({
   avatar_url: z.string().nullable().optional().transform((v) => v ?? null),
   leader_id: z.string(),
   creator_id: z.string(),
+  owner_id: z.string().optional(),
   created_at: z.string(),
   updated_at: z.string(),
   archived_at: z.string().nullable().optional().transform((v) => v ?? null),
   archived_by: z.string().nullable().optional().transform((v) => v ?? null),
   member_count: z.number().default(0),
   member_preview: z.array(SquadMemberPreviewSchema).default([]),
-}).loose();
+}).loose().transform((squad) => ({
+  ...squad,
+  // Rolling deployments and imported snapshots may predate transferable
+  // ownership. In that case the immutable creator is the only safe owner.
+  owner_id: squad.owner_id ?? squad.creator_id,
+}));
 
 export const SquadListSchema = z.array(SquadSchema);
 export const EMPTY_SQUAD_LIST: Squad[] = [];
@@ -742,6 +872,7 @@ export const EMPTY_SQUAD: Squad = {
   avatar_url: null,
   leader_id: "",
   creator_id: "",
+  owner_id: "",
   created_at: "",
   updated_at: "",
   archived_at: null,
@@ -948,9 +1079,6 @@ export const UserSchema = z.object({
   name: z.string().default(""),
   email: z.string().default(""),
   avatar_url: z.string().nullable().default(null),
-  onboarded_at: z.string().nullable().default(null),
-  onboarding_questionnaire: z.record(z.string(), z.unknown()).default({}),
-  starter_content_state: z.string().nullable().default(null),
   language: z.string().nullable().default(null),
   profile_description: z.string().default(""),
   timezone: z.string().nullable().default(null),
@@ -963,9 +1091,6 @@ export const EMPTY_USER: User = {
   name: "",
   email: "",
   avatar_url: null,
-  onboarded_at: null,
-  onboarding_questionnaire: {},
-  starter_content_state: null,
   language: null,
   profile_description: "",
   timezone: null,
@@ -995,7 +1120,7 @@ export const EMPTY_INBOX_UNREAD_SUMMARY: InboxWorkspaceUnread[] = [];
 // ---------------------------------------------------------------------------
 // Billing schemas (cloud-billing proxy surface)
 //
-// All billing JSON we receive comes from multica-cloud verbatim — we proxy
+// All billing JSON we receive comes from ohmyagentteam-cloud verbatim — we proxy
 // the bytes without re-shaping. These schemas use `loose()` so a future
 // non-breaking field addition on the cloud side doesn't crash us; required
 // fields are still strictly enforced. EMPTY_* constants supply the

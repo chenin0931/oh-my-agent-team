@@ -9,18 +9,18 @@ import (
 	"regexp"
 	"strings"
 
-	skillpkg "github.com/multica-ai/multica/server/internal/skill"
+	skillpkg "github.com/chenin0931/oh-my-agent-team/server/internal/skill"
 	"gopkg.in/yaml.v3"
 )
 
 // TaskContextMarkerRelPath is a non-secret marker the daemon writes under the
 // task workdir. The CLI uses it as a fallback daemon-task signal when a child
-// sandbox strips all MULTICA_* env vars before invoking `multica`.
-const TaskContextMarkerRelPath = ".multica/daemon_task_context.json"
+// sandbox strips all OMAT_* env vars before invoking `ohmyagentteam`.
+const TaskContextMarkerRelPath = ".ohmyagentteam/daemon_task_context.json"
 
 // TaskContextMarkerManagedBy is the marker discriminator the CLI checks before
 // treating TaskContextMarkerRelPath as daemon-owned.
-const TaskContextMarkerManagedBy = "multica-daemon-task"
+const TaskContextMarkerManagedBy = "ohmyagentteam-daemon-task"
 
 type taskContextMarkerFile struct {
 	ManagedBy string `json:"managed_by"`
@@ -104,7 +104,7 @@ func writeContextFiles(workDir, provider string, ctx TaskContextForEnv, manifest
 func writeTaskContextMarker(workDir string, ctx TaskContextForEnv, manifest *sidecarManifest) error {
 	dir := filepath.Dir(filepath.Join(workDir, TaskContextMarkerRelPath))
 	if err := recordMkdirAll(dir, 0o755, manifest); err != nil {
-		return fmt.Errorf("create .multica dir: %w", err)
+		return fmt.Errorf("create .ohmyagentteam dir: %w", err)
 	}
 	// The sidecar manifest removes this marker on normal local_directory
 	// cleanup. If a crash leaves it behind, the CLI intentionally treats it
@@ -173,19 +173,19 @@ func (p ProjectResourceForEnv) MarshalJSON() ([]byte, error) {
 	})
 }
 
-// writeProjectResources writes .multica/project/resources.json into the
+// writeProjectResources writes .ohmyagentteam/project/resources.json into the
 // working directory when the task carries project context. The file is
 // always written when a project is attached (even with zero resources) so
 // agents can rely on its presence as a signal that a project exists.
 //
-// manifest, when non-nil, is populated with the .multica/project chain
+// manifest, when non-nil, is populated with the .ohmyagentteam/project chain
 // of created directories and the resources.json file so CleanupSidecars
 // can undo them on local_directory teardown.
 func writeProjectResources(workDir string, ctx TaskContextForEnv, manifest *sidecarManifest) error {
 	if ctx.ProjectID == "" && len(ctx.ProjectResources) == 0 {
 		return nil
 	}
-	dir := filepath.Join(workDir, ".multica", "project")
+	dir := filepath.Join(workDir, ".ohmyagentteam", "project")
 	if err := recordMkdirAll(dir, 0o755, manifest); err != nil {
 		return err
 	}
@@ -204,7 +204,7 @@ func writeProjectResources(workDir string, ctx TaskContextForEnv, manifest *side
 		return err
 	}
 	if err := recordWriteFile(filepath.Join(dir, "resources.json"), data, 0o644, manifest); err != nil {
-		// .multica/project/resources.json is Multica-owned and a
+		// .ohmyagentteam/project/resources.json is OhMyAgentTeam-owned and a
 		// pre-existing path is almost certainly user content the
 		// manifest must not destroy. The runtime brief already lists
 		// every project resource so the agent runs fine without the
@@ -484,14 +484,14 @@ func sanitizeSkillName(name string) string {
 // local_directory teardown without touching user-owned skill directories
 // that happen to live alongside ours under the same skills/ parent.
 //
-// When a Multica skill's natural slug collides with a user-installed
+// When a OhMyAgentTeam skill's natural slug collides with a user-installed
 // skill at the same path, we allocate a collision-free sibling slug
-// (e.g. `issue-review-multica`) and write there instead. Provider-native
+// (e.g. `issue-review-ohmyagentteam`) and write there instead. Provider-native
 // discovery still picks it up because every subdir under skillsDir is a
 // distinct skill; the user's original directory stays bit-for-bit
 // intact. Without this fallback writeSkillFiles would have to either
 // overwrite user bytes (the bug PR #3444 review caught) or skip the
-// skill entirely (which would silently drop a Multica skill the agent
+// skill entirely (which would silently drop a OhMyAgentTeam skill the agent
 // expects to see).
 func writeSkillFiles(skillsDir string, skills []SkillContextForEnv, manifest *sidecarManifest) error {
 	if err := recordMkdirAll(skillsDir, 0o755, manifest); err != nil {
@@ -565,6 +565,12 @@ func renderIssueContext(provider string, ctx TaskContextForEnv) string {
 	if ctx.TriggerCommentID != "" {
 		b.WriteString("**Trigger:** Comment Reply\n")
 		b.WriteString("**Triggering comment ID:** `" + ctx.TriggerCommentID + "`\n\n")
+	} else if ctx.MemberAssigneeAdvisor {
+		if ctx.EpicAdvisor {
+			b.WriteString("**Trigger:** Epic Planning Advisor\n\n")
+		} else {
+			b.WriteString("**Trigger:** Human Assignee Advisor\n\n")
+		}
 	} else {
 		b.WriteString("**Trigger:** New Assignment\n\n")
 	}
@@ -578,7 +584,15 @@ func renderIssueContext(provider string, ctx TaskContextForEnv) string {
 	}
 
 	b.WriteString("## Quick Start\n\n")
-	fmt.Fprintf(&b, "Run `multica issue get %s --output json` to fetch the full issue details.\n\n", ctx.IssueID)
+	if ctx.MemberAssigneeAdvisor {
+		if ctx.EpicAdvisor {
+			fmt.Fprintf(&b, "Run `omat epic get %s --output json`, then `omat epic issues %s --output json`. If you have useful planning advice, post one Epic comment; otherwise finish with empty output.\n\n", ctx.IssueID, ctx.IssueID)
+		} else {
+			fmt.Fprintf(&b, "Run `omat issue get %s --output json`, then `omat issue comment list %s --recent 10 --output json`. If you have useful advice, post one ordinary comment; otherwise finish with empty output.\n\n", ctx.IssueID, ctx.IssueID)
+		}
+	} else {
+		fmt.Fprintf(&b, "Run `omat issue get %s --output json` to fetch the full issue details.\n\n", ctx.IssueID)
+	}
 
 	if len(ctx.AgentSkills) > 0 {
 		b.WriteString("## Agent Skills\n\n")
@@ -599,7 +613,14 @@ func renderIssueContext(provider string, ctx TaskContextForEnv) string {
 func renderQuickCreateContext(ctx TaskContextForEnv) string {
 	var b strings.Builder
 	b.WriteString("# Quick Create\n\n")
-	b.WriteString("**Trigger:** Quick-create modal\n\n")
+	if ctx.QuickCreateMode == "planning" {
+		b.WriteString("**Trigger:** Planning Quick Create\n\n")
+		if ctx.QuickCreateDefaultStatus != "" {
+			fmt.Fprintf(&b, "**Default status:** %s\n\n", ctx.QuickCreateDefaultStatus)
+		}
+	} else {
+		b.WriteString("**Trigger:** Quick-create modal\n\n")
+	}
 	b.WriteString("## User input\n\n")
 	b.WriteString("> ")
 	b.WriteString(ctx.QuickCreatePrompt)
@@ -633,9 +654,9 @@ func renderAutopilotContext(ctx TaskContextForEnv) string {
 	}
 
 	b.WriteString("## Quick Start\n\n")
-	b.WriteString("This is a run-only autopilot task with no assigned issue. Do not run `multica issue get` unless the autopilot instructions explicitly ask you to create or update an issue.\n\n")
+	b.WriteString("This is a run-only autopilot task with no assigned issue. Do not run `omat issue get` unless the autopilot instructions explicitly ask you to create or update an issue.\n\n")
 	if ctx.AutopilotID != "" {
-		fmt.Fprintf(&b, "Run `multica autopilot get %s --output json` if you need the full autopilot configuration.\n\n", ctx.AutopilotID)
+		fmt.Fprintf(&b, "Run `omat autopilot get %s --output json` if you need the full autopilot configuration.\n\n", ctx.AutopilotID)
 	}
 	if strings.TrimSpace(ctx.AutopilotDescription) != "" {
 		b.WriteString("## Autopilot Instructions\n\n")

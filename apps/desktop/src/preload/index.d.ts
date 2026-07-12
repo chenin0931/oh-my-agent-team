@@ -35,6 +35,7 @@ interface DesktopAPI {
     slug: string;
     itemId: string;
     issueKey: string;
+    targetType?: "issue" | "epic";
     title: string;
     body: string;
   }) => void;
@@ -46,6 +47,7 @@ interface DesktopAPI {
       slug: string;
       itemId: string;
       issueKey: string;
+      targetType?: "issue" | "epic";
     }) => void,
   ) => () => void;
   /** Listen for native macOS back/forward swipe gestures. Returns an unsubscribe function. */

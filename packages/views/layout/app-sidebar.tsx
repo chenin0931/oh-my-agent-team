@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { cn } from "@multica/ui/lib/utils";
-import { useScrollFade } from "@multica/ui/hooks/use-scroll-fade";
+import { cn } from "@ohmyagentteam/ui/lib/utils";
+import { useScrollFade } from "@ohmyagentteam/ui/hooks/use-scroll-fade";
 import { AppLink, useNavigation } from "../navigation";
 import { HelpLauncher } from "./help-launcher";
 import { JoinDiscordCard } from "./join-discord-card";
@@ -19,7 +19,6 @@ import { CSS } from "@dnd-kit/utilities";
 import {
   Inbox,
   ListTodo,
-  Bot,
   Monitor,
   ChevronDown,
   ChevronRight,
@@ -35,14 +34,16 @@ import {
   X,
   Zap,
   Users,
+  Network,
+  Layers3,
 } from "lucide-react";
 import { WorkspaceAvatar } from "../workspace/workspace-avatar";
-import { ActorAvatar } from "@multica/ui/components/common/actor-avatar";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@multica/ui/components/ui/tooltip";
-import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@multica/ui/components/ui/collapsible";
+import { ActorAvatar } from "@ohmyagentteam/ui/components/common/actor-avatar";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@ohmyagentteam/ui/components/ui/tooltip";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@ohmyagentteam/ui/components/ui/collapsible";
 import { StatusIcon } from "../issues/components/status-icon";
-import { useIssueDraftStore } from "@multica/core/issues/stores/draft-store";
-import { openCreateIssueWithPreference } from "@multica/core/issues/stores/create-mode-store";
+import { useIssueDraftStore } from "@ohmyagentteam/core/issues/stores/draft-store";
+import { openCreateIssueWithPreference } from "@ohmyagentteam/core/issues/stores/create-mode-store";
 import {
   Sidebar,
   SidebarContent,
@@ -55,7 +56,8 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
-} from "@multica/ui/components/ui/sidebar";
+  useSidebarSafe,
+} from "@ohmyagentteam/ui/components/ui/sidebar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -64,25 +66,28 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@multica/ui/components/ui/dropdown-menu";
-import { useAuthStore } from "@multica/core/auth";
-import { useCurrentWorkspace, useWorkspacePaths, paths } from "@multica/core/paths";
-import { workspaceListOptions, myInvitationListOptions, workspaceKeys } from "@multica/core/workspace/queries";
-import { resolvePublicFileUrl } from "@multica/core/workspace/avatar-url";
+} from "@ohmyagentteam/ui/components/ui/dropdown-menu";
+import { useAuthStore } from "@ohmyagentteam/core/auth";
+import { useCurrentWorkspace, useWorkspacePaths, paths } from "@ohmyagentteam/core/paths";
+import { workspaceListOptions, myInvitationListOptions, workspaceKeys } from "@ohmyagentteam/core/workspace/queries";
+import { resolvePublicFileUrl } from "@ohmyagentteam/core/workspace/avatar-url";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { inboxKeys, deduplicateInboxItems, inboxUnreadSummaryOptions, hasOtherWorkspaceUnread, unreadWorkspaceIds } from "@multica/core/inbox/queries";
-import { api, ApiError } from "@multica/core/api";
-import { useModalStore } from "@multica/core/modals";
-import { useConfigStore } from "@multica/core/config";
-import { useMyRuntimesNeedUpdate } from "@multica/core/runtimes/hooks";
-import { pinListOptions } from "@multica/core/pins/queries";
-import { useDeletePin, useReorderPins } from "@multica/core/pins/mutations";
-import { issueDetailOptions } from "@multica/core/issues/queries";
-import { projectDetailOptions } from "@multica/core/projects/queries";
-import type { PinnedItem } from "@multica/core/types";
+import { inboxKeys, deduplicateInboxItems, inboxUnreadSummaryOptions, hasOtherWorkspaceUnread, unreadWorkspaceIds } from "@ohmyagentteam/core/inbox/queries";
+import { api, ApiError } from "@ohmyagentteam/core/api";
+import { useModalStore } from "@ohmyagentteam/core/modals";
+import { useConfigStore } from "@ohmyagentteam/core/config";
+import { useMyRuntimesNeedUpdate } from "@ohmyagentteam/core/runtimes/hooks";
+import { pinListOptions } from "@ohmyagentteam/core/pins/queries";
+import { useDeletePin, useReorderPins } from "@ohmyagentteam/core/pins/mutations";
+import { issueDetailOptions } from "@ohmyagentteam/core/issues/queries";
+import { epicDetailOptions } from "@ohmyagentteam/core/epics/queries";
+import { projectDetailOptions } from "@ohmyagentteam/core/projects/queries";
+import type { PinnedItem } from "@ohmyagentteam/core/types";
 import { useLogout } from "../auth";
 import { ProjectIcon } from "../projects/components/project-icon";
 import { useT } from "../i18n";
+import { BrandMark } from "@ohmyagentteam/ui/components/common/brand-mark";
+import { BRAND_NAME } from "@ohmyagentteam/core/brand";
 
 // Top-level nav items stay active when the user is on a child route
 // (e.g. "Projects" stays lit on /:slug/projects/:id). Pinned items keep
@@ -138,18 +143,21 @@ const personalNav: { key: NavKey; labelKey: NavLabelKey; icon: typeof Inbox }[] 
   { key: "myIssues", labelKey: "my_issues", icon: CircleUser },
 ];
 
-const workspaceNav: { key: NavKey; labelKey: NavLabelKey; icon: typeof Inbox }[] = [
-  { key: "issues", labelKey: "issues", icon: ListTodo },
+const workNav: { key: NavKey; labelKey: NavLabelKey; icon: typeof Inbox }[] = [
   { key: "projects", labelKey: "projects", icon: FolderKanban },
+  { key: "issues", labelKey: "issues", icon: ListTodo },
   { key: "autopilots", labelKey: "autopilots", icon: Zap },
-  { key: "agents", labelKey: "agents", icon: Bot },
-  { key: "squads", labelKey: "squads", icon: Users },
-  { key: "usage", labelKey: "usage", icon: BarChart3 },
 ];
 
-const configureNav: { key: NavKey; labelKey: NavLabelKey; icon: typeof Inbox }[] = [
+const collaborationNav: { key: NavKey; labelKey: NavLabelKey; icon: typeof Inbox }[] = [
+  { key: "agents", labelKey: "agents", icon: Network },
+  { key: "squads", labelKey: "squads", icon: Users },
   { key: "runtimes", labelKey: "runtimes", icon: Monitor },
+];
+
+const systemNav: { key: NavKey; labelKey: NavLabelKey; icon: typeof Inbox }[] = [
   { key: "skills", labelKey: "skills", icon: BookOpenText },
+  { key: "usage", labelKey: "usage", icon: BarChart3 },
   { key: "settings", labelKey: "settings", icon: Settings },
 ];
 
@@ -266,23 +274,28 @@ function PinRow({
   wsId: string;
 }) {
   const isIssue = pin.item_type === "issue";
+  const isEpic = pin.item_type === "epic";
   const issueQuery = useQuery({
     ...issueDetailOptions(wsId, pin.item_id),
     enabled: isIssue,
   });
   const projectQuery = useQuery({
     ...projectDetailOptions(wsId, pin.item_id),
-    enabled: !isIssue,
+    enabled: pin.item_type === "project",
+  });
+  const epicQuery = useQuery({
+    ...epicDetailOptions(wsId, pin.item_id),
+    enabled: isEpic,
   });
 
   const triggeredRef = useRef(false);
   useEffect(() => {
-    const err = isIssue ? issueQuery.error : projectQuery.error;
+    const err = isIssue ? issueQuery.error : isEpic ? epicQuery.error : projectQuery.error;
     if (err instanceof ApiError && err.status === 404 && !triggeredRef.current) {
       triggeredRef.current = true;
       onUnpin();
     }
-  }, [isIssue, issueQuery.error, onUnpin, projectQuery.error]);
+  }, [epicQuery.error, isEpic, isIssue, issueQuery.error, onUnpin, projectQuery.error]);
 
   if (isIssue) {
     if (issueQuery.isPending) return <PinSkeleton />;
@@ -301,6 +314,21 @@ function PinRow({
         onUnpin={onUnpin}
         label={label}
         iconNode={iconNode}
+      />
+    );
+  }
+
+  if (isEpic) {
+    if (epicQuery.isPending) return <PinSkeleton />;
+    if (epicQuery.isError || !epicQuery.data) return null;
+    return (
+      <SortablePinItem
+        pin={pin}
+        href={href}
+        pathname={pathname}
+        onUnpin={onUnpin}
+        label={epicQuery.data.title}
+        iconNode={<Layers3 className="!size-3.5 shrink-0" />}
       />
     );
   }
@@ -346,6 +374,9 @@ interface AppSidebarProps {
 export function AppSidebar({ topSlot, searchSlot, headerClassName, headerStyle }: AppSidebarProps = {}) {
   const { t } = useT("layout");
   const { pathname, push } = useNavigation();
+  const sidebar = useSidebarSafe();
+  const isMobileSidebar = sidebar?.isMobile ?? false;
+  const setOpenMobile = sidebar?.setOpenMobile;
   const user = useAuthStore((s) => s.user);
   const userId = useAuthStore((s) => s.user?.id);
   const logout = useLogout();
@@ -354,6 +385,10 @@ export function AppSidebar({ topSlot, searchSlot, headerClassName, headerStyle }
   const { data: workspaces = EMPTY_WORKSPACES } = useQuery(workspaceListOptions());
   const { data: myInvitations = EMPTY_INVITATIONS } = useQuery(myInvitationListOptions());
   const workspaceCreationDisabled = useConfigStore((s) => s.workspaceCreationDisabled);
+
+  useEffect(() => {
+    if (isMobileSidebar) setOpenMobile?.(false);
+  }, [pathname, isMobileSidebar, setOpenMobile]);
 
   const wsId = workspace?.id;
   const { data: inboxItems = EMPTY_INBOX } = useQuery({
@@ -390,7 +425,12 @@ export function AppSidebar({ topSlot, searchSlot, headerClassName, headerStyle }
   const sidebarScrollRef = useRef<HTMLDivElement>(null);
   const sidebarFadeStyle = useScrollFade(sidebarScrollRef, 24);
   const getPinHref = useCallback(
-    (pin: PinnedItem) => (pin.item_type === "issue" ? p.issueDetail(pin.item_id) : p.projectDetail(pin.item_id)),
+    (pin: PinnedItem) =>
+      pin.item_type === "issue"
+        ? p.issueDetail(pin.item_id)
+        : pin.item_type === "epic"
+          ? p.epicDetail(pin.item_id)
+          : p.projectDetail(pin.item_id),
     [p],
   );
 
@@ -493,6 +533,12 @@ export function AppSidebar({ topSlot, searchSlot, headerClassName, headerStyle }
         {topSlot}
         {/* Workspace Switcher */}
         <SidebarHeader className={cn("py-3", headerClassName)} style={headerStyle}>
+          <div className="flex h-7 items-center gap-2 px-2">
+            <BrandMark className="size-4 shrink-0" />
+            <span className="truncate font-serif text-[13px] font-medium">
+              {BRAND_NAME}
+            </span>
+          </div>
           <SidebarMenu>
             <SidebarMenuItem>
               <DropdownMenu>
@@ -510,7 +556,7 @@ export function AppSidebar({ topSlot, searchSlot, headerClassName, headerStyle }
                         )}
                       </span>
                       <span className="flex-1 truncate font-medium">
-                        {workspace?.name ?? "Multica"}
+                        {workspace?.name ?? BRAND_NAME}
                       </span>
                       <ChevronDown className="size-3 text-muted-foreground" />
                     </SidebarMenuButton>
@@ -650,6 +696,7 @@ export function AppSidebar({ topSlot, searchSlot, headerClassName, headerStyle }
         {/* Navigation */}
         <SidebarContent ref={sidebarScrollRef} style={sidebarFadeStyle}>
           <SidebarGroup>
+            <SidebarGroupLabel>{t(($) => $.sidebar.personal_group)}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu className="gap-0.5">
                 {personalNav.map((item) => {
@@ -713,10 +760,10 @@ export function AppSidebar({ topSlot, searchSlot, headerClassName, headerStyle }
           )}
 
           <SidebarGroup>
-            <SidebarGroupLabel>{t(($) => $.sidebar.workspace_group)}</SidebarGroupLabel>
+            <SidebarGroupLabel>{t(($) => $.sidebar.work_group)}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu className="gap-0.5">
-                {workspaceNav.map((item) => {
+                {workNav.map((item) => {
                   const href = p[item.key]();
                   const isActive = !isActivePinnedRoute && isNavActive(pathname, href);
                   return (
@@ -737,10 +784,10 @@ export function AppSidebar({ topSlot, searchSlot, headerClassName, headerStyle }
           </SidebarGroup>
 
           <SidebarGroup>
-            <SidebarGroupLabel>{t(($) => $.sidebar.configure_group)}</SidebarGroupLabel>
+            <SidebarGroupLabel>{t(($) => $.sidebar.network_group)}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu className="gap-0.5">
-                {configureNav.map((item) => {
+                {collaborationNav.map((item) => {
                   const href = p[item.key]();
                   const isActive = isNavActive(pathname, href);
                   return (
@@ -755,6 +802,30 @@ export function AppSidebar({ topSlot, searchSlot, headerClassName, headerStyle }
                         {item.key === "runtimes" && hasRuntimeUpdates && (
                           <span className="ml-auto size-1.5 rounded-full bg-destructive" />
                         )}
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+
+          <SidebarGroup>
+            <SidebarGroupLabel>{t(($) => $.sidebar.system_group)}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu className="gap-0.5">
+                {systemNav.map((item) => {
+                  const href = p[item.key]();
+                  const isActive = isNavActive(pathname, href);
+                  return (
+                    <SidebarMenuItem key={item.key}>
+                      <SidebarMenuButton
+                        isActive={isActive}
+                        render={<AppLink href={href} />}
+                        className="text-muted-foreground hover:not-data-active:bg-sidebar-accent/70 data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground"
+                      >
+                        <item.icon />
+                        <span>{t(($) => $.nav[item.labelKey])}</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   );

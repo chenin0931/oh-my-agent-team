@@ -2,11 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Camera, Loader2, Save, LogOut } from "lucide-react";
-import { Input } from "@multica/ui/components/ui/input";
-import { Textarea } from "@multica/ui/components/ui/textarea";
-import { Label } from "@multica/ui/components/ui/label";
-import { Button } from "@multica/ui/components/ui/button";
-import { Card, CardContent } from "@multica/ui/components/ui/card";
+import { Input } from "@ohmyagentteam/ui/components/ui/input";
+import { Textarea } from "@ohmyagentteam/ui/components/ui/textarea";
+import { Label } from "@ohmyagentteam/ui/components/ui/label";
+import { Button } from "@ohmyagentteam/ui/components/ui/button";
+import { Card, CardContent } from "@ohmyagentteam/ui/components/ui/card";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -16,27 +16,26 @@ import {
   AlertDialogFooter,
   AlertDialogCancel,
   AlertDialogAction,
-} from "@multica/ui/components/ui/alert-dialog";
+} from "@ohmyagentteam/ui/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useAuthStore } from "@multica/core/auth";
-import { useLeaveWorkspace, useDeleteWorkspace } from "@multica/core/workspace/mutations";
+import { useAuthStore } from "@ohmyagentteam/core/auth";
+import { useLeaveWorkspace, useDeleteWorkspace } from "@ohmyagentteam/core/workspace/mutations";
 import {
   memberListOptions,
   workspaceKeys,
   workspaceListOptions,
-} from "@multica/core/workspace/queries";
-import { issueKeys } from "@multica/core/issues/queries";
-import { api } from "@multica/core/api";
-import { useFileUpload } from "@multica/core/hooks/use-file-upload";
-import { resolvePublicFileUrl } from "@multica/core/workspace/avatar-url";
+} from "@ohmyagentteam/core/workspace/queries";
+import { issueKeys } from "@ohmyagentteam/core/issues/queries";
+import { api } from "@ohmyagentteam/core/api";
+import { useFileUpload } from "@ohmyagentteam/core/hooks/use-file-upload";
+import { resolvePublicFileUrl } from "@ohmyagentteam/core/workspace/avatar-url";
 import {
   resolvePostAuthDestination,
   useCurrentWorkspace,
-  useHasOnboarded,
-} from "@multica/core/paths";
-import { setCurrentWorkspace } from "@multica/core/platform";
-import type { Workspace } from "@multica/core/types";
+} from "@ohmyagentteam/core/paths";
+import { setCurrentWorkspace } from "@ohmyagentteam/core/platform";
+import type { Workspace } from "@ohmyagentteam/core/types";
 import { useNavigation } from "../../navigation";
 import { DeleteWorkspaceDialog } from "./delete-workspace-dialog";
 import { useT } from "../../i18n";
@@ -60,7 +59,6 @@ export function WorkspaceTab() {
   const leaveWorkspace = useLeaveWorkspace();
   const deleteWorkspace = useDeleteWorkspace();
   const navigation = useNavigation();
-  const hasOnboarded = useHasOnboarded();
 
   /**
    * Send the user to a safe URL, computed from the current cached workspace
@@ -101,7 +99,7 @@ export function WorkspaceTab() {
     // takes over immediately, or the new-workspace overlay takes over
     // (which has no workspace context, so null is correct).
     setCurrentWorkspace(null, null);
-    navigation.push(resolvePostAuthDestination(remaining, hasOnboarded));
+    navigation.push(resolvePostAuthDestination(remaining));
   };
 
   const [name, setName] = useState(workspace?.name ?? "");

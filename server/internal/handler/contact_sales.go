@@ -10,10 +10,10 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/multica-ai/multica/server/internal/analytics"
-	"github.com/multica-ai/multica/server/internal/logger"
-	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/analytics"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/logger"
+	obsmetrics "github.com/chenin0931/oh-my-agent-team/server/internal/metrics"
+	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
 )
 
 // Public, unauthenticated endpoint for the landing-page "Contact Sales"
@@ -48,7 +48,7 @@ var contactSalesAllowedCompanySize = []string{
 }
 
 // contactSalesAllowedUseCase mirrors the "How do you plan to use or
-// collaborate with Multica?" dropdown.
+// collaborate with OhMyAgentTeam?" dropdown.
 var contactSalesAllowedUseCase = []string{
 	"evaluate",
 	"adopt_team",
@@ -102,8 +102,8 @@ type CreateContactSalesRequest struct {
 	UseCase       string `json:"use_case"`
 	Goals         string `json:"goals"`
 	// Source identifies where the form was opened from. Frontend
-	// enumerates {page, onboarding, agents_page}; the metric label
-	// `multica_contact_sales_submitted_total{source=...}` reads it
+	// enumerates {page, agents_page}; the metric label
+	// `omat_contact_sales_submitted_total{source=...}` reads it
 	// via the metrics.NormalizeContactSalesSource allow-list, anything
 	// else collapses to "other". Empty falls back to "page" so legacy
 	// clients that don't send the field don't blackhole the metric.

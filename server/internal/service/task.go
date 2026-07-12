@@ -13,19 +13,19 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/multica-ai/multica/server/internal/analytics"
-	"github.com/multica-ai/multica/server/internal/events"
-	"github.com/multica-ai/multica/server/internal/featureflags"
-	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
-	"github.com/multica-ai/multica/server/internal/realtime"
-	"github.com/multica-ai/multica/server/internal/runtimeapps"
-	"github.com/multica-ai/multica/server/internal/util"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
-	"github.com/multica-ai/multica/server/pkg/featureflag"
-	"github.com/multica-ai/multica/server/pkg/protocol"
-	"github.com/multica-ai/multica/server/pkg/redact"
-	"github.com/multica-ai/multica/server/pkg/skillbundle"
-	"github.com/multica-ai/multica/server/pkg/taskfailure"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/analytics"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/events"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/featureflags"
+	obsmetrics "github.com/chenin0931/oh-my-agent-team/server/internal/metrics"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/realtime"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/runtimeapps"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/util"
+	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
+	"github.com/chenin0931/oh-my-agent-team/server/pkg/featureflag"
+	"github.com/chenin0931/oh-my-agent-team/server/pkg/protocol"
+	"github.com/chenin0931/oh-my-agent-team/server/pkg/redact"
+	"github.com/chenin0931/oh-my-agent-team/server/pkg/skillbundle"
+	"github.com/chenin0931/oh-my-agent-team/server/pkg/taskfailure"
 )
 
 type TaskService struct {
@@ -49,7 +49,7 @@ type TaskService struct {
 	// epic, MUL-3721) — the integration's "current user's connected apps
 	// → MCP session URL" hook called from each Enqueue* path. Optional: a
 	// nil ComposioOverlayBuilder turns the overlay step into a no-op so
-	// every Multica deployment that hasn't enabled Composio behaves
+	// every OhMyAgentTeam deployment that hasn't enabled Composio behaves
 	// exactly as before. Wired in router.go after composiointeg.NewService
 	// succeeds; the concrete type is *composio.Service.
 	Composio ComposioOverlayBuilder
@@ -124,6 +124,8 @@ const (
 	claimResponseRecoveryWindow = 90 * time.Second
 	prepareLeaseDuration        = 45 * time.Second
 )
+
+var errMemberAssigneeAdvisorAlreadyInvoked = errors.New("member assignee advisor already invoked")
 
 // buildCommentTriggerSummary fetches the comment content and truncates
 // it for storage on the task row. Returns an invalid pgtype.Text when
@@ -590,13 +592,268 @@ func taskErrorType(reason string) string {
 
 // EnqueueTaskForIssue creates a queued task for an agent-assigned issue.
 // No context snapshot is stored — the agent fetches all data it needs at
-// runtime via the multica CLI.
+// runtime via the ohmyagentteam CLI.
 func (s *TaskService) EnqueueTaskForIssue(ctx context.Context, issue db.Issue, triggerCommentID ...pgtype.UUID) (db.AgentTaskQueue, error) {
 	var commentID pgtype.UUID
 	if len(triggerCommentID) > 0 {
 		commentID = triggerCommentID[0]
 	}
 	return s.enqueueIssueTask(ctx, issue, commentID, false, "")
+}
+
+// MemberAssigneeAdvisorContext is stamped on issue-linked tasks that ask an
+// assignee member's own agents to leave one advisory comment. It deliberately
+// uses a separate task context from normal issue assignment so subscription
+// and action stay decoupled.
+type MemberAssigneeAdvisorContext struct {
+	Type           string `json:"type"`
+	AssigneeUserID string `json:"assignee_user_id"`
+	Instruction    string `json:"instruction,omitempty"`
+	TargetType     string `json:"target_type,omitempty"`
+}
+
+const MemberAssigneeAdvisorContextType = "member_assignee_advisor"
+const ManualIssueAdvisorContextType = "manual_issue_advisor"
+const EpicAdvisorContextType = "epic_advisor"
+
+const (
+	TaskCollaborationRoleExecutor = "executor"
+	TaskCollaborationRoleAdvisor  = "advisor"
+)
+
+func ParseMemberAssigneeAdvisorContext(task db.AgentTaskQueue) (MemberAssigneeAdvisorContext, bool) {
+	if !task.IssueID.Valid || task.ChatSessionID.Valid || task.AutopilotRunID.Valid || len(task.Context) == 0 {
+		return MemberAssigneeAdvisorContext{}, false
+	}
+	var c MemberAssigneeAdvisorContext
+	if err := json.Unmarshal(task.Context, &c); err != nil {
+		return MemberAssigneeAdvisorContext{}, false
+	}
+	if c.Type != MemberAssigneeAdvisorContextType && c.Type != ManualIssueAdvisorContextType && c.Type != EpicAdvisorContextType {
+		return MemberAssigneeAdvisorContext{}, false
+	}
+	return c, true
+}
+
+func IsMemberAssigneeAdvisorTask(task db.AgentTaskQueue) bool {
+	_, ok := ParseMemberAssigneeAdvisorContext(task)
+	return ok
+}
+
+func IsEpicAdvisorTask(task db.AgentTaskQueue) bool {
+	ctx, ok := ParseMemberAssigneeAdvisorContext(task)
+	return ok && ctx.Type == EpicAdvisorContextType
+}
+
+// TaskCollaborationRole distinguishes work that owns execution from a
+// comment-only advisory pass. The role travels with task events so inbox
+// listeners do not turn an optional advisor failure into a human action item.
+func TaskCollaborationRole(task db.AgentTaskQueue) string {
+	if IsMemberAssigneeAdvisorTask(task) {
+		return TaskCollaborationRoleAdvisor
+	}
+	return TaskCollaborationRoleExecutor
+}
+
+// EnqueueIssueAdvisor creates a manually requested, comment-only advisor run.
+// It deliberately shares the advisor context and permission boundary used by
+// member-assignee advisors, but does not consume the one-shot assignment
+// invocation record: a human may explicitly ask for a fresh summary later.
+func (s *TaskService) EnqueueIssueAdvisor(ctx context.Context, issue db.Issue, agentID, originatorUserID pgtype.UUID, instruction string) (db.AgentTaskQueue, error) {
+	return s.enqueueManualAdvisor(ctx, issue, agentID, originatorUserID, instruction, ManualIssueAdvisorContextType, "issue")
+}
+
+// EnqueueEpicAdvisor creates a one-shot, comment-only planning advisor task.
+// It shares the hardened advisor permission context, but is distinguishable
+// in daemon prompts and event payloads from an executable issue task.
+func (s *TaskService) EnqueueEpicAdvisor(ctx context.Context, epic db.Issue, agentID, originatorUserID pgtype.UUID, instruction string) (db.AgentTaskQueue, error) {
+	if defaultIssueType(epic.IssueType) != IssueTypeEpic {
+		return db.AgentTaskQueue{}, fmt.Errorf("epic advisor target must be an epic")
+	}
+	return s.enqueueManualAdvisor(ctx, epic, agentID, originatorUserID, instruction, EpicAdvisorContextType, "epic")
+}
+
+func (s *TaskService) enqueueManualAdvisor(ctx context.Context, issue db.Issue, agentID, originatorUserID pgtype.UUID, instruction, contextType, targetType string) (db.AgentTaskQueue, error) {
+	agent, err := s.Queries.GetAgentInWorkspace(ctx, db.GetAgentInWorkspaceParams{
+		ID:          agentID,
+		WorkspaceID: issue.WorkspaceID,
+	})
+	if err != nil {
+		return db.AgentTaskQueue{}, fmt.Errorf("load advisor agent: %w", err)
+	}
+	if !agent.RuntimeID.Valid || agent.ArchivedAt.Valid {
+		return db.AgentTaskQueue{}, fmt.Errorf("advisor agent is not ready")
+	}
+	payload := MemberAssigneeAdvisorContext{
+		Type:           contextType,
+		AssigneeUserID: util.UUIDToString(originatorUserID),
+		Instruction:    strings.TrimSpace(instruction),
+		TargetType:     targetType,
+	}
+	contextJSON, err := json.Marshal(payload)
+	if err != nil {
+		return db.AgentTaskQueue{}, fmt.Errorf("marshal advisor context: %w", err)
+	}
+	runtimeMCPOverlay := s.buildRuntimeMCPOverlay(ctx, originatorUserID, agent)
+	task, err := s.Queries.CreateMemberAssigneeAdvisorTask(ctx, db.CreateMemberAssigneeAdvisorTaskParams{
+		AgentID:              agent.ID,
+		RuntimeID:            agent.RuntimeID,
+		IssueID:              issue.ID,
+		Priority:             priorityToInt(issue.Priority),
+		Context:              contextJSON,
+		OriginatorUserID:     originatorUserID,
+		RuntimeMcpOverlay:    runtimeMCPOverlay.Overlay,
+		RuntimeConnectedApps: runtimeMCPOverlay.ConnectedApps,
+	})
+	if err != nil {
+		return db.AgentTaskQueue{}, fmt.Errorf("create manual advisor task: %w", err)
+	}
+	s.addAdvisorSubscriber(ctx, issue, agent.ID)
+	s.broadcastTaskEvent(ctx, protocol.EventTaskQueued, task)
+	s.NotifyTaskEnqueued(ctx, task)
+	return task, nil
+}
+
+// EnqueueMemberAssigneeAdvisors fans out one comment-only advisory task to
+// every ready agent owned by the human member assigned to the issue. Missing
+// members, missing agents, and duplicate prior invocations are intentionally
+// silent: the user-facing assignment itself has already succeeded.
+func (s *TaskService) EnqueueMemberAssigneeAdvisors(ctx context.Context, issue db.Issue) {
+	if s == nil || s.Queries == nil {
+		return
+	}
+	if defaultIssueType(issue.IssueType) == IssueTypeEpic {
+		return
+	}
+	if !issue.AssigneeType.Valid || issue.AssigneeType.String != "member" || !issue.AssigneeID.Valid {
+		return
+	}
+	if _, err := s.Queries.GetMemberByUserAndWorkspace(ctx, db.GetMemberByUserAndWorkspaceParams{
+		UserID:      issue.AssigneeID,
+		WorkspaceID: issue.WorkspaceID,
+	}); err != nil {
+		return
+	}
+	agents, err := s.Queries.ListReadyAgentsOwnedByUserInWorkspace(ctx, db.ListReadyAgentsOwnedByUserInWorkspaceParams{
+		WorkspaceID: issue.WorkspaceID,
+		OwnerID:     issue.AssigneeID,
+	})
+	if err != nil {
+		slog.Warn("member-assignee advisor: list owned agents failed",
+			"issue_id", util.UUIDToString(issue.ID),
+			"assignee_user_id", util.UUIDToString(issue.AssigneeID),
+			"error", err)
+		return
+	}
+	for _, agent := range agents {
+		task, queued, err := s.enqueueMemberAssigneeAdvisorTask(ctx, issue, issue.AssigneeID, agent)
+		if err != nil {
+			slog.Warn("member-assignee advisor: enqueue failed",
+				"issue_id", util.UUIDToString(issue.ID),
+				"assignee_user_id", util.UUIDToString(issue.AssigneeID),
+				"agent_id", util.UUIDToString(agent.ID),
+				"error", err)
+			continue
+		}
+		if !queued {
+			continue
+		}
+		s.addAdvisorSubscriber(ctx, issue, agent.ID)
+		slog.Info("member-assignee advisor task enqueued",
+			"task_id", util.UUIDToString(task.ID),
+			"issue_id", util.UUIDToString(issue.ID),
+			"assignee_user_id", util.UUIDToString(issue.AssigneeID),
+			"agent_id", util.UUIDToString(agent.ID))
+		s.broadcastTaskEvent(ctx, protocol.EventTaskQueued, task)
+		s.NotifyTaskEnqueued(ctx, task)
+	}
+}
+
+func (s *TaskService) enqueueMemberAssigneeAdvisorTask(ctx context.Context, issue db.Issue, assigneeUserID pgtype.UUID, agent db.Agent) (db.AgentTaskQueue, bool, error) {
+	if !agent.RuntimeID.Valid || agent.ArchivedAt.Valid {
+		return db.AgentTaskQueue{}, false, nil
+	}
+	payload := MemberAssigneeAdvisorContext{
+		Type:           MemberAssigneeAdvisorContextType,
+		AssigneeUserID: util.UUIDToString(assigneeUserID),
+	}
+	contextJSON, err := json.Marshal(payload)
+	if err != nil {
+		return db.AgentTaskQueue{}, false, fmt.Errorf("marshal advisor context: %w", err)
+	}
+	runtimeMCPOverlay := s.buildRuntimeMCPOverlay(ctx, assigneeUserID, agent)
+
+	var task db.AgentTaskQueue
+	err = s.runInTx(ctx, func(qtx *db.Queries) error {
+		if _, err := qtx.CreateIssueAdvisorInvocation(ctx, db.CreateIssueAdvisorInvocationParams{
+			IssueID:        issue.ID,
+			WorkspaceID:    issue.WorkspaceID,
+			AssigneeUserID: assigneeUserID,
+			AgentID:        agent.ID,
+		}); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return errMemberAssigneeAdvisorAlreadyInvoked
+			}
+			return fmt.Errorf("create advisor invocation: %w", err)
+		}
+		t, err := qtx.CreateMemberAssigneeAdvisorTask(ctx, db.CreateMemberAssigneeAdvisorTaskParams{
+			AgentID:              agent.ID,
+			RuntimeID:            agent.RuntimeID,
+			IssueID:              issue.ID,
+			Priority:             priorityToInt(issue.Priority),
+			Context:              contextJSON,
+			OriginatorUserID:     assigneeUserID,
+			RuntimeMcpOverlay:    runtimeMCPOverlay.Overlay,
+			RuntimeConnectedApps: runtimeMCPOverlay.ConnectedApps,
+		})
+		if err != nil {
+			return fmt.Errorf("create advisor task: %w", err)
+		}
+		task = t
+		if err := qtx.SetIssueAdvisorInvocationTask(ctx, db.SetIssueAdvisorInvocationTaskParams{
+			IssueID:        issue.ID,
+			AssigneeUserID: assigneeUserID,
+			AgentID:        agent.ID,
+			TaskID:         task.ID,
+		}); err != nil {
+			return fmt.Errorf("link advisor task: %w", err)
+		}
+		return nil
+	})
+	if errors.Is(err, errMemberAssigneeAdvisorAlreadyInvoked) {
+		return db.AgentTaskQueue{}, false, nil
+	}
+	if err != nil {
+		return db.AgentTaskQueue{}, false, err
+	}
+	return task, true, nil
+}
+
+func (s *TaskService) addAdvisorSubscriber(ctx context.Context, issue db.Issue, agentID pgtype.UUID) {
+	if err := s.Queries.AddIssueSubscriber(ctx, db.AddIssueSubscriberParams{
+		IssueID:  issue.ID,
+		UserType: "agent",
+		UserID:   agentID,
+		Reason:   "advisor",
+	}); err != nil {
+		slog.Warn("member-assignee advisor: subscribe agent failed",
+			"issue_id", util.UUIDToString(issue.ID),
+			"agent_id", util.UUIDToString(agentID),
+			"error", err)
+		return
+	}
+	if s.Bus != nil {
+		s.Bus.Publish(events.Event{
+			Type:        protocol.EventSubscriberAdded,
+			WorkspaceID: util.UUIDToString(issue.WorkspaceID),
+			Payload: map[string]any{
+				"issue_id":  util.UUIDToString(issue.ID),
+				"user_type": "agent",
+				"user_id":   util.UUIDToString(agentID),
+				"reason":    "advisor",
+			},
+		})
+	}
 }
 
 // EnqueueTaskForIssueWithHandoff is the assign/promote variant that carries a
@@ -653,6 +910,9 @@ func (s *TaskService) ResolveIssueReviewSHAParam(ctx context.Context, issueID pg
 }
 
 func (s *TaskService) enqueueIssueTask(ctx context.Context, issue db.Issue, triggerCommentID pgtype.UUID, forceFreshSession bool, handoffNote string) (db.AgentTaskQueue, error) {
+	if defaultIssueType(issue.IssueType) == IssueTypeEpic {
+		return db.AgentTaskQueue{}, fmt.Errorf("epic is a planning container and cannot execute tasks")
+	}
 	if !issue.AssigneeID.Valid {
 		slog.Error("task enqueue failed", "issue_id", util.UUIDToString(issue.ID), "error", "issue has no assignee")
 		return db.AgentTaskQueue{}, fmt.Errorf("issue has no assignee")
@@ -748,6 +1008,9 @@ func (s *TaskService) EnqueueTaskForSquadLeaderWithHandoff(ctx context.Context, 
 }
 
 func (s *TaskService) enqueueMentionTask(ctx context.Context, issue db.Issue, agentID pgtype.UUID, triggerCommentID pgtype.UUID, isLeader bool, squadID pgtype.UUID, forceFreshSession bool, handoffNote string) (db.AgentTaskQueue, error) {
+	if defaultIssueType(issue.IssueType) == IssueTypeEpic {
+		return db.AgentTaskQueue{}, fmt.Errorf("epic is a planning container and cannot execute issue tasks")
+	}
 	agent, err := s.Queries.GetAgent(ctx, agentID)
 	if err != nil {
 		slog.Error("mention task enqueue failed: agent not found", "issue_id", util.UUIDToString(issue.ID), "agent_id", util.UUIDToString(agentID), "error", err)
@@ -859,6 +1122,8 @@ type QuickCreateContext struct {
 	Prompt        string   `json:"prompt"`
 	RequesterID   string   `json:"requester_id"`
 	WorkspaceID   string   `json:"workspace_id"`
+	Mode          string   `json:"mode,omitempty"`
+	DefaultStatus string   `json:"default_status,omitempty"`
 	ProjectID     string   `json:"project_id,omitempty"`
 	SquadID       string   `json:"squad_id,omitempty"`
 	AttachmentIDs []string `json:"attachment_ids,omitempty"`
@@ -874,10 +1139,20 @@ type QuickCreateContext struct {
 // QuickCreateContextType marks a task as a quick-create job.
 const QuickCreateContextType = "quick_create"
 
+const (
+	QuickCreateModePlanning         = "planning"
+	QuickCreateDefaultStatusBacklog = "backlog"
+)
+
+type QuickCreateTaskOptions struct {
+	Mode          string
+	DefaultStatus string
+}
+
 // EnqueueQuickCreateTask creates a queued task that has no issue / chat /
 // autopilot link — the user's natural-language prompt is stored in the
 // task's context JSONB and the agent is expected to translate it into a
-// `multica issue create` call. Pre-validates that the agent is reachable
+// `omat issue create` call. Pre-validates that the agent is reachable
 // (not archived, has a runtime) so the API can reject up-front rather than
 // queue a task no one will ever claim.
 //
@@ -894,6 +1169,10 @@ const QuickCreateContextType = "quick_create"
 // open the modal from "Add sub issue"). The handler is responsible for
 // validating it belongs to the same workspace before passing it in.
 func (s *TaskService) EnqueueQuickCreateTask(ctx context.Context, workspaceID, requesterID pgtype.UUID, agentID, squadID pgtype.UUID, prompt string, projectID, parentIssueID pgtype.UUID, attachmentIDs []pgtype.UUID) (db.AgentTaskQueue, error) {
+	return s.EnqueueQuickCreateTaskWithOptions(ctx, workspaceID, requesterID, agentID, squadID, prompt, projectID, parentIssueID, attachmentIDs, QuickCreateTaskOptions{})
+}
+
+func (s *TaskService) EnqueueQuickCreateTaskWithOptions(ctx context.Context, workspaceID, requesterID pgtype.UUID, agentID, squadID pgtype.UUID, prompt string, projectID, parentIssueID pgtype.UUID, attachmentIDs []pgtype.UUID, opts QuickCreateTaskOptions) (db.AgentTaskQueue, error) {
 	agent, err := s.Queries.GetAgent(ctx, agentID)
 	if err != nil {
 		return db.AgentTaskQueue{}, fmt.Errorf("load agent: %w", err)
@@ -910,6 +1189,12 @@ func (s *TaskService) EnqueueQuickCreateTask(ctx context.Context, workspaceID, r
 		Prompt:      prompt,
 		RequesterID: util.UUIDToString(requesterID),
 		WorkspaceID: util.UUIDToString(workspaceID),
+	}
+	if opts.Mode != "" {
+		payload.Mode = opts.Mode
+	}
+	if opts.DefaultStatus != "" {
+		payload.DefaultStatus = opts.DefaultStatus
 	}
 	if projectID.Valid {
 		payload.ProjectID = util.UUIDToString(projectID)
@@ -955,6 +1240,8 @@ func (s *TaskService) EnqueueQuickCreateTask(ctx context.Context, workspaceID, r
 		"workspace_id", util.UUIDToString(workspaceID),
 		"project_id", payload.ProjectID,
 		"parent_issue_id", payload.ParentIssueID,
+		"mode", payload.Mode,
+		"default_status", payload.DefaultStatus,
 	)
 	// Match every other Enqueue* path: kick the daemon WS so the task
 	// gets claimed promptly instead of waiting for the next 30 s poll
@@ -1053,7 +1340,7 @@ func (s *TaskService) EnqueueChatTask(ctx context.Context, chatSession db.ChatSe
 // Before #1587 this path was "cancel rows and return" — issue-status flips
 // (e.g. user marks the issue `done` or `cancelled` while a task is still
 // running) left the agent stuck at status="working" indefinitely, requiring a
-// manual `multica agent update <id> --status idle` to unwedge. Matches the
+// manual `omat agent update <id> --status idle` to unwedge. Matches the
 // pattern already used by CancelTask and RerunIssue.
 func (s *TaskService) CancelTasksForIssue(ctx context.Context, issueID pgtype.UUID) error {
 	cancelled, err := s.Queries.CancelAgentTasksByIssue(ctx, issueID)
@@ -1667,6 +1954,7 @@ func (s *TaskService) CompleteTask(ctx context.Context, taskID pgtype.UUID, resu
 	// for assignment-triggered tasks it is NULL and the fallback is top-level.
 	// Chat tasks have no IssueID and are handled separately below.
 	if task.IssueID.Valid {
+		isAdvisorTask := IsMemberAssigneeAdvisorTask(task)
 		suppressNoActionComment, err := HasSquadLeaderNoActionEvaluationForTask(ctx, s.Queries, task)
 		if err != nil {
 			slog.Warn("checking squad leader no_action evaluation failed",
@@ -1690,13 +1978,20 @@ func (s *TaskService) CompleteTask(ctx context.Context, taskID pgtype.UUID, resu
 					// decoded into real newlines before the comment hits the DB. See
 					// util.UnescapeBackslashEscapes for the exact contract.
 					body := util.UnescapeBackslashEscapes(payload.Output)
-					if task.TriggerCommentID.Valid && isTrivialDoneOutput(body) {
-						slog.Warn("suppressing trivial comment-trigger fallback output",
+					switch {
+					case isAdvisorTask && strings.TrimSpace(body) == "":
+						slog.Warn("suppressing empty advisor fallback output",
 							"task_id", util.UUIDToString(task.ID),
 							"issue_id", util.UUIDToString(task.IssueID),
 							"agent_id", util.UUIDToString(task.AgentID),
 						)
-					} else {
+					case (task.TriggerCommentID.Valid || isAdvisorTask) && isTrivialDoneOutput(body):
+						slog.Warn("suppressing trivial fallback output",
+							"task_id", util.UUIDToString(task.ID),
+							"issue_id", util.UUIDToString(task.IssueID),
+							"agent_id", util.UUIDToString(task.AgentID),
+						)
+					default:
 						s.createAgentComment(ctx, task.IssueID, task.AgentID, redact.Text(body), "comment", task.TriggerCommentID, pgtype.UUID{})
 					}
 				}
@@ -2222,6 +2517,7 @@ func (s *TaskService) HandleFailedTasks(ctx context.Context, tasks []db.AgentTas
 					"issue_id":       util.UUIDToString(t.IssueID),
 					"status":         "failed",
 					"failure_reason": failureReason,
+					"task_role":      TaskCollaborationRole(t),
 				},
 			})
 		}
@@ -2542,10 +2838,11 @@ func (s *TaskService) broadcastTaskEvent(ctx context.Context, eventType string, 
 		return
 	}
 	payload := map[string]any{
-		"task_id":  util.UUIDToString(task.ID),
-		"agent_id": util.UUIDToString(task.AgentID),
-		"issue_id": util.UUIDToString(task.IssueID),
-		"status":   task.Status,
+		"task_id":   util.UUIDToString(task.ID),
+		"agent_id":  util.UUIDToString(task.AgentID),
+		"issue_id":  util.UUIDToString(task.IssueID),
+		"status":    task.Status,
+		"task_role": TaskCollaborationRole(task),
 	}
 	if task.ChatSessionID.Valid {
 		payload["chat_session_id"] = util.UUIDToString(task.ChatSessionID)
@@ -2693,6 +2990,10 @@ func (s *TaskService) createAgentComment(ctx context.Context, issueID, agentID p
 		return
 	}
 	s.CancelDeferredEscalationsForIssueAgent(ctx, issueID, agentID)
+	targetType := "issue"
+	if defaultIssueType(issue.IssueType) == IssueTypeEpic {
+		targetType = "epic"
+	}
 	s.Bus.Publish(events.Event{
 		Type:        protocol.EventCommentCreated,
 		WorkspaceID: util.UUIDToString(issue.WorkspaceID),
@@ -2712,6 +3013,8 @@ func (s *TaskService) createAgentComment(ctx context.Context, issueID, agentID p
 			},
 			"issue_title":  issue.Title,
 			"issue_status": issue.Status,
+			"target_type":  targetType,
+			"target_id":    util.UUIDToString(issue.ID),
 		},
 	})
 	s.AutoUnresolveThreadOnReply(ctx, rootComment, util.UUIDToString(issue.WorkspaceID), "agent", util.UUIDToString(agentID))
@@ -2801,10 +3104,19 @@ func (s *TaskService) parseQuickCreateContext(task db.AgentTaskQueue) (QuickCrea
 	return qc, true
 }
 
+type quickCreateIssueSummary struct {
+	ID         string `json:"id"`
+	Identifier string `json:"identifier"`
+	Title      string `json:"title"`
+	Status     string `json:"status"`
+	ItemType   string `json:"item_type"`
+	TargetType string `json:"target_type"`
+}
+
 // notifyQuickCreateCompleted writes a success inbox notification to the
-// requester pointing at the issue the agent just created. The issue is
+// requester pointing at the issue(s) the agent just created. Each issue is
 // stamped with origin_type=quick_create + origin_id=<task_id> by the
-// daemon-injected MULTICA_QUICK_CREATE_TASK_ID env var, so this lookup is
+// daemon-injected OMAT_QUICK_CREATE_TASK_ID env var, so this lookup is
 // deterministic — robust against the same agent creating other issues in
 // parallel (e.g. assignment task running while max_concurrent_tasks > 1
 // permits another quick-create alongside it).
@@ -2819,18 +3131,19 @@ func (s *TaskService) notifyQuickCreateCompleted(ctx context.Context, task db.Ag
 		slog.Warn("quick-create completion: invalid workspace id", "task_id", util.UUIDToString(task.ID), "error", err)
 		return
 	}
-	issue, err := s.Queries.GetIssueByOrigin(ctx, db.GetIssueByOriginParams{
+	issues, err := s.Queries.ListIssuesByOrigin(ctx, db.ListIssuesByOriginParams{
 		WorkspaceID: workspaceID,
 		OriginType:  pgtype.Text{String: "quick_create", Valid: true},
 		OriginID:    task.ID,
 	})
-	if err != nil {
+	if err != nil || len(issues) == 0 {
 		// No issue created — agent ran to completion but the CLI call must
 		// have failed. Surface as a failure inbox so the user sees something.
 		slog.Warn("quick-create completion: no issue found, writing failure inbox",
 			"task_id", util.UUIDToString(task.ID),
 			"agent_id", util.UUIDToString(task.AgentID),
 			"workspace_id", qc.WorkspaceID,
+			"error", err,
 		)
 		s.notifyQuickCreateFailed(ctx, task, qc, "agent finished without creating an issue")
 		return
@@ -2841,13 +3154,22 @@ func (s *TaskService) notifyQuickCreateCompleted(ctx context.Context, task db.Ag
 	// (kind = "direct") instead of staying on the "Creating issue" active-
 	// wording label. Best-effort: a write failure here doesn't block the
 	// inbox notification, which is the more important signal to the user.
+	primaryIssue := issues[0]
+	if qc.Mode == QuickCreateModePlanning {
+		for _, item := range issues {
+			if defaultIssueType(item.IssueType) == IssueTypeEpic {
+				primaryIssue = item
+				break
+			}
+		}
+	}
 	if err := s.Queries.LinkTaskToIssue(ctx, db.LinkTaskToIssueParams{
 		ID:      task.ID,
-		IssueID: issue.ID,
+		IssueID: primaryIssue.ID,
 	}); err != nil {
 		slog.Warn("quick-create completion: link task→issue failed",
 			"task_id", util.UUIDToString(task.ID),
-			"issue_id", util.UUIDToString(issue.ID),
+			"issue_id", util.UUIDToString(primaryIssue.ID),
 			"error", err,
 		)
 	}
@@ -2858,40 +3180,92 @@ func (s *TaskService) notifyQuickCreateCompleted(ctx context.Context, task db.Ag
 	// is the semantic creator from a UX perspective — without this they
 	// only see the one-shot completion inbox and miss everything after.
 	// Best-effort: log on failure but don't block the inbox notification.
-	if err := s.Queries.AddIssueSubscriber(ctx, db.AddIssueSubscriberParams{
-		IssueID:  issue.ID,
-		UserType: "member",
-		UserID:   requesterID,
-		Reason:   "creator",
-	}); err != nil {
-		slog.Warn("quick-create completion: subscribe requester failed",
-			"task_id", util.UUIDToString(task.ID),
-			"issue_id", util.UUIDToString(issue.ID),
-			"requester_id", qc.RequesterID,
-			"error", err,
-		)
-	} else {
-		s.Bus.Publish(events.Event{
-			Type:        protocol.EventSubscriberAdded,
-			WorkspaceID: qc.WorkspaceID,
-			ActorType:   "agent",
-			ActorID:     util.UUIDToString(task.AgentID),
-			Payload: map[string]any{
-				"issue_id":  util.UUIDToString(issue.ID),
-				"user_type": "member",
-				"user_id":   qc.RequesterID,
-				"reason":    "creator",
-			},
-		})
-	}
 	prefix := s.getIssuePrefix(workspaceID)
-	identifier := fmt.Sprintf("%s-%d", prefix, issue.Number)
+	createdSummaries := make([]quickCreateIssueSummary, 0, len(issues))
+	epicSummaries := make([]quickCreateIssueSummary, 0)
+	issueSummaries := make([]quickCreateIssueSummary, 0)
+	var epicCount, issueCount, subtaskCount int
+	for _, issue := range issues {
+		if err := s.Queries.AddIssueSubscriber(ctx, db.AddIssueSubscriberParams{
+			IssueID:  issue.ID,
+			UserType: "member",
+			UserID:   requesterID,
+			Reason:   "creator",
+		}); err != nil {
+			slog.Warn("quick-create completion: subscribe requester failed",
+				"task_id", util.UUIDToString(task.ID),
+				"issue_id", util.UUIDToString(issue.ID),
+				"requester_id", qc.RequesterID,
+				"error", err,
+			)
+		} else {
+			s.Bus.Publish(events.Event{
+				Type:        protocol.EventSubscriberAdded,
+				WorkspaceID: qc.WorkspaceID,
+				ActorType:   "agent",
+				ActorID:     util.UUIDToString(task.AgentID),
+				Payload: map[string]any{
+					"issue_id":  util.UUIDToString(issue.ID),
+					"user_type": "member",
+					"user_id":   qc.RequesterID,
+					"reason":    "creator",
+				},
+			})
+		}
+		itemType := defaultIssueType(issue.IssueType)
+		targetType := "issue"
+		if itemType == IssueTypeEpic {
+			targetType = "epic"
+			epicCount++
+		} else if itemType == IssueTypeSubtask {
+			subtaskCount++
+		} else {
+			issueCount++
+		}
+		summary := quickCreateIssueSummary{
+			ID:         util.UUIDToString(issue.ID),
+			Identifier: fmt.Sprintf("%s-%d", prefix, issue.Number),
+			Title:      issue.Title,
+			Status:     issue.Status,
+			ItemType:   itemType,
+			TargetType: targetType,
+		}
+		createdSummaries = append(createdSummaries, summary)
+		if targetType == "epic" {
+			epicSummaries = append(epicSummaries, summary)
+		} else {
+			issueSummaries = append(issueSummaries, summary)
+		}
+	}
+	identifier := fmt.Sprintf("%s-%d", prefix, primaryIssue.Number)
+	title := primaryIssue.Title
+	if len(createdSummaries) > 1 {
+		title = fmt.Sprintf("Created %d issues", len(createdSummaries))
+	}
+	if qc.Mode == QuickCreateModePlanning {
+		title = fmt.Sprintf("Planned %d epics, %d issues, %d subtasks", epicCount, issueCount, subtaskCount)
+	}
+	primaryTargetType := "issue"
+	if defaultIssueType(primaryIssue.IssueType) == IssueTypeEpic {
+		primaryTargetType = "epic"
+	}
 	details, _ := json.Marshal(map[string]any{
 		"task_id":         util.UUIDToString(task.ID),
 		"agent_id":        util.UUIDToString(task.AgentID),
-		"issue_id":        util.UUIDToString(issue.ID),
+		"issue_id":        util.UUIDToString(primaryIssue.ID),
 		"identifier":      identifier,
+		"epics":           epicSummaries,
+		"issues":          issueSummaries,
+		"created_items":   createdSummaries,
+		"epic_count":      epicCount,
+		"issue_count":     issueCount,
+		"subtask_count":   subtaskCount,
+		"work_item_count": issueCount + subtaskCount,
+		"target_type":     primaryTargetType,
+		"target_id":       util.UUIDToString(primaryIssue.ID),
 		"original_prompt": qc.Prompt,
+		"mode":            qc.Mode,
+		"default_status":  qc.DefaultStatus,
 	})
 	item, err := s.Queries.CreateInboxItem(ctx, db.CreateInboxItemParams{
 		WorkspaceID:   workspaceID,
@@ -2899,8 +3273,10 @@ func (s *TaskService) notifyQuickCreateCompleted(ctx context.Context, task db.Ag
 		RecipientID:   requesterID,
 		Type:          "quick_create_done",
 		Severity:      "info",
-		IssueID:       issue.ID,
-		Title:         issue.Title,
+		IssueID:       primaryIssue.ID,
+		TargetType:    pgtype.Text{String: primaryTargetType, Valid: true},
+		TargetID:      primaryIssue.ID,
+		Title:         title,
 		Body:          pgtype.Text{},
 		ActorType:     pgtype.Text{String: "agent", Valid: true},
 		ActorID:       task.AgentID,
@@ -2910,7 +3286,7 @@ func (s *TaskService) notifyQuickCreateCompleted(ctx context.Context, task db.Ag
 		slog.Error("quick-create completion: inbox write failed", "task_id", util.UUIDToString(task.ID), "error", err)
 		return
 	}
-	s.publishQuickCreateInbox(item, qc.WorkspaceID, util.UUIDToString(task.AgentID), issue.Status)
+	s.publishQuickCreateInbox(item, qc.WorkspaceID, util.UUIDToString(task.AgentID), primaryIssue.Status)
 }
 
 // notifyQuickCreateFailed writes a failure inbox notification carrying the
@@ -2929,11 +3305,17 @@ func (s *TaskService) notifyQuickCreateFailed(ctx context.Context, task db.Agent
 	if errMsg == "" {
 		errMsg = "Quick create did not finish successfully"
 	}
+	title := "Quick create failed"
+	if qc.Mode == QuickCreateModePlanning {
+		title = "Planning quick create failed"
+	}
 	details, _ := json.Marshal(map[string]any{
 		"task_id":         util.UUIDToString(task.ID),
 		"agent_id":        util.UUIDToString(task.AgentID),
 		"original_prompt": qc.Prompt,
 		"error":           redact.Text(errMsg),
+		"mode":            qc.Mode,
+		"default_status":  qc.DefaultStatus,
 	})
 	item, err := s.Queries.CreateInboxItem(ctx, db.CreateInboxItemParams{
 		WorkspaceID:   workspaceID,
@@ -2942,7 +3324,7 @@ func (s *TaskService) notifyQuickCreateFailed(ctx context.Context, task db.Agent
 		Type:          "quick_create_failed",
 		Severity:      "action_required",
 		IssueID:       pgtype.UUID{},
-		Title:         "Quick create failed",
+		Title:         title,
 		Body:          pgtype.Text{String: redact.Text(errMsg), Valid: true},
 		ActorType:     pgtype.Text{String: "agent", Valid: true},
 		ActorID:       task.AgentID,
@@ -2967,6 +3349,8 @@ func (s *TaskService) publishQuickCreateInbox(item db.InboxItem, workspaceID, ag
 		"type":           item.Type,
 		"severity":       item.Severity,
 		"issue_id":       util.UUIDToPtr(item.IssueID),
+		"target_type":    util.TextToPtr(item.TargetType),
+		"target_id":      util.UUIDToPtr(item.TargetID),
 		"title":          item.Title,
 		"body":           util.TextToPtr(item.Body),
 		"read":           item.Read,

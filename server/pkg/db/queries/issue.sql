@@ -5,12 +5,17 @@
 -- member assignment (`assignee_type='member' AND assignee_id=involves_user_id`)
 -- because that is already the meaning of the `assignee_id` filter (tab 1
 -- "Assigned to me"), and the two filters must produce disjoint result sets.
-SELECT i.id, i.workspace_id, i.title, i.description, i.status, i.priority,
+SELECT i.id, i.workspace_id, i.issue_type, i.epic_id, i.title, i.description, i.acceptance_criteria, i.status, i.priority,
        i.assignee_type, i.assignee_id, i.creator_type, i.creator_id,
        i.parent_issue_id, i.position, i.start_date, i.due_date, i.created_at, i.updated_at, i.number, i.project_id, i.metadata, i.stage
 FROM issue i
 WHERE i.workspace_id = $1
+  AND i.issue_type IN ('issue', 'subtask')
   AND (sqlc.narg('status')::text IS NULL OR i.status = sqlc.narg('status'))
+  AND (sqlc.narg('issue_type')::text IS NULL OR i.issue_type = sqlc.narg('issue_type'))
+  AND (sqlc.narg('issue_types')::text[] IS NULL OR i.issue_type = ANY(sqlc.narg('issue_types')::text[]))
+  AND (sqlc.narg('epic_id')::uuid IS NULL OR i.epic_id = sqlc.narg('epic_id'))
+  AND (sqlc.narg('parent_issue_id')::uuid IS NULL OR i.parent_issue_id = sqlc.narg('parent_issue_id'))
   AND (sqlc.narg('priority')::text IS NULL OR i.priority = sqlc.narg('priority'))
   AND (sqlc.narg('assignee_id')::uuid IS NULL OR i.assignee_id = sqlc.narg('assignee_id'))
   AND (sqlc.narg('assignee_ids')::uuid[] IS NULL OR i.assignee_id = ANY(sqlc.narg('assignee_ids')::uuid[]))
@@ -71,12 +76,12 @@ WHERE id = $1 AND workspace_id = $2;
 
 -- name: CreateIssue :one
 INSERT INTO issue (
-    workspace_id, title, description, status, priority,
+    workspace_id, issue_type, epic_id, title, description, acceptance_criteria, epic_health, status, priority,
     assignee_type, assignee_id, creator_type, creator_id,
     parent_issue_id, position, start_date, due_date, number, project_id,
     stage
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
+    $1, COALESCE(NULLIF(sqlc.arg('issue_type'), ''), 'issue'), sqlc.narg('epic_id'), $2, $3, sqlc.narg('acceptance_criteria'), sqlc.narg('epic_health'), $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
     sqlc.narg('stage')
 ) RETURNING *;
 
@@ -88,6 +93,9 @@ WHERE workspace_id = $1 AND number = $2;
 UPDATE issue SET
     title = COALESCE(sqlc.narg('title'), title),
     description = COALESCE(sqlc.narg('description'), description),
+    acceptance_criteria = sqlc.narg('acceptance_criteria'),
+    issue_type = COALESCE(sqlc.narg('issue_type'), issue_type),
+    epic_id = sqlc.narg('epic_id'),
     status = COALESCE(sqlc.narg('status'), status),
     priority = COALESCE(sqlc.narg('priority'), priority),
     assignee_type = sqlc.narg('assignee_type'),
@@ -112,12 +120,12 @@ RETURNING *;
 
 -- name: CreateIssueWithOrigin :one
 INSERT INTO issue (
-    workspace_id, title, description, status, priority,
+    workspace_id, issue_type, epic_id, title, description, acceptance_criteria, epic_health, status, priority,
     assignee_type, assignee_id, creator_type, creator_id,
     parent_issue_id, position, start_date, due_date, number, project_id,
     origin_type, origin_id, stage
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
+    $1, COALESCE(NULLIF(sqlc.arg('issue_type'), ''), 'issue'), sqlc.narg('epic_id'), $2, $3, sqlc.narg('acceptance_criteria'), sqlc.narg('epic_health'), $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
     sqlc.narg('origin_type'), sqlc.narg('origin_id'), sqlc.narg('stage')
 ) RETURNING *;
 
@@ -159,17 +167,27 @@ LIMIT 1;
 -- (loadIssueForUser / GetIssueInWorkspace) already enforce membership today,
 -- but a future loader bypass or a new caller skipping the loader would be
 -- silently catastrophic without this guard. See incident #1661.
-DELETE FROM issue WHERE id = $1 AND workspace_id = $2;
+WITH promoted AS (
+  UPDATE issue
+  SET issue_type = 'issue', parent_issue_id = NULL, stage = NULL, updated_at = now()
+  WHERE parent_issue_id = $1 AND workspace_id = $2
+)
+DELETE FROM issue i WHERE i.id = $1 AND i.workspace_id = $2;
 
 -- name: ListOpenIssues :many
 -- See ListIssues for the semantics of involves_user_id (mirrors the 4-branch
 -- filter; member-direct assignment is intentionally excluded).
-SELECT i.id, i.workspace_id, i.title, i.description, i.status, i.priority,
+SELECT i.id, i.workspace_id, i.issue_type, i.epic_id, i.title, i.description, i.acceptance_criteria, i.status, i.priority,
        i.assignee_type, i.assignee_id, i.creator_type, i.creator_id,
        i.parent_issue_id, i.position, i.start_date, i.due_date, i.created_at, i.updated_at, i.number, i.project_id, i.metadata, i.stage
 FROM issue i
 WHERE i.workspace_id = $1
+  AND i.issue_type IN ('issue', 'subtask')
   AND i.status NOT IN ('done', 'cancelled')
+  AND (sqlc.narg('issue_type')::text IS NULL OR i.issue_type = sqlc.narg('issue_type'))
+  AND (sqlc.narg('issue_types')::text[] IS NULL OR i.issue_type = ANY(sqlc.narg('issue_types')::text[]))
+  AND (sqlc.narg('epic_id')::uuid IS NULL OR i.epic_id = sqlc.narg('epic_id'))
+  AND (sqlc.narg('parent_issue_id')::uuid IS NULL OR i.parent_issue_id = sqlc.narg('parent_issue_id'))
   AND (sqlc.narg('priority')::text IS NULL OR i.priority = sqlc.narg('priority'))
   AND (sqlc.narg('assignee_id')::uuid IS NULL OR i.assignee_id = sqlc.narg('assignee_id'))
   AND (sqlc.narg('assignee_ids')::uuid[] IS NULL OR i.assignee_id = ANY(sqlc.narg('assignee_ids')::uuid[]))
@@ -214,6 +232,7 @@ ORDER BY i.position ASC, i.created_at DESC;
 -- See ListIssues for the semantics of involves_user_id.
 SELECT count(*) FROM issue i
 WHERE i.workspace_id = $1
+  AND i.issue_type IN ('issue', 'subtask')
   AND (sqlc.narg('status')::text IS NULL OR i.status = sqlc.narg('status'))
   AND (sqlc.narg('priority')::text IS NULL OR i.priority = sqlc.narg('priority'))
   AND (sqlc.narg('assignee_id')::uuid IS NULL OR i.assignee_id = sqlc.narg('assignee_id'))
@@ -291,6 +310,16 @@ WHERE workspace_id = $1
   AND origin_id = $3
 LIMIT 1;
 
+-- name: ListIssuesByOrigin :many
+-- Finds all issues stamped with a specific (origin_type, origin_id) pair.
+-- Used by quick-create completion after the quick-create flow was expanded
+-- to allow one natural-language prompt to create multiple issues.
+SELECT * FROM issue
+WHERE workspace_id = $1
+  AND origin_type = $2
+  AND origin_id = $3
+ORDER BY number ASC;
+
 -- name: CountCreatedIssueAssignees :many
 -- Count assignees on issues created by a specific user.
 SELECT
@@ -299,6 +328,7 @@ SELECT
   COUNT(*)::bigint as frequency
 FROM issue
 WHERE workspace_id = $1
+  AND issue_type IN ('issue', 'subtask')
   AND creator_id = $2
   AND creator_type = 'member'
   AND assignee_type IS NOT NULL
@@ -313,6 +343,15 @@ FROM issue
 WHERE workspace_id = $1
   AND parent_issue_id IS NOT NULL
 GROUP BY parent_issue_id;
+
+-- name: CountIssuesInEpic :one
+SELECT count(*) FROM issue
+WHERE workspace_id = $1 AND epic_id = $2 AND issue_type = 'issue';
+
+-- name: SyncSubtaskHierarchy :exec
+UPDATE issue
+SET project_id = $2, epic_id = $3, updated_at = now()
+WHERE workspace_id = $4 AND parent_issue_id = $1;
 
 -- SearchIssues: moved to handler (dynamic SQL for multi-word search support).
 

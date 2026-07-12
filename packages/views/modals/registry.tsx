@@ -1,8 +1,9 @@
 "use client";
 
-import { useModalStore } from "@multica/core/modals";
+import { useModalStore } from "@ohmyagentteam/core/modals";
 import { CreateWorkspaceModal } from "./create-workspace";
 import { CreateIssueDialog } from "./create-issue-dialog";
+import { CreateEpicModal } from "./create-epic";
 import { CreateProjectModal } from "./create-project";
 import { CreateSquadModal } from "./create-squad";
 import { FeedbackModal } from "./feedback";
@@ -25,6 +26,8 @@ export function ModalRegistry() {
       return <CreateIssueDialog onClose={close} initialMode="manual" data={data} />;
     case "quick-create-issue":
       return <CreateIssueDialog onClose={close} initialMode="agent" data={data} />;
+    case "create-epic":
+      return <CreateEpicModal onClose={close} data={data} />;
     case "create-project":
       return <CreateProjectModal onClose={close} />;
     case "create-squad":

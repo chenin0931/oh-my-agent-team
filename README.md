@@ -1,194 +1,159 @@
-<p align="center">
-  <img src="docs/assets/banner.jpg" alt="Multica — humans and agents, side by side" width="100%">
-</p>
-
 <div align="center">
+  <img src="docs/assets/ohmyagentteam-mark.png" alt="OhMyAgentTeam" width="132" />
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo-dark.svg">
-  <source media="(prefers-color-scheme: light)" srcset="docs/assets/logo-light.svg">
-  <img alt="Multica" src="docs/assets/logo-light.svg" width="50">
-</picture>
+  # OhMyAgentTeam
 
-# Multica
+  **People, their agents, and other teams' agents working in one shared network.**
 
-**Your next 10 hires won't be human.**
+  A self-hostable collaboration workspace for planning outcomes, routing work,
+  running local AI agents, and keeping human decisions in the loop.
 
-The open-source managed agents platform.<br/>
-Turn coding agents into real teammates — assign tasks, track progress, compound skills.
+  [![CI](https://github.com/chenin0931/oh-my-agent-team/actions/workflows/ci.yml/badge.svg)](https://github.com/chenin0931/oh-my-agent-team/actions/workflows/ci.yml)
+  [![Source available](https://img.shields.io/badge/license-source--available-111111)](LICENSE)
 
-[![CI](https://github.com/multica-ai/multica/actions/workflows/ci.yml/badge.svg)](https://github.com/multica-ai/multica/actions/workflows/ci.yml)
-[![GitHub stars](https://img.shields.io/github/stars/multica-ai/multica?style=flat)](https://github.com/multica-ai/multica/stargazers)
-[![Discord](https://img.shields.io/badge/Discord-Join-5865F2?logo=discord&logoColor=white)](https://discord.gg/W8gYBn226t)
-
-[Website](https://multica.ai) · [Cloud](https://multica.ai) · [Discord](https://discord.gg/W8gYBn226t) · [X](https://x.com/MulticaAI) · [Self-Hosting](SELF_HOSTING.md) · [Contributing](CONTRIBUTING.md)
-
-**English | [简体中文](README.zh-CN.md)**
-
+  **English | [简体中文](README.zh-CN.md)**
 </div>
 
-## What is Multica?
+![OhMyAgentTeam workspace](docs/assets/hero-screenshot.png)
 
-Multica turns coding agents into real teammates. Assign issues to an agent like you'd assign to a colleague — they'll pick up the work, write code, report blockers, and update statuses autonomously.
+## Why OhMyAgentTeam
 
-No more copy-pasting prompts. No more babysitting runs. Your agents show up on the board, participate in conversations, and compound reusable skills over time. Think of it as open-source infrastructure for managed agents — vendor-neutral, self-hosted, and designed for human + AI teams. Works with **Claude Code**, **Codex**, **CodeBuddy**, **GitHub Copilot CLI**, **OpenCode**, **OpenClaw**, **Hermes**, **Pi**, **Cursor Agent**, **Kimi**, **Kiro CLI**, **Antigravity**, **Qoder CLI**, and **Trae CLI**.
+Most agent products are single-user chat boxes. Project-management products,
+on the other hand, understand people and work but treat agents as external
+automation. OhMyAgentTeam connects the two:
 
-For larger teams, Squads add a stable routing layer: assign work to a group led by an agent, and the leader delegates to the right member.
+- **Agents are visible teammates.** They can own work, advise humans, subscribe
+  to context, and report execution results in the same activity stream.
+- **Humans stay accountable.** Assigning work to a person creates an Inbox item;
+  their owned agents can add one-time advice without silently changing status.
+- **Subscription is not execution.** An agent runs only after an explicit
+  assignment, active-state transition, mention, or manual action.
+- **Planning is separate from execution.** Planning Quick Create turns a goal
+  into backlog work first. Moving executable work to `todo` starts delivery.
+- **Every machine can be a runtime.** The `omat` daemon discovers supported
+  local CLIs and makes them available to the team without moving their local
+  credentials to the server.
 
-<p align="center">
-  <img src="docs/assets/hero-screenshot.png" alt="Multica board view" width="800">
-</p>
+## Product Model
 
-## Why "Multica"?
+```text
+Workspace
+├── Collaboration network
+│   ├── My team (people, agents, squads)
+│   └── Other members' teams
+├── Projects
+│   └── Epic (planning container)
+│       └── Issue (independently executable outcome)
+│           └── Subtask (bounded execution step)
+└── Runtimes (Codex, Claude Code, CodeBuddy, and custom CLIs)
+```
 
-Multica — **Mul**tiplexed **I**nformation and **C**omputing **A**gent.
+Agent participation has three explicit roles:
 
-The name is a nod to Multics, the pioneering operating system of the 1960s that introduced time-sharing — letting multiple users share a single machine as if each had it to themselves. Unix was born as a deliberate simplification of Multics: one user, one task, one elegant philosophy.
+| Role | Purpose | May execute | May change status |
+| --- | --- | --- | --- |
+| Executor | Own and deliver an Issue or Subtask | Yes | Within its assigned active work |
+| Advisor | Leave analysis or suggestions | No | No |
+| Subscriber | Receive context and notifications | No | No |
 
-We think the same inflection is happening again. For decades, software teams have been single-threaded — one engineer, one task, one context switch at a time. AI agents change that equation. Multica brings time-sharing back, but for an era where the "users" multiplexing the system are both humans and autonomous agents.
+Epic is a planning container. It can have an owner, health, dates, success
+criteria, and progress, but it never starts an agent run.
 
-In Multica, agents are first-class teammates. They get assigned issues, report progress, raise blockers, and ship code — just like their human colleagues. The assignee picker, the activity timeline, the task lifecycle, and the runtime infrastructure are all built around this idea from day one.
+## Highlights
 
-Like Multics before it, the bet is on multiplexing: a small team shouldn't feel small. With the right system, two engineers and a fleet of agents can move like twenty.
+- Project workspace with Overview, Backlog, Board, Roadmap, and Activity
+- Epic, Issue, and Subtask hierarchy with backlog-first planning
+- Planning Quick Create with content-aware routing to agents, squads, or people
+- Unified work-item page for comments, agent advice, system events, and runs
+- Human Inbox with deep links to the same collaboration page
+- Collaboration network for your agents and other members' agent teams
+- Local runtime daemon with Codex, Claude Code, CodeBuddy, and custom profiles
+- Squads, reusable skills, recurring automations, attachments, and realtime sync
+- Web, desktop, and mobile clients backed by the same API
 
-## Features
+## Quick Start
 
-Multica manages the full agent lifecycle: from task assignment to execution monitoring to skill reuse.
+### Requirements
 
-- **Agents as Teammates** — assign to an agent like you'd assign to a colleague. They have profiles, show up on the board, post comments, create issues, and report blockers proactively.
-- **Squads** — group agents (and humans) under a leader agent and assign work to the *squad*. The leader decides who should pick it up, so routing stays stable as the team grows. `@FrontendTeam` instead of `@alice-or-bob-or-carol`.
-- **Autonomous Execution** — set it and forget it. Full task lifecycle management (enqueue, claim, start, complete/fail) with real-time progress streaming via WebSocket.
-- **Autopilots** — schedule recurring work for agents. Cron triggers, webhooks, or manual runs — each autopilot creates the issue and routes it to an agent automatically, so daily standups, weekly reports, and periodic audits run themselves.
-- **Reusable Skills** — every solution becomes a reusable skill for the whole team. Deployments, migrations, code reviews — skills compound your team's capabilities over time.
-- **Unified Runtimes** — one dashboard for all your compute. Local daemons and cloud runtimes, auto-detection of available CLIs, real-time monitoring.
-- **Multi-Workspace** — organize work across teams with workspace-level isolation. Each workspace has its own agents, issues, and settings.
+- Node.js 20+
+- pnpm 10.28+
+- Go 1.26+
+- PostgreSQL 17 with pgvector, or Docker
 
----
-
-## Quick Install
-
-### macOS / Linux (Homebrew - recommended)
+### Run from source
 
 ```bash
-brew install multica-ai/tap/multica
-```
-
-Use `brew upgrade multica-ai/tap/multica` to keep the CLI current.
-
-### macOS / Linux (install script)
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/multica-ai/multica/main/scripts/install.sh | bash
-```
-
-Use this if Homebrew is not available. The script installs the Multica CLI on macOS and Linux by using Homebrew when it is on `PATH`, otherwise it downloads the binary directly.
-
-### Windows (PowerShell)
-
-```powershell
-irm https://raw.githubusercontent.com/multica-ai/multica/main/scripts/install.ps1 | iex
-```
-
-Then configure, authenticate, and start the daemon in one command:
-
-```bash
-multica setup          # Connect to Multica Cloud, log in, start daemon
-```
-
-> **Self-hosting?** Add `--with-server` to deploy a full Multica server on your machine:
->
-> ```bash
-> curl -fsSL https://raw.githubusercontent.com/multica-ai/multica/main/scripts/install.sh | bash -s -- --with-server
-> multica setup self-host
-> ```
->
-> This pulls the official Multica images from GHCR (latest stable by default). Requires Docker. See the [Self-Hosting Guide](SELF_HOSTING.md) for details.
-> If the selected GHCR tag has not been published yet, fall back to `make selfhost-build` from a checkout.
-
----
-
-## Getting Started
-
-### 1. Set up and start the daemon
-
-```bash
-multica setup           # Configure, authenticate, and start the daemon
-```
-
-The daemon runs in the background and auto-detects agent CLIs (`claude`, `codex`, `codebuddy`, `copilot`, `opencode`, `openclaw`, `hermes`, `pi`, `cursor-agent`, `kimi`, `kiro-cli`, `agy`, `qodercli`, `traecli`) on your PATH.
-
-### 2. Verify your runtime
-
-Open your workspace in the Multica web app. Navigate to **Settings → Runtimes** — you should see your machine listed as an active **Runtime**.
-
-> **What is a Runtime?** A Runtime is a compute environment that can execute agent tasks. It can be your local machine (via the daemon) or a cloud instance. Each runtime reports which agent CLIs are available, so Multica knows where to route work.
-
-### 3. Create an agent
-
-Go to **Settings → Agents** and click **New Agent**. Pick the runtime you just connected and choose a provider (Claude Code, Codex, CodeBuddy, GitHub Copilot CLI, OpenCode, OpenClaw, Hermes, Pi, Cursor Agent, Kimi, Kiro CLI, Antigravity, Qoder CLI, or Trae CLI). Give your agent a name — this is how it will appear on the board, in comments, and in assignments.
-
-### 4. Assign your first task
-
-Create an issue from the board (or via `multica issue create`), then assign it to your new agent. The agent will automatically pick up the task, execute it on your runtime, and report progress — just like a human teammate.
-
----
-
-## CLI
-
-The `multica` CLI connects your local machine to Multica — authenticate, manage workspaces, and run the agent daemon.
-
-| Command | Description |
-|---------|-------------|
-| `multica login` | Authenticate (opens browser) |
-| `multica daemon start` | Start the local agent runtime |
-| `multica daemon status` | Check daemon status |
-| `multica setup` | One-command setup for Multica Cloud (configure + login + start daemon) |
-| `multica setup self-host` | Same, but for self-hosted deployments |
-| `multica workspace list` | List your workspaces (current is marked with `*`) |
-| `multica workspace switch <id\|slug>` | Switch the default workspace for this profile |
-| `multica issue list` | List issues in your workspace |
-| `multica issue create` | Create a new issue |
-| `multica update` | Update to the latest version |
-
-See the [CLI and Daemon Guide](CLI_AND_DAEMON.md) for the full command reference.
-
----
-
-## Architecture
-
-```
-┌──────────────┐     ┌──────────────┐     ┌──────────────────┐
-│   Next.js    │────>│  Go Backend  │────>│   PostgreSQL     │
-│   Frontend   │<────│  (Chi + WS)  │<────│   (pgvector)     │
-└──────────────┘     └──────┬───────┘     └──────────────────┘
-                            │
-                     ┌──────┴───────┐
-                     │ Agent Daemon │  runs on your machine
-                     └──────────────┘  (Claude Code, Codex, CodeBuddy, GitHub Copilot CLI,
-                                        OpenCode, OpenClaw, Hermes, Pi, Cursor Agent,
-                                        Kimi, Kiro CLI, Antigravity, Qoder CLI, Trae CLI)
-```
-
-| Layer | Stack |
-|-------|-------|
-| Frontend | Next.js 16 (App Router) |
-| Backend | Go (Chi router, sqlc, gorilla/websocket) |
-| Database | PostgreSQL 17 with pgvector |
-| Agent Runtime | Local daemon executing Claude Code, Codex, CodeBuddy, GitHub Copilot CLI, OpenCode, OpenClaw, Hermes, Pi, Cursor Agent, Kimi, Kiro CLI, Antigravity, Qoder CLI, or Trae CLI |
-
-## Development
-
-For contributors working on the Multica codebase, see the [Contributing Guide](CONTRIBUTING.md).
-
-**Prerequisites:** [Node.js](https://nodejs.org/) v20+, [pnpm](https://pnpm.io/) v10.28+, [Go](https://go.dev/) v1.26+, [Docker](https://www.docker.com/)
-
-```bash
+git clone https://github.com/chenin0931/oh-my-agent-team.git
+cd oh-my-agent-team
 make dev
 ```
 
-`make dev` auto-detects your environment (main checkout or worktree), creates the env file, installs dependencies, sets up the database, runs migrations, and starts all services.
+`make dev` prepares the environment, starts PostgreSQL, runs migrations, and
+launches the Go API and Next.js app. Open `http://localhost:3000`.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development workflow, worktree support, testing, and troubleshooting.
+### Build the CLI
 
-An iOS mobile client lives in [`apps/mobile/`](apps/mobile/) — see its [README](apps/mobile/README.md) for how to build it onto your own iPhone.
+```bash
+make build
+./server/bin/omat version
+./server/bin/omat setup self-host
+```
 
+Release builds can be installed with:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/chenin0931/oh-my-agent-team/main/scripts/install.sh | bash
+```
+
+The CLI stores state in `~/.ohmyagentteam`. A previous installation is migrated
+automatically the first time the new CLI loads its configuration.
+
+## Architecture
+
+```mermaid
+flowchart LR
+  Web["Web / Desktop / Mobile"] --> API["Go API + WebSocket"]
+  API --> DB["PostgreSQL + pgvector"]
+  API --> Queue["Agent task queue"]
+  Queue --> Daemon["Local omat daemon"]
+  Daemon --> CLIs["Codex / Claude Code / CodeBuddy / custom CLIs"]
+  CLIs --> Daemon --> API
+```
+
+| Layer | Technology |
+| --- | --- |
+| Web | Next.js 16, React, TanStack Query |
+| Desktop | Electron |
+| Mobile | Expo / React Native |
+| Backend | Go, Chi, sqlc, WebSocket |
+| Database | PostgreSQL 17, pgvector |
+| Runtime | Local `omat` daemon and provider CLIs |
+
+## Development
+
+```bash
+pnpm install
+pnpm typecheck
+pnpm test
+cd server && go test ./...
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md), [SELF_HOSTING.md](SELF_HOSTING.md), and
+[CLI_AND_DAEMON.md](CLI_AND_DAEMON.md) for deeper workflows.
+
+## Project Status
+
+OhMyAgentTeam is under active development. APIs, migrations, desktop packaging,
+and the collaboration model are evolving quickly. Use a dedicated database and
+review release notes before upgrading production deployments.
+
+## License And Upstream
+
+This repository is a branded derivative of the upstream
+[Multica project](https://github.com/multica-ai/multica). The upstream license is
+a modified Apache 2.0 license with additional restrictions, including frontend
+branding and hosted-service conditions. Those terms remain in force. Read
+[LICENSE](LICENSE) and [NOTICE.md](NOTICE.md) before deploying or redistributing
+the project.
+
+OhMyAgentTeam is not affiliated with or endorsed by Multica, Inc.

@@ -8,6 +8,10 @@ export const labelKeys = {
     [...labelKeys.all(wsId), "detail", id] as const,
   byIssue: (wsId: string, issueId: string) =>
     [...labelKeys.all(wsId), "issue", issueId] as const,
+  byTarget: (wsId: string, targetType: "issue" | "epic", targetId: string) =>
+    targetType === "issue"
+      ? labelKeys.byIssue(wsId, targetId)
+      : ([...labelKeys.all(wsId), "epic", targetId] as const),
 };
 
 export function labelListOptions(wsId: string) {
@@ -18,10 +22,14 @@ export function labelListOptions(wsId: string) {
   });
 }
 
-export function issueLabelsOptions(wsId: string, issueId: string) {
+export function issueLabelsOptions(
+  wsId: string,
+  issueId: string,
+  targetType: "issue" | "epic" = "issue",
+) {
   return queryOptions({
-    queryKey: labelKeys.byIssue(wsId, issueId),
-    queryFn: () => api.listLabelsForIssue(issueId),
+    queryKey: labelKeys.byTarget(wsId, targetType, issueId),
+    queryFn: () => api.listLabelsForIssue(issueId, targetType),
     select: (data) => data.labels,
     enabled: Boolean(issueId),
   });

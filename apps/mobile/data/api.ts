@@ -3,9 +3,9 @@
  * packages/core/api/client.ts that mobile actually uses, but lives in
  * apps/mobile/ so we control retry/timeout/error handling independently.
  *
- * Types are imported via `import type` from @multica/core/types — zero
+ * Types are imported via `import type` from @ohmyagentteam/core/types — zero
  * runtime coupling. Zod schemas + fallbacks are imported from
- * @multica/core/api/schemas (pure data, on the mobile sharing whitelist).
+ * @ohmyagentteam/core/api/schemas (pure data, on the mobile sharing whitelist).
  *
  * Design checklist (apps/mobile/CLAUDE.md "Lessons → ApiClient capability list"):
  *   1. Zod parseWithFallback for endpoints with schemas (drift defense)
@@ -21,15 +21,20 @@ import type {
   ChatPendingTask,
   ChatSession,
   Comment,
+  CreateEpicRequest,
   CreateIssueRequest,
   CreateLabelRequest,
   CreateProjectRequest,
   CreateProjectResourceRequest,
+  Epic,
+  EpicWorkItemsResponse,
   InboxItem,
   Issue,
   IssueLabelsResponse,
   Label,
   IssueReaction,
+  ListEpicsParams,
+  ListEpicsResponse,
   ListIssuesParams,
   ListIssuesResponse,
   ListLabelsResponse,
@@ -52,18 +57,23 @@ import type {
   TaskMessagePayload,
   TimelineEntry,
   UpdateIssueRequest,
+  UpdateEpicRequest,
   UpdateMeRequest,
   UpdateProjectRequest,
   User,
   Workspace,
-} from "@multica/core/types";
+} from "@ohmyagentteam/core/types";
 import {
+  EMPTY_EPIC,
+  EMPTY_LIST_EPICS_RESPONSE,
   EMPTY_LIST_ISSUES_RESPONSE,
   EMPTY_TIMELINE_ENTRIES,
+  EpicSchema,
   IssueSchema,
+  ListEpicsResponseSchema,
   ListIssuesResponseSchema,
   TimelineEntriesSchema,
-} from "@multica/core/api/schemas";
+} from "@ohmyagentteam/core/api/schemas";
 import {
   ActiveTasksResponseSchema,
   AgentListSchema,
@@ -156,7 +166,7 @@ const MAX_FILE_SIZE = 100 * 1024 * 1024;
  *  timeout, a refetch fired after returning to foreground can leave the
  *  query stuck in `isRefetching` state forever (visible as the
  *  pull-to-refresh spinner never going away). 30s is generous for any
- *  reasonable Multica payload size on cellular. */
+ *  reasonable OhMyAgentTeam payload size on cellular. */
 const FETCH_TIMEOUT_MS = 30_000;
 
 export class ApiError extends Error {
@@ -537,6 +547,141 @@ class ApiClient {
     });
     return parseWithFallback(raw, SquadListSchema, EMPTY_SQUAD_LIST, {
       endpoint: "listSquads",
+    });
+  }
+
+  // --- Epics ---
+  // Planning containers use a separate endpoint family so mobile cannot
+  // accidentally expose executable issue controls for an Epic.
+  async listEpics(
+    params: ListEpicsParams = {},
+    opts?: { signal?: AbortSignal },
+  ): Promise<ListEpicsResponse> {
+    const search = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+      if (value != null) search.set(key, String(value));
+    }
+    const query = search.toString();
+    const raw = await this.fetch<unknown>(
+      `/api/epics${query ? `?${query}` : ""}`,
+      { signal: opts?.signal },
+    );
+    return parseWithFallback(
+      raw,
+      ListEpicsResponseSchema,
+      EMPTY_LIST_EPICS_RESPONSE,
+      { endpoint: "GET /api/epics" },
+    );
+  }
+
+  async searchEpics(
+    params: { q: string; limit?: number; offset?: number },
+    opts?: { signal?: AbortSignal },
+  ): Promise<ListEpicsResponse> {
+    const search = new URLSearchParams({ q: params.q });
+    if (params.limit !== undefined) search.set("limit", String(params.limit));
+    if (params.offset !== undefined) search.set("offset", String(params.offset));
+    const raw = await this.fetch<unknown>(
+      `/api/epics/search?${search.toString()}`,
+      { signal: opts?.signal },
+    );
+    return parseWithFallback(
+      raw,
+      ListEpicsResponseSchema,
+      EMPTY_LIST_EPICS_RESPONSE,
+      { endpoint: "GET /api/epics/search" },
+    );
+  }
+
+  async getEpic(
+    id: string,
+    opts?: { signal?: AbortSignal },
+  ): Promise<Epic> {
+    return this.fetchValidated(
+      `/api/epics/${id}`,
+      EpicSchema,
+      EMPTY_EPIC,
+      { ...opts, endpoint: "GET /api/epics/:id" },
+    );
+  }
+
+  async createEpic(body: CreateEpicRequest): Promise<Epic> {
+    return this.fetchValidatedWith(
+      "/api/epics",
+      EpicSchema,
+      EMPTY_EPIC,
+      { method: "POST", body: JSON.stringify(body) },
+      { endpoint: "POST /api/epics" },
+    );
+  }
+
+  async updateEpic(id: string, body: UpdateEpicRequest): Promise<Epic> {
+    return this.fetchValidatedWith(
+      `/api/epics/${id}`,
+      EpicSchema,
+      EMPTY_EPIC,
+      { method: "PUT", body: JSON.stringify(body) },
+      { endpoint: "PUT /api/epics/:id" },
+    );
+  }
+
+  async deleteEpic(id: string): Promise<void> {
+    await this.fetch<void>(`/api/epics/${id}`, { method: "DELETE" });
+  }
+
+  async listEpicWorkItems(
+    id: string,
+    opts?: { signal?: AbortSignal },
+  ): Promise<EpicWorkItemsResponse> {
+    const raw = await this.fetch<unknown>(`/api/epics/${id}/work-items`, {
+      signal: opts?.signal,
+    });
+    return parseWithFallback(
+      raw,
+      ListIssuesResponseSchema,
+      EMPTY_LIST_ISSUES_RESPONSE,
+      { endpoint: "GET /api/epics/:id/work-items" },
+    );
+  }
+
+  async detachEpicWorkItem(epicId: string, issueId: string): Promise<void> {
+    await this.fetch<void>(`/api/epics/${epicId}/work-items/${issueId}`, {
+      method: "DELETE",
+    });
+  }
+
+  async listEpicTimeline(
+    id: string,
+    opts?: { signal?: AbortSignal },
+  ): Promise<TimelineEntry[]> {
+    return this.fetchValidated(
+      `/api/epics/${id}/timeline`,
+      TimelineEntriesSchema,
+      EMPTY_TIMELINE_ENTRIES,
+      { ...opts, endpoint: "GET /api/epics/:id/timeline" },
+    );
+  }
+
+  async createEpicComment(id: string, content: string): Promise<Comment> {
+    return this.fetchValidatedWith(
+      `/api/epics/${id}/comments`,
+      CommentSchema,
+      EMPTY_COMMENT,
+      {
+        method: "POST",
+        body: JSON.stringify({ content, type: "comment" }),
+      },
+      { endpoint: "POST /api/epics/:id/comments" },
+    );
+  }
+
+  async runEpicAdvisor(
+    id: string,
+    data: { agent_id: string; prompt?: string },
+  ): Promise<{ action: "analyze"; queued: boolean }> {
+    return this.fetch(`/api/epics/${id}/advisor`, {
+      method: "POST",
+      body: JSON.stringify(data),
     });
   }
 

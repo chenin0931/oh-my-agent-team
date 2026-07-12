@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { X, Plus, Filter, ExternalLink } from "lucide-react";
-import { cn } from "@multica/ui/lib/utils";
-import type { WebhookEventFilter } from "@multica/core/types";
+import { cn } from "@ohmyagentteam/ui/lib/utils";
+import type { WebhookEventFilter } from "@ohmyagentteam/core/types";
 import { useT } from "../../i18n";
 
 interface WebhookEventFilterSectionProps {
@@ -19,8 +19,8 @@ export function WebhookEventFilterSection({
   const [newEvent, setNewEvent] = useState("");
   const [newActions, setNewActions] = useState("");
   const docsHref = i18n.language?.startsWith("zh")
-    ? `https://multica.ai/docs/zh/autopilots#${encodeURIComponent("事件过滤")}`
-    : "https://multica.ai/docs/autopilots#event-filters";
+    ? `https://ohmyagentteam.com/docs/zh/autopilots#${encodeURIComponent("事件过滤")}`
+    : "https://ohmyagentteam.com/docs/autopilots#event-filters";
 
   const addFilter = () => {
     const event = newEvent.trim();
@@ -42,7 +42,7 @@ export function WebhookEventFilterSection({
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">
+      <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground uppercase">
         <Filter className="size-3" />
         {t(($) => $.dialog.event_filter_label)}
         <a

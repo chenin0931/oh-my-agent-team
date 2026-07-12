@@ -2,8 +2,8 @@ import type { ReactNode } from "react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { I18nProvider } from "@multica/core/i18n/react";
-import { configStore } from "@multica/core/config";
+import { I18nProvider } from "@ohmyagentteam/core/i18n/react";
+import { configStore } from "@ohmyagentteam/core/config";
 import enCommon from "../locales/en/common.json";
 import enWorkspace from "../locales/en/workspace.json";
 import { CreateWorkspaceForm } from "./create-workspace-form";
@@ -13,7 +13,7 @@ const TEST_RESOURCES = {
 };
 
 const mockMutate = vi.fn();
-vi.mock("@multica/core/workspace/mutations", () => ({
+vi.mock("@ohmyagentteam/core/workspace/mutations", () => ({
   useCreateWorkspace: () => ({ mutate: mockMutate, isPending: false }),
 }));
 
@@ -43,14 +43,14 @@ describe("CreateWorkspaceForm", () => {
 
   it("shows the brand host as the URL prefix when no app URL is configured", () => {
     renderForm();
-    expect(screen.getByText("multica.ai/")).toBeInTheDocument();
+    expect(screen.getByText("ohmyagentteam.com/")).toBeInTheDocument();
   });
 
   it("shows the deployment host as the URL prefix for self-hosted instances", () => {
-    configStore.setState({ daemonAppUrl: "https://multica.example.com" });
+    configStore.setState({ daemonAppUrl: "https://ohmyagentteam.example.com" });
     renderForm();
-    expect(screen.getByText("multica.example.com/")).toBeInTheDocument();
-    expect(screen.queryByText("multica.ai/")).not.toBeInTheDocument();
+    expect(screen.getByText("ohmyagentteam.example.com/")).toBeInTheDocument();
+    expect(screen.queryByText("ohmyagentteam.com/")).not.toBeInTheDocument();
   });
 
   it("auto-generates slug from name until user edits slug", () => {

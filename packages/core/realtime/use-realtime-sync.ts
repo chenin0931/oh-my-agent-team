@@ -10,6 +10,7 @@ import { clearWorkspaceStorage } from "../platform/storage-cleanup";
 import { defaultStorage } from "../platform/storage";
 import { getCurrentWsId, getCurrentSlug } from "../platform/workspace-storage";
 import { issueKeys } from "../issues/queries";
+import { epicKeys } from "../epics/queries";
 import { projectKeys } from "../projects/queries";
 import { pinKeys } from "../pins/queries";
 import { autopilotKeys } from "../autopilots/queries";
@@ -46,7 +47,7 @@ import {
 import type { Workspace } from "../types/workspace";
 import { chatKeys, mergeTaskMessagesBySeq } from "../chat/queries";
 import { useChatStore } from "../chat";
-import { resolvePostAuthDestination, useHasOnboarded } from "../paths";
+import { resolvePostAuthDestination } from "../paths";
 import type {
   MemberAddedPayload,
   WorkspaceDeletedPayload,
@@ -257,7 +258,7 @@ export async function handleInboxNew(
   // refresh the cross-workspace summary regardless of the active workspace.
   onInboxSummaryInvalidate(qc);
   // Fire a native OS notification only when the app isn't focused. When
-  // the user is already looking at Multica, the inbox sidebar's unread
+  // the user is already looking at OhMyAgentTeam, the inbox sidebar's unread
   // styling is enough — no need to interrupt with a banner. `desktopAPI`
   // is injected by the preload script; its absence (web app) skips silently.
   if (typeof document !== "undefined" && document.hasFocus()) return;
@@ -301,7 +302,8 @@ export async function handleInboxNew(
   const payload: SystemNotificationPayload = {
     slug: slug ?? "",
     itemId: item.id,
-    issueKey: item.issue_id ?? item.id,
+    issueKey: item.target_id ?? item.issue_id ?? item.id,
+    targetType: item.target_type ?? "issue",
     title: item.title,
     body: item.body ?? "",
   };
@@ -331,6 +333,7 @@ function invalidateWorkspaceScopedQueries(qc: QueryClient): void {
   const wsId = getCurrentWsId();
   if (wsId) {
     qc.invalidateQueries({ queryKey: issueKeys.all(wsId) });
+    qc.invalidateQueries({ queryKey: epicKeys.all(wsId) });
     qc.invalidateQueries({ queryKey: inboxKeys.all(wsId) });
     qc.invalidateQueries({ queryKey: workspaceKeys.agents(wsId) });
     qc.invalidateQueries({ queryKey: workspaceKeys.members(wsId) });
@@ -416,13 +419,6 @@ export function useRealtimeSync(
   const { authStore } = stores;
   const qc = useQueryClient();
 
-  // Captured via ref so the (rare) hasOnboarded change doesn't re-subscribe
-  // every WS handler in this effect. The resolver reads `.current` at the
-  // moment workspace-loss fires, which is what we want.
-  const hasOnboarded = useHasOnboarded();
-  const hasOnboardedRef = useRef(hasOnboarded);
-  hasOnboardedRef.current = hasOnboarded;
-
   // Main sync: onAny -> refreshMap with debounce
   useEffect(() => {
     if (!ws) return;
@@ -468,6 +464,13 @@ export function useRealtimeSync(
       project: () => {
         const wsId = getCurrentWsId();
         if (wsId) qc.invalidateQueries({ queryKey: projectKeys.all(wsId) });
+      },
+      epic: () => {
+        const wsId = getCurrentWsId();
+        if (wsId) {
+          qc.invalidateQueries({ queryKey: epicKeys.all(wsId) });
+          qc.invalidateQueries({ queryKey: projectKeys.all(wsId) });
+        }
       },
       squad: () => {
         const wsId = getCurrentWsId();
@@ -697,51 +700,63 @@ export function useRealtimeSync(
     // when IssueDetail mounts later, the stale flag triggers the refetch
     // through `refetchOnMount`. Active observers stay fresh via the
     // granular setQueryData handlers in `useIssueTimeline`.
-    const invalidateTimeline = (issueId: string) => {
-      qc.invalidateQueries({
-        queryKey: issueKeys.timeline(issueId),
-        refetchType: "none",
-      });
+    const invalidateTimeline = (
+      targetId: string,
+      targetType: "issue" | "epic" = "issue",
+    ) => {
+      if (targetType === "issue") {
+        qc.invalidateQueries({
+          queryKey: issueKeys.timeline(targetId),
+          refetchType: "none",
+        });
+      }
+      const wsId = getCurrentWsId();
+      if (wsId && targetType === "epic") {
+        qc.invalidateQueries({
+          queryKey: epicKeys.timeline(wsId, targetId),
+          refetchType: "none",
+        });
+      }
     };
 
     const unsubCommentCreated = ws.on("comment:created", (p) => {
-      const { comment } = p as CommentCreatedPayload;
-      if (comment?.issue_id) invalidateTimeline(comment.issue_id);
+      const { comment, target_type, target_id } = p as CommentCreatedPayload;
+      if (comment?.issue_id) invalidateTimeline(target_id ?? comment.issue_id, target_type);
     });
 
     const unsubCommentUpdated = ws.on("comment:updated", (p) => {
-      const { comment } = p as CommentUpdatedPayload;
-      if (comment?.issue_id) invalidateTimeline(comment.issue_id);
+      const { comment, target_type, target_id } = p as CommentUpdatedPayload;
+      if (comment?.issue_id) invalidateTimeline(target_id ?? comment.issue_id, target_type);
     });
 
     const unsubCommentDeleted = ws.on("comment:deleted", (p) => {
-      const { issue_id } = p as CommentDeletedPayload;
-      if (issue_id) invalidateTimeline(issue_id);
+      const { issue_id, target_type, target_id } = p as CommentDeletedPayload;
+      if (issue_id) invalidateTimeline(target_id ?? issue_id, target_type);
     });
 
     const unsubCommentResolved = ws.on("comment:resolved", (p) => {
-      const { comment } = p as CommentResolvedPayload;
-      if (comment?.issue_id) invalidateTimeline(comment.issue_id);
+      const { comment, target_type, target_id } = p as CommentResolvedPayload;
+      if (comment?.issue_id) invalidateTimeline(target_id ?? comment.issue_id, target_type);
     });
 
     const unsubCommentUnresolved = ws.on("comment:unresolved", (p) => {
-      const { comment } = p as CommentUnresolvedPayload;
-      if (comment?.issue_id) invalidateTimeline(comment.issue_id);
+      const { comment, target_type, target_id } = p as CommentUnresolvedPayload;
+      if (comment?.issue_id) invalidateTimeline(target_id ?? comment.issue_id, target_type);
     });
 
     const unsubActivityCreated = ws.on("activity:created", (p) => {
-      const { issue_id } = p as ActivityCreatedPayload;
-      if (issue_id) invalidateTimeline(issue_id);
+      const { issue_id, target_type, target_id } = p as ActivityCreatedPayload;
+      if (issue_id) invalidateTimeline(target_id ?? issue_id, target_type);
     });
 
     const unsubReactionAdded = ws.on("reaction:added", (p) => {
-      const { issue_id } = p as ReactionAddedPayload;
-      if (issue_id) invalidateTimeline(issue_id);
+      const { issue_id, target_type, target_id } = p as ReactionAddedPayload;
+      if (issue_id) invalidateTimeline(target_id ?? issue_id, target_type);
     });
 
     const unsubReactionRemoved = ws.on("reaction:removed", (p) => {
-      const { issue_id } = p as ReactionRemovedPayload;
-      if (issue_id) invalidateTimeline(issue_id);
+      const { issue_id, target_type, target_id } = p as ReactionRemovedPayload;
+      if (issue_id) invalidateTimeline(target_id ?? issue_id, target_type);
     });
 
     // --- Issue-level reactions & subscribers (global fallback) ---
@@ -757,13 +772,29 @@ export function useRealtimeSync(
     });
 
     const unsubSubscriberAdded = ws.on("subscriber:added", (p) => {
-      const { issue_id } = p as SubscriberAddedPayload;
-      if (issue_id) qc.invalidateQueries({ queryKey: issueKeys.subscribers(issue_id) });
+      const { issue_id, target_type, target_id } = p as SubscriberAddedPayload;
+      if (issue_id) {
+        if (target_type !== "epic") {
+          qc.invalidateQueries({ queryKey: issueKeys.subscribers(issue_id) });
+        }
+        const wsId = getCurrentWsId();
+        if (wsId && target_type === "epic") {
+          qc.invalidateQueries({ queryKey: epicKeys.subscribers(wsId, target_id ?? issue_id) });
+        }
+      }
     });
 
     const unsubSubscriberRemoved = ws.on("subscriber:removed", (p) => {
-      const { issue_id } = p as SubscriberRemovedPayload;
-      if (issue_id) qc.invalidateQueries({ queryKey: issueKeys.subscribers(issue_id) });
+      const { issue_id, target_type, target_id } = p as SubscriberRemovedPayload;
+      if (issue_id) {
+        if (target_type !== "epic") {
+          qc.invalidateQueries({ queryKey: issueKeys.subscribers(issue_id) });
+        }
+        const wsId = getCurrentWsId();
+        if (wsId && target_type === "epic") {
+          qc.invalidateQueries({ queryKey: epicKeys.subscribers(wsId, target_id ?? issue_id) });
+        }
+      }
     });
 
     // --- Side-effect handlers (toast, navigation) ---
@@ -780,10 +811,7 @@ export function useRealtimeSync(
         staleTime: 0,
       });
       const remaining = wsList.filter((w) => w.id !== lostWsId);
-      const target = resolvePostAuthDestination(
-        remaining,
-        hasOnboardedRef.current,
-      );
+      const target = resolvePostAuthDestination(remaining);
       if (typeof window !== "undefined") {
         window.location.assign(target);
       }

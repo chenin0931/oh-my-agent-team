@@ -3,15 +3,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, Cpu, Loader2, Plus, Check, Info } from "lucide-react";
-import { runtimeModelsOptions } from "@multica/core/runtimes";
-import type { RuntimeModel } from "@multica/core/types";
+import { runtimeModelsOptions } from "@ohmyagentteam/core/runtimes";
+import type { RuntimeModel } from "@ohmyagentteam/core/types";
 import {
   Popover,
   PopoverTrigger,
   PopoverContent,
-} from "@multica/ui/components/ui/popover";
-import { Input } from "@multica/ui/components/ui/input";
-import { Label } from "@multica/ui/components/ui/label";
+} from "@ohmyagentteam/ui/components/ui/popover";
+import { Input } from "@ohmyagentteam/ui/components/ui/input";
+import { Label } from "@ohmyagentteam/ui/components/ui/label";
 import { useT } from "../../i18n";
 
 // ModelDropdown renders a searchable, creatable model picker for an agent.
@@ -28,12 +28,14 @@ export function ModelDropdown({
   value,
   onChange,
   disabled,
+  preferDiscoveredDefault = false,
 }: {
   runtimeId: string | null;
   runtimeOnline: boolean;
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
+  preferDiscoveredDefault?: boolean;
 }) {
   const { t } = useT("agents");
   const [open, setOpen] = useState(false);
@@ -51,6 +53,10 @@ export function ModelDropdown({
     [modelsQuery.data],
   );
   const grouped = useMemo(() => groupByProvider(models), [models]);
+  const discoveredDefault = useMemo(
+    () => models.find((model) => model.default) ?? models[0],
+    [models],
+  );
 
   // When the selected runtime reports it doesn't support per-agent
   // model selection, clear any previously-saved value so we don't
@@ -60,6 +66,31 @@ export function ModelDropdown({
       onChange("");
     }
   }, [supported, value, onChange]);
+
+  // Codex Desktop and the standalone Codex CLI can share one config file but
+  // support different model IDs. Pin new OhMyAgentTeam agents to the model catalog
+  // reported by the bound CLI so an app-only global default cannot break every
+  // task before the user has opened this picker.
+  useEffect(() => {
+    if (
+      preferDiscoveredDefault &&
+      supported &&
+      runtimeOnline &&
+      !modelsQuery.isLoading &&
+      value === "" &&
+      discoveredDefault
+    ) {
+      onChange(discoveredDefault.id);
+    }
+  }, [
+    discoveredDefault,
+    modelsQuery.isLoading,
+    onChange,
+    preferDiscoveredDefault,
+    runtimeOnline,
+    supported,
+    value,
+  ]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return grouped;
@@ -136,7 +167,7 @@ export function ModelDropdown({
             <div className="flex items-center gap-2">
               <span className="truncate font-medium">{triggerLabel}</span>
             </div>
-            {value && (
+            {value && !preferDiscoveredDefault && (
               <div className="truncate text-xs text-muted-foreground">
                 {modelLabel(models, value)}
               </div>

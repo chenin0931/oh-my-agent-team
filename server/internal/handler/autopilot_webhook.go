@@ -21,8 +21,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/multica-ai/multica/server/internal/middleware"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/middleware"
+	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
 )
 
 // maxWebhookBodyBytes is the request body size cap for webhook ingress.
@@ -906,7 +906,7 @@ func (h *Handler) deliveryProvider(ctx context.Context, id pgtype.UUID) string {
 //
 // Default behaviour: use the host portion of r.RemoteAddr. Forwarded
 // headers (X-Forwarded-For, X-Real-IP) are IGNORED unless the operator
-// has explicitly opted in via MULTICA_TRUSTED_PROXIES — and even then
+// has explicitly opted in via OMAT_TRUSTED_PROXIES — and even then
 // only when r.RemoteAddr is itself inside one of the listed CIDRs.
 func (h *Handler) clientIPForRateLimit(r *http.Request) string {
 	remoteIP := remoteAddrHost(r.RemoteAddr)

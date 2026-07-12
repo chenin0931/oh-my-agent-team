@@ -2,7 +2,7 @@
 
 import { cleanup, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { AgentTask } from "@multica/core/types";
+import type { AgentTask } from "@ohmyagentteam/core/types";
 import { renderWithI18n } from "../../test/i18n";
 
 const mockState = vi.hoisted(() => ({
@@ -12,11 +12,11 @@ const mockState = vi.hoisted(() => ({
   avatarAgentIds: undefined as string[] | undefined,
 }));
 
-vi.mock("@multica/core/hooks", () => ({
+vi.mock("@ohmyagentteam/core/hooks", () => ({
   useWorkspaceId: () => "ws-1",
 }));
 
-vi.mock("@multica/core/agents", () => ({
+vi.mock("@ohmyagentteam/core/agents", () => ({
   agentTaskSnapshotOptions: (wsId: string) => ({
     queryKey: ["agents", "task-snapshot", wsId],
   }),

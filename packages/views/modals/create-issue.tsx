@@ -17,47 +17,47 @@ import {
   MoreHorizontal,
   X as XIcon,
 } from "lucide-react";
-import { cn } from "@multica/ui/lib/utils";
+import { cn } from "@ohmyagentteam/ui/lib/utils";
 import { toast } from "sonner";
-import type { Issue, IssueStatus, IssuePriority, IssueAssigneeType, Attachment } from "@multica/core/types";
-import { contentReferencesAttachment } from "@multica/core/types";
+import type { Issue, IssueType, IssueStatus, IssuePriority, IssueAssigneeType, Attachment } from "@ohmyagentteam/core/types";
+import { contentReferencesAttachment } from "@ohmyagentteam/core/types";
 import {
   DialogContent,
   DialogTitle,
-} from "@multica/ui/components/ui/dialog";
+} from "@ohmyagentteam/ui/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@multica/ui/components/ui/dropdown-menu";
-import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@multica/ui/components/ui/tooltip";
-import { Button } from "@multica/ui/components/ui/button";
-import { Switch } from "@multica/ui/components/ui/switch";
+} from "@ohmyagentteam/ui/components/ui/dropdown-menu";
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@ohmyagentteam/ui/components/ui/tooltip";
+import { Button } from "@ohmyagentteam/ui/components/ui/button";
+import { Switch } from "@ohmyagentteam/ui/components/ui/switch";
 import { ContentEditor, type ContentEditorRef, TitleEditor, useFileDropZone, FileDropOverlay } from "../editor";
 import { StatusIcon, StatusPicker, PriorityPicker, StagePicker, AssigneePicker, StartDatePicker, DueDatePicker, LabelPicker } from "../issues/components";
 import { maxSiblingStage } from "../issues/components/pickers/stage-picker";
 import { ProjectPicker } from "../projects/components/project-picker";
 import { useIssueTriggerPreview } from "../issues/hooks/use-issue-trigger-preview";
-import { useActorName } from "@multica/core/workspace/hooks";
-import { useCurrentWorkspace, useWorkspacePaths } from "@multica/core/paths";
-import { useWorkspaceId } from "@multica/core/hooks";
-import { useIssueDraftStore } from "@multica/core/issues/stores/draft-store";
-import { useCreateModeStore } from "@multica/core/issues/stores/create-mode-store";
-import { useQuickCreateStore } from "@multica/core/issues/stores/quick-create-store";
-import { issueDetailOptions, childIssuesOptions } from "@multica/core/issues/queries";
-import { useCreateIssue, useUpdateIssue } from "@multica/core/issues/mutations";
-import { useAttachLabelToIssue } from "@multica/core/labels";
-import { useFileUpload } from "@multica/core/hooks/use-file-upload";
+import { useActorName } from "@ohmyagentteam/core/workspace/hooks";
+import { useCurrentWorkspace, useWorkspacePaths } from "@ohmyagentteam/core/paths";
+import { useWorkspaceId } from "@ohmyagentteam/core/hooks";
+import { useIssueDraftStore } from "@ohmyagentteam/core/issues/stores/draft-store";
+import { useCreateModeStore } from "@ohmyagentteam/core/issues/stores/create-mode-store";
+import { useQuickCreateStore } from "@ohmyagentteam/core/issues/stores/quick-create-store";
+import { issueDetailOptions, childIssuesOptions } from "@ohmyagentteam/core/issues/queries";
+import { useCreateIssue, useUpdateIssue } from "@ohmyagentteam/core/issues/mutations";
+import { useAttachLabelToIssue } from "@ohmyagentteam/core/labels";
+import { useFileUpload } from "@ohmyagentteam/core/hooks/use-file-upload";
 import {
   api,
   ApiError,
   DuplicateIssueErrorBodySchema,
   type DuplicateIssueErrorBody,
   parseWithFallback,
-} from "@multica/core/api";
-import { FileUploadButton } from "@multica/ui/components/common/file-upload-button";
+} from "@ohmyagentteam/core/api";
+import { FileUploadButton } from "@ohmyagentteam/ui/components/common/file-upload-button";
 import { PillButton } from "../common/pill-button";
 import { ActorAvatar } from "../common/actor-avatar";
 import { IssuePickerModal } from "./issue-picker-modal";
@@ -73,6 +73,9 @@ function toDraftAttachment(attachment: Attachment): Attachment {
     download_url: "",
   };
 }
+
+const PARENT_ISSUE_TYPES: IssueType[] = ["issue"];
+const CHILD_ISSUE_TYPES: IssueType[] = ["issue", "subtask"];
 
 // ---------------------------------------------------------------------------
 // ManualCreatePanel — manual-mode body of the create-issue dialog. Renders
@@ -226,17 +229,69 @@ export function ManualCreatePanel({
   const [startDate, setStartDate] = useState<string | null>(draft.startDate);
   const [dueDate, setDueDate] = useState<string | null>(draft.dueDate);
   const [labelIds, setLabelIds] = useState<string[]>(draft.labelIds);
+  const initialProjectId = (data?.project_id as string) || undefined;
+  const initialParentIssueId =
+    (data?.parent_issue_id as string) || undefined;
+  const initialStage =
+    typeof data?.stage === "number" ? (data.stage as number) : null;
   const [projectId, setProjectId] = useState<string | undefined>(
-    (data?.project_id as string) || undefined,
+    initialProjectId,
   );
   const [parentIssueId, setParentIssueId] = useState<string | undefined>(
-    (data?.parent_issue_id as string) || undefined,
+    initialParentIssueId,
   );
+  const seededIssueType = data?.issue_type as IssueType | undefined;
+  // Epic has its own planning-only modal and API. Treat stale callers that
+  // still seed `issue_type: epic` as a normal issue instead of leaking an
+  // execution form into the Epic lifecycle.
+  const issueType: Exclude<IssueType, "epic"> =
+    seededIssueType === "subtask" || (!seededIssueType && parentIssueId)
+      ? "subtask"
+      : "issue";
+  const issueTypeLabel = t(($) => $.create_issue.issue_types[issueType]);
+  const typedCopy =
+    issueType === "issue"
+      ? {
+          srManual: t(($) => $.create_issue.sr_manual),
+          breadcrumb: t(($) => $.create_issue.manual_breadcrumb),
+          titlePlaceholder: t(($) => $.create_issue.title_placeholder),
+          titleRequired: t(($) => $.create_issue.title_required),
+          submit: t(($) => $.create_issue.submit),
+          toastCreated: t(($) => $.create_issue.toast_created),
+          view: t(($) => $.create_issue.view_issue),
+          toastFailed: t(($) => $.create_issue.toast_failed),
+        }
+      : {
+          srManual: t(($) => $.create_issue.typed.sr_manual, {
+            type: issueTypeLabel,
+          }),
+          breadcrumb: t(($) => $.create_issue.typed.manual_breadcrumb, {
+            type: issueTypeLabel,
+          }),
+          titlePlaceholder: t(($) => $.create_issue.typed.title_placeholder, {
+            type: issueTypeLabel,
+          }),
+          titleRequired: t(($) => $.create_issue.typed.title_required, {
+            type: issueTypeLabel,
+          }),
+          submit: t(($) => $.create_issue.typed.submit, {
+            type: issueTypeLabel,
+          }),
+          toastCreated: t(($) => $.create_issue.typed.toast_created, {
+            type: issueTypeLabel,
+          }),
+          view: t(($) => $.create_issue.typed.view, { type: issueTypeLabel }),
+          toastFailed: t(($) => $.create_issue.typed.toast_failed, {
+            type: issueTypeLabel,
+          }),
+        };
+  const epicId = (data?.epic_id as string | undefined) || undefined;
+  const canSetParent = !seededIssueType || seededIssueType === "subtask";
+  const canAddSubIssues = issueType === "issue";
+  const canRemoveParent = !seededIssueType;
   // Stage only applies to a sub-issue; kept local (not in the persisted draft)
   // since it's a per-creation choice tied to the chosen parent.
-  const [stage, setStage] = useState<number | null>(
-    typeof data?.stage === "number" ? (data.stage as number) : null,
-  );
+  const [stage, setStage] = useState<number | null>(initialStage);
   const [parentPickerOpen, setParentPickerOpen] = useState(false);
   // Start date is a low-frequency field — by default it lives in the
   // overflow ⋯ menu. Clicking the menu item flips this open, which both
@@ -314,19 +369,19 @@ export function ManualCreatePanel({
   const attachLabelMutation = useAttachLabelToIssue();
   const resetForNextIssue = () => {
     setTitle("");
-    setStatus("todo");
+    setStatus("backlog");
     setPriority("none");
     setStartDate(null);
     setDueDate(null);
     setLabelIds([]);
-    setProjectId(undefined);
-    setParentIssueId(undefined);
-    setStage(null);
+    setProjectId(initialProjectId);
+    setParentIssueId(initialParentIssueId);
+    setStage(initialStage);
     setChildIssues([]);
     setDraft({
       title: "",
       description: "",
-      status: "todo",
+      status: "backlog",
       priority: "none",
       assigneeType,
       assigneeId,
@@ -349,6 +404,8 @@ export function ManualCreatePanel({
         .map((a) => a.id);
       const issue = await createIssueMutation.mutateAsync({
         title: title.trim(),
+        issue_type: issueType,
+        epic_id: epicId,
         description,
         status,
         priority,
@@ -438,7 +495,7 @@ export function ManualCreatePanel({
               <div className="flex items-center justify-center size-5 rounded-full bg-emerald-500/15 text-emerald-500">
                 <Check className="size-3" />
               </div>
-              <span className="text-sm font-medium">{t(($) => $.create_issue.toast_created)}</span>
+              <span className="text-sm font-medium">{typedCopy.toastCreated}</span>
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground ml-7">
               <StatusIcon status={issue.status} className="size-3.5 shrink-0" />
@@ -452,7 +509,7 @@ export function ManualCreatePanel({
                 toast.dismiss(toastId);
               }}
             >
-              {t(($) => $.create_issue.view_issue)}
+              {typedCopy.view}
             </button>
           </div>
         ), { duration: 5000 });
@@ -504,7 +561,7 @@ export function ManualCreatePanel({
       toast.error(
         err instanceof Error && err.message
           ? err.message
-          : t(($) => $.create_issue.toast_failed),
+          : typedCopy.toastFailed,
       );
     } finally {
       setSubmitting(false);
@@ -558,14 +615,14 @@ export function ManualCreatePanel({
 
   return (
     <>
-            <DialogTitle className="sr-only">{t(($) => $.create_issue.sr_manual)}</DialogTitle>
+            <DialogTitle className="sr-only">{typedCopy.srManual}</DialogTitle>
 
             {/* Header */}
             <div className="flex items-center justify-between px-5 pt-3 pb-2 shrink-0">
               <div className="flex items-center gap-1.5 text-xs">
                 <span className="text-muted-foreground">{workspaceName}</span>
                 <ChevronRight className="size-3 text-muted-foreground/50" />
-                <span className="font-medium">{t(($) => $.create_issue.manual_breadcrumb)}</span>
+                <span className="font-medium">{typedCopy.breadcrumb}</span>
               </div>
               <div className="flex items-center gap-1">
                 <Tooltip>
@@ -609,7 +666,7 @@ export function ManualCreatePanel({
                 key={formResetKey}
                 autoFocus
                 defaultValue={draft.title}
-                placeholder={t(($) => $.create_issue.title_placeholder)}
+                placeholder={typedCopy.titlePlaceholder}
                 className="text-lg font-semibold"
                 onChange={(v) => updateTitle(v)}
                 onSubmit={handleSubmit}
@@ -740,14 +797,16 @@ export function ManualCreatePanel({
                       {t(($) => $.create_issue.subissue_of, { identifier: parentIssue.identifier })}
                     </span>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setParentIssueId(undefined)}
-                    className="p-1 pr-2 text-muted-foreground hover:text-foreground cursor-pointer"
-                    aria-label={t(($) => $.create_issue.remove_parent_aria)}
-                  >
-                    <XIcon className="size-3" />
-                  </button>
+                  {canRemoveParent && (
+                    <button
+                      type="button"
+                      onClick={() => setParentIssueId(undefined)}
+                      className="p-1 pr-2 text-muted-foreground hover:text-foreground cursor-pointer"
+                      aria-label={t(($) => $.create_issue.remove_parent_aria)}
+                    >
+                      <XIcon className="size-3" />
+                    </button>
+                  )}
                 </div>
               )}
 
@@ -798,22 +857,24 @@ export function ManualCreatePanel({
                       {t(($) => $.create_issue.set_start_date)}
                     </DropdownMenuItem>
                   )}
-                  {parentIssueId && parentIssue ? (
-                    <DropdownMenuItem onClick={() => setParentPickerOpen(true)}>
-                      <ArrowUp className="h-3.5 w-3.5" />
-                      {t(($) => $.create_issue.parent_with_id, { identifier: parentIssue.identifier })}
-                    </DropdownMenuItem>
-                  ) : (
-                    <DropdownMenuItem onClick={() => setParentPickerOpen(true)}>
-                      <ArrowUp className="h-3.5 w-3.5" />
-                      {t(($) => $.create_issue.set_parent)}
+                  {canSetParent && (parentIssueId && parentIssue ? (
+                      <DropdownMenuItem onClick={() => setParentPickerOpen(true)}>
+                        <ArrowUp className="h-3.5 w-3.5" />
+                        {t(($) => $.create_issue.parent_with_id, { identifier: parentIssue.identifier })}
+                      </DropdownMenuItem>
+                    ) : (
+                      <DropdownMenuItem onClick={() => setParentPickerOpen(true)}>
+                        <ArrowUp className="h-3.5 w-3.5" />
+                        {t(($) => $.create_issue.set_parent)}
+                      </DropdownMenuItem>
+                    ))}
+                  {canAddSubIssues && (
+                    <DropdownMenuItem onClick={() => setChildPickerOpen(true)}>
+                      <ArrowDown className="h-3.5 w-3.5" />
+                      {t(($) => $.create_issue.add_subissue)}
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuItem onClick={() => setChildPickerOpen(true)}>
-                    <ArrowDown className="h-3.5 w-3.5" />
-                    {t(($) => $.create_issue.add_subissue)}
-                  </DropdownMenuItem>
-                  {parentIssueId && parentIssue && (
+                  {canRemoveParent && parentIssueId && parentIssue && (
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
@@ -840,8 +901,10 @@ export function ManualCreatePanel({
                 ...childIssues.map((c) => c.id),
                 ...(parentIssueId ? [parentIssueId] : []),
               ]}
+              allowedIssueTypes={PARENT_ISSUE_TYPES}
               onSelect={(selected) => {
                 setParentIssueId(selected.id);
+                setChildIssues([]);
               }}
             />
             <IssuePickerModal
@@ -853,6 +916,7 @@ export function ManualCreatePanel({
                 ...childIssues.map((c) => c.id),
                 ...(parentIssueId ? [parentIssueId] : []),
               ]}
+              allowedIssueTypes={CHILD_ISSUE_TYPES}
               onSelect={(selected) => {
                 setChildIssues((prev) =>
                   prev.some((x) => x.id === selected.id) ? prev : [...prev, selected],
@@ -889,13 +953,13 @@ export function ManualCreatePanel({
                 {!title.trim() ? (
                   <TooltipProvider delay={200}>
                     <Tooltip>
-                      <TooltipTrigger render={<span><Button size="sm" onClick={handleSubmit} disabled>{t(($) => $.create_issue.submit)}</Button></span>} />
-                      <TooltipContent side="top">{t(($) => $.create_issue.title_required)}</TooltipContent>
+                      <TooltipTrigger render={<span><Button size="sm" onClick={handleSubmit} disabled>{typedCopy.submit}</Button></span>} />
+                      <TooltipContent side="top">{typedCopy.titleRequired}</TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
                 ) : (
                   <Button size="sm" onClick={handleSubmit} disabled={submitting}>
-                    {submitting ? t(($) => $.create_issue.submitting) : t(($) => $.create_issue.submit)}
+                    {submitting ? t(($) => $.create_issue.submitting) : typedCopy.submit}
                   </Button>
                 )}
               </div>
@@ -922,7 +986,7 @@ export function manualDialogContentClass(isExpanded: boolean) {
 // shell's shared Dialog, but a few legacy callers (and the test suite) still
 // import this module's modal version. Equivalent runtime behavior to the
 // pre-refactor component when used standalone.
-import { Dialog as DialogRoot } from "@multica/ui/components/ui/dialog";
+import { Dialog as DialogRoot } from "@ohmyagentteam/ui/components/ui/dialog";
 export function CreateIssueModal(props: {
   onClose: () => void;
   data?: Record<string, unknown> | null;

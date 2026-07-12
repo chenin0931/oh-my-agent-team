@@ -55,7 +55,9 @@ export function unreadWorkspaceIds(summary: InboxWorkspaceUnread[]): Set<string>
 /**
  * Unread inbox count for the given workspace, aligned with what the inbox
  * list UI renders: archived items excluded, then deduplicated by issue so a
- * single issue with three unread notifications counts once.
+ * single issue with three unread notifications counts once. An unread action
+ * remains surfaced until the user opens it, even when a newer informational
+ * Agent comment arrives for the same issue.
  */
 export function useInboxUnreadCount(wsId: string | null | undefined): number {
   const { data } = useQuery({
@@ -69,15 +71,46 @@ export function useInboxUnreadCount(wsId: string | null | undefined): number {
 }
 
 /**
- * Deduplicate inbox items by issue_id (one entry per issue, Linear-style).
- * Exported for consumers to use in useMemo — not in queryOptions select
- * (to avoid new array references on every cache update).
+ * Deduplicate inbox items by typed target (one entry per Epic or work item).
+ * Unread action-required items take precedence over newer informational
+ * updates. This keeps a human assignment visible while advisor comments are
+ * arriving; after the action is opened, the newest update becomes the row.
+ * Exported for consumers to use in useMemo — not in queryOptions select.
  */
 export function deduplicateInboxItems(items: InboxItem[]): InboxItem[] {
   const active = items.filter((i) => !i.archived);
+  const quickCreateIssueKeys = new Map<
+    string,
+    { issueId: string; createdAt: number }
+  >();
+  for (const item of active) {
+    const targetId = item.target_id ?? item.issue_id;
+    if (item.type !== "quick_create_done" || !targetId) continue;
+    const prompt = item.details?.original_prompt?.replace(/\s+/g, " ").trim();
+    if (!prompt) continue;
+    const quickKey = `quick-create:${item.details?.agent_id ?? item.actor_id ?? ""}:${prompt}`;
+    const createdAt = new Date(item.created_at).getTime();
+    const existing = quickCreateIssueKeys.get(quickKey);
+    if (!existing || createdAt > existing.createdAt) {
+      quickCreateIssueKeys.set(quickKey, { issueId: targetId, createdAt });
+    }
+  }
+
   const groups = new Map<string, InboxItem[]>();
   for (const item of active) {
-    const key = item.issue_id ?? item.id;
+    const prompt = item.details?.original_prompt?.replace(/\s+/g, " ").trim();
+    const isQuickCreateResult =
+      item.type === "quick_create_done" || item.type === "quick_create_failed";
+    const quickKey =
+      isQuickCreateResult && prompt
+        ? `quick-create:${item.details?.agent_id ?? item.actor_id ?? ""}:${prompt}`
+        : null;
+    const key =
+      (quickKey && quickCreateIssueKeys.get(quickKey)?.issueId) ??
+      (item.target_id ? `${item.target_type ?? "issue"}:${item.target_id}` : null) ??
+      item.issue_id ??
+      quickKey ??
+      item.id;
     const group = groups.get(key) ?? [];
     group.push(item);
     groups.set(key, group);
@@ -90,20 +123,38 @@ export function deduplicateInboxItems(items: InboxItem[]): InboxItem[] {
     );
     const newest = group[0];
     if (!newest) continue;
+    // A successful retry resolves an earlier quick-create failure. Surface the
+    // latest attempt for that same agent + prompt instead of pinning the stale
+    // action-required row forever. Other issue actions retain precedence so a
+    // human assignment cannot be displaced by advisor chatter.
+    const newestQuickCreateResult = group.find(
+      (item) =>
+        item.type === "quick_create_done" || item.type === "quick_create_failed",
+    );
+    const actionCandidates =
+      newestQuickCreateResult?.type === "quick_create_done"
+        ? group.filter((item) => item.type !== "quick_create_failed")
+        : group;
+    const surfaced =
+      actionCandidates.find(
+        (item) => !item.read && item.severity === "action_required",
+      ) ?? newest;
 
     const commentId =
-      newest.details?.comment_id ??
-      group.find((item) => item.details?.comment_id)?.details?.comment_id;
+      surfaced.details?.comment_id ??
+      (surfaced.severity === "action_required"
+        ? undefined
+        : group.find((item) => item.details?.comment_id)?.details?.comment_id);
 
-    if (commentId && newest.details?.comment_id !== commentId) {
+    if (commentId && surfaced.details?.comment_id !== commentId) {
       merged.push({
-        ...newest,
-        details: { ...(newest.details ?? {}), comment_id: commentId },
+        ...surfaced,
+        details: { ...(surfaced.details ?? {}), comment_id: commentId },
       });
       continue;
     }
 
-    merged.push(newest);
+    merged.push(surfaced);
   }
   return merged.sort(
     (a, b) =>

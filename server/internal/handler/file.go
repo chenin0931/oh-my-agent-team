@@ -16,8 +16,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/multica-ai/multica/server/internal/storage"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/storage"
+	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
 )
 
 // extContentTypes overrides http.DetectContentType for extensions it gets wrong.
@@ -71,8 +71,8 @@ type AttachmentResponse struct {
 	// chat messages). It is computed per deployment policy by
 	// buildMarkdownURL — preferring the storage URL when it is already a
 	// public, durable absolute URL (public CDN / LocalStorage with
-	// MULTICA_LOCAL_UPLOAD_BASE_URL), and otherwise prefixing
-	// MULTICA_PUBLIC_URL onto the stable per-attachment endpoint that the
+	// OMAT_LOCAL_UPLOAD_BASE_URL), and otherwise prefixing
+	// OMAT_PUBLIC_URL onto the stable per-attachment endpoint that the
 	// server self-resigns / proxies on every request.
 	//
 	// Why a separate field from URL / DownloadURL:
@@ -162,11 +162,11 @@ func attachmentDownloadPath(id string) string {
 //     against a private bucket without a CDN domain, raw S3 / R2 /
 //     MinIO, LocalStorage with no `LOCAL_UPLOAD_BASE_URL` — uses the
 //     stable per-attachment endpoint that the server self-signs /
-//     proxies on every request, anchored on `MULTICA_PUBLIC_URL` so the
+//     proxies on every request, anchored on `OMAT_PUBLIC_URL` so the
 //     persisted URL keeps working for clients that don't share the
 //     document origin (Desktop / mobile webview).
 //
-//  3. Last-resort fallback (no `MULTICA_PUBLIC_URL` configured): emit
+//  3. Last-resort fallback (no `OMAT_PUBLIC_URL` configured): emit
 //     the site-relative path. Web's Next.js rewrite handles this; non-
 //     web clients on a deployment without `PublicURL` configured were
 //     already broken before MUL-3192 and stay broken here, but we
@@ -321,6 +321,9 @@ func (h *Handler) UploadFile(w http.ResponseWriter, r *http.Request) {
 
 	userID, ok := requireUserID(w, r)
 	if !ok {
+		return
+	}
+	if h.rejectMemberAssigneeAdvisorMutation(w, r, pgtype.UUID{}, false) {
 		return
 	}
 
@@ -483,7 +486,7 @@ func (h *Handler) UploadFile(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) ListAttachments(w http.ResponseWriter, r *http.Request) {
 	issueID := chi.URLParam(r, "id")
-	issue, ok := h.loadIssueForUser(w, r, issueID)
+	issue, ok := h.loadCollaborativeTargetForRoute(w, r, issueID)
 	if !ok {
 		return
 	}
@@ -1203,6 +1206,9 @@ func (h *Handler) DeleteAttachment(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		writeError(w, http.StatusNotFound, "attachment not found")
+		return
+	}
+	if h.rejectMemberAssigneeAdvisorMutation(w, r, att.IssueID, false) {
 		return
 	}
 

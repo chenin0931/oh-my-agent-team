@@ -16,7 +16,14 @@
     "delete": "删除",
     "no_matches": "没有匹配的项目",
     "selected_other": "已选 {{count}} 项",
-    "clear_selection": "清除选择"
+    "clear_selection": "清除选择",
+    "empty_description": "项目承载一个共同的交付目标，把相关工作项、人员与 Agent 放在同一处协作。",
+    "empty_project": "项目",
+    "empty_project_hint": "目标与共享上下文",
+    "empty_work_items": "工作项",
+    "empty_work_items_hint": "推动目标的具体工作",
+    "empty_unassigned_hint": "工作项也可以暂时不归属项目，之后再整理。",
+    "view_work_items": "查看全部工作项"
   },
   "table": {
     "name": "名称",
@@ -25,7 +32,8 @@
     "progress": "进度",
     "lead": "负责人",
     "created": "创建时间",
-    "issues": "Issue 数"
+    "issues": "项目内工作项",
+    "work_items_summary": "{{count}} 个工作项 · {{done}} 个已完成"
   },
   "status": {
     "planned": "计划中",
@@ -69,13 +77,72 @@
     "section_description": "描述",
     "description_placeholder": "添加描述...",
     "description_hint": "会作为项目上下文提供给智能体，应用于该项目下的每个任务。",
-    "empty_issues_title": "还没有关联的 issue",
-    "empty_issues_hint": "新建一个 issue，或把已有的 issue 关联到这个项目。",
-    "empty_issues_new_button": "新建 issue",
-    "no_issues_yet": "目前还没有 issue",
+    "empty_issues_title": "还没有项目内工作项",
+    "empty_issues_hint": "新建工作项，或把已有工作项归入这个项目。",
+    "empty_issues_new_button": "新建工作项",
+    "no_issues_yet": "尚无项目内工作项",
     "toast_link_copied": "已复制链接",
     "toast_project_deleted": "已删除项目",
     "toast_move_issue_failed": "移动 issue 失败"
+  },
+  "workspace": {
+    "tabs": {
+      "overview": "概览",
+      "backlog": "待规划",
+      "board": "看板",
+      "roadmap": "路线图",
+      "activity": "动态"
+    },
+    "overview": {
+      "progress": "进度",
+      "description": "项目背景",
+      "no_description": "还没有项目背景。"
+    },
+    "backlog": {
+      "title": "项目待规划",
+      "summary": "{{epics}} 个 Epic · {{issues}} 个 Issue · {{subtasks}} 个子任务",
+      "epic": "Epic",
+      "issue": "Issue",
+      "add_issue": "添加 Issue",
+      "add_subtask": "添加子任务",
+      "ungrouped": "未归入 Epic 的 Issue",
+      "empty": "还没有待规划工作。"
+    },
+    "activity": {
+      "title": "项目最新动态",
+      "empty": "还没有项目动态。",
+      "actions": {
+        "created": "创建了工作项",
+        "status_changed": "更改了状态",
+        "priority_changed": "更改了优先级",
+        "assignee_changed": "更改了负责人",
+        "start_date_changed": "更改了开始日期",
+        "due_date_changed": "更改了截止日期",
+        "title_changed": "重命名了工作项",
+        "description_updated": "更新了描述",
+        "squad_leader_evaluated": "小队负责人完成了工作评估",
+        "comment_created": "发表了评论",
+        "task_queued": "Agent 任务已排队",
+        "task_dispatched": "Agent 任务已分配",
+        "task_running": "Agent 正在处理",
+        "task_waiting_local_directory": "正在等待本地目录",
+        "task_deferred": "Agent 任务已延后",
+        "task_completed": "Agent 任务已完成",
+        "task_failed": "Agent 任务执行失败",
+        "task_cancelled": "Agent 任务已取消",
+        "updated": "更新了工作项"
+      }
+    },
+    "roadmap": {
+      "title": "Epic 路线图",
+      "summary": "{{epics}} 个 Epic · 已完成 {{done}}/{{total}} 个 Issue",
+      "epic": "Epic",
+      "timeline": "时间线与进度",
+      "start_not_set": "未设开始日期",
+      "due_not_set": "未设截止日期",
+      "done": "已完成 {{done}}/{{total}}",
+      "empty": "创建 Epic 后会在这里形成路线图。"
+    }
   },
   "resources": {
     "section_header": "资源",
@@ -121,12 +188,80 @@
     "cancel": "取消"
   },
   "picker": {
+    "loading": "正在加载项目…",
     "no_project": "无项目",
     "remove": "从项目移除",
     "empty": "还没有项目"
   },
   "chip": {
     "fallback_label": "项目"
+  },
+  "epic": {
+    "title": "Epic",
+    "planning_container": "规划容器",
+    "create": "新建 Epic",
+    "create_title": "创建 Epic",
+    "create_description": "先定义业务结果，再拆成可执行工作项。",
+    "title_placeholder": "要交付的业务结果",
+    "description": "目标与范围",
+    "description_placeholder": "这个 Epic 要实现什么结果？哪些在范围内，哪些不在？",
+    "success_criteria": "成功标准",
+    "success_placeholder": "出现什么可验证的结果，才算这个 Epic 完成？",
+    "project": "项目",
+    "owner": "规划负责人",
+    "unassigned": "未分配",
+    "lifecycle": "生命周期",
+    "health": "健康度",
+    "health_none": "尚未评估",
+    "overview": "概要",
+    "work_items": "工作项",
+    "updates": "更新",
+    "progress": "交付进度",
+    "completion": "已完成 {{done}}/{{total}} 个 Issue",
+    "blocked": "{{count}} 个受阻",
+    "status_distribution": "状态分布",
+    "no_description": "还没有填写目标与范围。",
+    "no_success": "还没有填写成功标准。",
+    "no_work_items": "这个 Epic 里还没有工作项。",
+    "add_issue": "创建待规划 Issue",
+    "attach_existing": "添加已有 Issue",
+    "detach": "移出 Epic",
+    "start_date": "开始日期",
+    "target_date": "目标日期",
+    "priority": "重要性",
+    "advisors": "规划顾问",
+    "choose_agent": "选择智能体",
+    "advisor_prompt": "希望智能体重点分析什么？",
+    "analyze": "让智能体分析",
+    "advisor_queued": "已安排智能体分析",
+    "subscribers": "订阅者",
+    "subscribe": "订阅",
+    "unsubscribe": "取消订阅",
+    "labels": "标签",
+    "attachments": "附件",
+    "delete": "删除 Epic",
+    "delete_confirm": "确认删除这个 Epic？其中的工作项会保留在项目中，并变为未归类工作项。",
+    "created": "Epic 已创建",
+    "create_failed": "创建 Epic 失败",
+    "update_failed": "更新 Epic 失败",
+    "load_failed": "无法加载这个 Epic",
+    "load_failed_description": "它可能已被删除，或者当前无法连接服务。",
+    "retry": "重试",
+    "comment_placeholder": "留下规划更新，或 @ 智能体提供建议...",
+    "send": "发布更新",
+    "no_updates": "还没有规划更新。",
+    "statuses": {
+      "planned": "已规划",
+      "in_progress": "推进中",
+      "paused": "已暂停",
+      "completed": "已完成",
+      "cancelled": "已取消"
+    },
+    "healths": {
+      "on_track": "进展正常",
+      "at_risk": "存在风险",
+      "off_track": "已经偏离"
+    }
   },
   "toolbar": {
     "result_count_title": "当前结果 / 全部项目",
