@@ -13,12 +13,12 @@ _setup_sandbox() {
   local payload_dir="$tmp/payload"
   mkdir -p "$stub_bin" "$install_bin" "$payload_dir"
 
-  cat >"$payload_dir/ohmyagentteam" <<'STUB'
+  cat >"$payload_dir/omat" <<'STUB'
 #!/usr/bin/env bash
-echo "ohmyagentteam v0.3.2 (commit: test)"
+echo "omat v0.3.2 (commit: test)"
 STUB
-  chmod +x "$payload_dir/ohmyagentteam"
-  tar -czf "$tmp/ohmyagentteam.tar.gz" -C "$payload_dir" ohmyagentteam
+  chmod +x "$payload_dir/omat"
+  tar -czf "$tmp/omat.tar.gz" -C "$payload_dir" omat
 
   cat >"$stub_bin/curl" <<'STUB'
 #!/usr/bin/env bash
@@ -55,7 +55,7 @@ _run_installer() {
   local err="$tmp/install.err"
   if ! PATH="$tmp/stub-bin:$tmp/install-bin:/usr/bin:/bin" \
     OMAT_BIN_DIR="$tmp/install-bin" \
-    OMAT_TEST_ARCHIVE="$tmp/ohmyagentteam.tar.gz" \
+    OMAT_TEST_ARCHIVE="$tmp/omat.tar.gz" \
     bash "$ROOT_DIR/scripts/install.sh" >"$out" 2>"$err"; then
     echo "install.sh exited non-zero" >&2
     cat "$out" >&2 || true
