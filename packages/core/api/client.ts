@@ -320,10 +320,12 @@ export class ApiClient {
 
   private readCsrfToken(): string | null {
     if (typeof document === "undefined") return null;
-    const match = document.cookie
-      .split("; ")
-      .find((c) => c.startsWith("omat_csrf="));
-    return match ? match.split("=")[1] ?? null : null;
+    const cookies = document.cookie.split("; ");
+    for (const name of ["omat_csrf", "multica_csrf"]) {
+      const match = cookies.find((cookie) => cookie.startsWith(`${name}=`));
+      if (match) return match.slice(name.length + 1) || null;
+    }
+    return null;
   }
 
   private authHeaders(): Record<string, string> {

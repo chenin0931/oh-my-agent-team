@@ -152,6 +152,23 @@ describe("ApiClient", () => {
     expect(headers["X-Client-OS"]).toBeUndefined();
   });
 
+  it("uses the legacy CSRF cookie during a rolling backend upgrade", async () => {
+    vi.stubGlobal("document", { cookie: "multica_csrf=legacy-csrf-token" });
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ id: "workspace-1" }), {
+        status: 201,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = new ApiClient("https://api.example.test");
+    await client.createWorkspace({ name: "Demo", slug: "demo" });
+
+    const headers = fetchMock.mock.calls[0]![1]!.headers as Record<string, string>;
+    expect(headers["X-CSRF-Token"]).toBe("legacy-csrf-token");
+  });
+
   it("posts feedback kind and parses the response through the schema", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ id: "feedback-1", created_at: "2026-06-26T00:00:00Z" }), {
