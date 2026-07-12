@@ -1,10 +1,10 @@
 {
   "page": {
-    "title": "실행 용량",
-    "tagline": "에이전트의 CLI 세션을 실행하는 기기와 클라우드 워커입니다.",
+    "title": "데스크톱 에이전트",
+    "tagline": "컴퓨터의 Codex, Claude Code 또는 WorkBuddy를 연결하고 팀 에이전트를 만드세요.",
     "learn_more": "자세히 보기 →",
-    "connect_remote": "컴퓨터 추가",
-    "search_placeholder": "런타임 검색...",
+    "connect_remote": "데스크톱 에이전트 연결",
+    "search_placeholder": "데스크톱 에이전트 검색...",
     "scope_mine": "내 것",
     "scope_all": "전체",
     "live": "실시간",
@@ -12,8 +12,8 @@
     "filter_all": "전체",
     "filter_all_description": "이 보기의 모든 런타임",
     "empty": {
-      "title": "아직 런타임이 없습니다",
-      "hint": "데스크톱 앱은 이 컴퓨터를 자동으로 스캔합니다. 서버, 개발용 박스, 터미널이 있는 다른 컴퓨터를 쓰려면 여기에 추가하세요."
+      "title": "아직 데스크톱 에이전트가 없습니다",
+      "hint": "이 컴퓨터의 Codex, Claude Code 또는 WorkBuddy를 연결한 뒤 팀 에이전트를 만드세요."
     },
     "no_matches": {
       "title": "일치하는 결과 없음",
@@ -28,11 +28,11 @@
     }
   },
   "execution_tools": {
-    "title": "실행 도구 연결",
-    "description": "자주 쓰는 세 가지 로컬 Agent CLI 중 하나로 시작하세요.",
-    "click_hint": "도구를 선택해 설정 단계 보기",
-    "online": "이 워크스페이스에서 온라인",
-    "not_connected": "연결 가이드 보기",
+    "title": "데스크톱 에이전트 연결",
+    "description": "이 컴퓨터의 에이전트를 협업 네트워크에 연결하세요.",
+    "click_hint": "연결할 에이전트 선택",
+    "online": "연결됨",
+    "not_connected": "연결",
     "guide_title": "{{name}} 연결",
     "guide_description": "도구는 내 컴퓨터에서 실행되고, OhMyAgentTeam이 할당된 작업을 전달합니다.",
     "install_title": "CLI 설치",
@@ -44,9 +44,9 @@
     "open_connect": "연결 설정 열기"
   },
   "capacity_pulse": {
-    "machines": "머신",
-    "runtimes": "런타임",
-    "agents": "연결된 에이전트",
+    "machines": "연결된 기기",
+    "runtimes": "데스크톱 에이전트",
+    "agents": "팀 에이전트",
     "work": "실행 중",
     "online": "온라인",
     "ready": "사용 가능",
@@ -54,7 +54,7 @@
     "work_hint": "{{queued}} 대기 중"
   },
   "machine": {
-    "search_placeholder": "기기 검색...",
+    "search_placeholder": "연결 기기 검색...",
     "filters": {
       "all": "전체",
       "online": "온라인",
@@ -195,26 +195,33 @@
   "running_other": "실행 중 {{count}}개",
   "queued_other": "대기 중 {{count}}개",
   "connect": {
-    "title": "컴퓨터 추가",
-    "description": "추가하려는 컴퓨터에서 아래 두 명령을 실행하세요. 데몬이 온라인이 되는 순간 감지합니다.",
-    "step1_label": "OhMyAgentTeam CLI 설치",
-    "step2_label": "데몬 시작",
-    "step2_hint": "로그인을 위해 브라우저를 열고, 이후 데몬을 백그라운드에서 계속 실행합니다.",
-    "live_listening": "컴퓨터를 기다리는 중",
-    "live_listening_hint": "데몬이 시작되면 바로 감지합니다. 보통 1분 이내입니다.",
-    "troubleshooting": "해당 컴퓨터에서 브라우저를 열 수 없나요?",
-    "trouble_intro": "브라우저 로그인 대신 토큰을 사용하세요. 2단계를 대체하며 터미널이 있는 곳이면 어디서든 작동합니다.",
-    "trouble_token_hint_prefix": "토큰은 ",
-    "trouble_token_hint_destination": "설정 → 토큰",
-    "trouble_token_hint_suffix": "에서 만들 수 있습니다. 데몬은 외부로만 연결하므로 인바운드 포트가 필요 없습니다.",
-    "trouble_check_status": "상태 확인",
-    "trouble_view_logs": "로그 보기",
+    "title": "데스크톱 에이전트 연결",
+    "title_with_name": "{{name}} 연결",
+    "description": "이 컴퓨터의 에이전트를 선택하세요. 연결 후 이를 기반으로 팀 에이전트를 만들 수 있습니다.",
+    "description_with_name": "연결 후 이 컴퓨터의 {{name}}를 기반으로 팀 에이전트를 만들 수 있습니다.",
+    "choose_title": "이 컴퓨터의 에이전트 선택",
+    "selected_hint": "이 컴퓨터에서 실행됩니다",
+    "change": "변경",
+    "command_title": "이 컴퓨터의 터미널에서 실행",
+    "command_hint": "연결 프로그램을 설치하고 로그인을 연 뒤 자동으로 연결을 완료합니다.",
+    "tool_help_title": "{{name}}가 아직 설치되지 않았나요?",
+    "tool_help_description": "{{name}}를 설치하고 로그인한 뒤 위 연결 명령을 실행하세요.",
+    "tool_login_hint": "설치 후 {{command}}를 실행하고 {{name}} 로그인 안내를 따르세요.",
+    "troubleshooting": "로그인 페이지를 열 수 없나요?",
+    "trouble_intro": "액세스 토큰으로 수동 연결할 수 있습니다. 아래는 고급 연결 명령입니다.",
     "copy_aria": "복사",
     "cancel": "취소",
-    "success_title": "컴퓨터 연결됨",
-    "success_description": "컴퓨터가 온라인이며 준비되었습니다. 에이전트를 만들면 여기서 작업을 맡을 수 있습니다.",
-    "view_runtime": "런타임 보기",
-    "create_agent": "에이전트 만들기"
+    "waiting_title": "{{name}} 연결 대기 중",
+    "progress_computer": "이 컴퓨터 연결 대기 중",
+    "progress_tool": "{{name}} 감지 중",
+    "progress_ready": "데스크톱 에이전트 등록 중",
+    "success_title": "{{name}} 연결됨",
+    "success_description": "이제 이 컴퓨터의 {{name}}를 기반으로 팀 에이전트를 만들 수 있습니다.",
+    "desktop_agent": "데스크톱 에이전트",
+    "device_connected": "이 컴퓨터",
+    "online": "온라인",
+    "later": "나중에",
+    "create_team_agent": "팀 에이전트 만들기"
   },
   "cloud_runtime": {
     "action": "클라우드 런타임",
@@ -281,7 +288,7 @@
     "tooltip_total": "합계"
   },
   "list": {
-    "col_runtime": "런타임",
+    "col_runtime": "데스크톱 에이전트",
     "col_health": "상태",
     "col_owner": "소유자",
     "col_agents": "에이전트",
@@ -302,7 +309,7 @@
     "pending_cli_unknown": "대기 중"
   },
   "profiles": {
-    "cta": "런타임 추가",
+    "cta": "고급 설정",
     "dialog_title": "사용자 지정 런타임",
     "dialog_description": "아래 지원되는 프로토콜 제품군 위에 만드는 워크스페이스별 명령입니다.",
     "close": "닫기",

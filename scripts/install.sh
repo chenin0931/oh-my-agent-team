@@ -7,7 +7,8 @@
 # Install CLI + provision self-host server:
 #   curl -fsSL https://raw.githubusercontent.com/chenin0931/oh-my-agent-team/main/scripts/install.sh | bash -s -- --with-server
 #
-# After installation, run `omat setup` to configure your environment.
+# Install the CLI and connect desktop agents in one flow:
+#   curl -fsSL https://raw.githubusercontent.com/chenin0931/oh-my-agent-team/main/scripts/install.sh | bash -s -- --connect
 #
 set -euo pipefail
 
@@ -500,16 +501,32 @@ run_stop() {
 # ---------------------------------------------------------------------------
 main() {
   local mode="default"
+  local connect_server_url=""
+  local connect_app_url=""
 
   while [ $# -gt 0 ]; do
     case "$1" in
       --with-server) mode="with-server" ;;
       --local)       mode="with-server" ;;  # backwards compat alias
+      --connect)     mode="connect" ;;
+      --server-url)
+        shift
+        [ $# -gt 0 ] || fail "--server-url requires a value"
+        connect_server_url="$1"
+        ;;
+      --app-url)
+        shift
+        [ $# -gt 0 ] || fail "--app-url requires a value"
+        connect_app_url="$1"
+        ;;
       --stop)        mode="stop" ;;
       --help|-h)
-        echo "Usage: install.sh [--with-server | --stop]"
+        echo "Usage: install.sh [--connect [--server-url URL --app-url URL] | --with-server | --stop]"
         echo ""
         echo "  (default)       Install / upgrade the OhMyAgentTeam CLI"
+        echo "  --connect       Install the CLI, sign in, and connect desktop agents"
+        echo "  --server-url    API URL for a self-hosted connection"
+        echo "  --app-url       App URL for a self-hosted connection"
         echo "  --with-server   Install CLI + provision a self-host server (Docker)"
         echo "  --stop          Stop a self-hosted installation"
         echo ""
@@ -530,8 +547,28 @@ main() {
     shift
   done
 
+  if [ -n "$connect_server_url" ] || [ -n "$connect_app_url" ]; then
+    if [ -z "$connect_server_url" ] || [ -z "$connect_app_url" ]; then
+      fail "--server-url and --app-url must be provided together"
+    fi
+    if [ "$mode" != "connect" ]; then
+      fail "--server-url and --app-url are only valid with --connect"
+    fi
+  fi
+
   case "$mode" in
     default)     run_default ;;
+    connect)
+      run_default
+      printf "\n"
+      info "Connecting desktop agents..."
+      if [ -n "$connect_server_url" ]; then
+        omat setup self-host --server-url "$connect_server_url" --app-url "$connect_app_url"
+      else
+        omat setup
+      fi
+      ok "Desktop agents are connected"
+      ;;
     with-server) run_with_server ;;
     stop)        run_stop ;;
   esac

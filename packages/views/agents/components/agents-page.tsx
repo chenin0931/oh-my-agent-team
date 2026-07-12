@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertCircle,
   Archive,
@@ -862,6 +862,18 @@ export function AgentsPage(_props: AgentsPageProps = {}) {
   );
   const [search, setSearch] = useState("");
   const [viewMode, setViewMode] = useState<"network" | "directory">("network");
+  const requestedRuntimeId = navigation.searchParams.get("desktop_agent");
+  const requestedCreate = navigation.searchParams.get("create") === "1";
+
+  useEffect(() => {
+    if (requestedCreate) setShowCreate(true);
+  }, [requestedCreate]);
+
+  const clearCreateRequest = useCallback(() => {
+    if (requestedCreate || requestedRuntimeId) {
+      navigation.replace(navigation.pathname);
+    }
+  }, [navigation, requestedCreate, requestedRuntimeId]);
 
   const rawScope = useAgentsViewStore((s) => s.scope);
   const scope = AGENT_SCOPES.includes(rawScope) ? rawScope : "mine";
@@ -1092,6 +1104,7 @@ export function AgentsPage(_props: AgentsPageProps = {}) {
     });
     setShowCreate(false);
     setDuplicateTemplate(null);
+    clearCreateRequest();
     navigation.push(paths.agentDetail(agent.id));
     qc.invalidateQueries({ queryKey: workspaceKeys.agents(wsId) });
     return agent;
@@ -1306,10 +1319,12 @@ export function AgentsPage(_props: AgentsPageProps = {}) {
           runtimesLoading={runtimesLoading}
           members={members}
           currentUserId={currentUser?.id ?? null}
+          initialRuntimeId={duplicateTemplate ? null : requestedRuntimeId}
           template={duplicateTemplate}
           onClose={() => {
             setShowCreate(false);
             setDuplicateTemplate(null);
+            clearCreateRequest();
           }}
           onCreate={handleCreate}
         />

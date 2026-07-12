@@ -1,10 +1,10 @@
 {
   "page": {
-    "title": "执行能力",
-    "tagline": "为智能体跑 CLI 会话的机器和云端 worker。",
+    "title": "桌面智能体",
+    "tagline": "连接电脑上的 Codex、Claude Code 或 WorkBuddy，再基于它们创建团队智能体。",
     "learn_more": "了解更多 →",
-    "connect_remote": "添加电脑",
-    "search_placeholder": "搜索运行时...",
+    "connect_remote": "连接桌面智能体",
+    "search_placeholder": "搜索桌面智能体...",
     "scope_mine": "我的",
     "scope_all": "全部",
     "live": "实时",
@@ -12,8 +12,8 @@
     "filter_all": "全部",
     "filter_all_description": "当前视图下的所有运行时",
     "empty": {
-      "title": "还没有运行时",
-      "hint": "桌面端会自动扫描这台电脑。想把另一台电脑加进来 —— 服务器、远程开发机，或任何能开终端的电脑 —— 在这里添加。"
+      "title": "还没有桌面智能体",
+      "hint": "先连接这台电脑上的 Codex、Claude Code 或 WorkBuddy，然后创建能接收团队任务的智能体。"
     },
     "no_matches": {
       "title": "无匹配",
@@ -23,16 +23,16 @@
       "try_widening": "试试放宽筛选或清除条件。"
     },
     "bootstrapping": {
-      "title": "正在启动本地运行时...",
-      "hint": "通常需要几秒钟。守护进程正在向工作区注册。"
+      "title": "正在连接桌面智能体...",
+      "hint": "通常需要几秒钟。连接程序正在把这台电脑上的智能体注册到工作区。"
     }
   },
   "execution_tools": {
-    "title": "接入执行工具",
-    "description": "先从三种常用的本地 Agent CLI 中选择一个。",
-    "click_hint": "点击工具查看接入教程",
-    "online": "已在当前工作区在线",
-    "not_connected": "查看接入教程",
+    "title": "连接桌面智能体",
+    "description": "将这台电脑上的智能体接入协作网络，再用它创建团队智能体。",
+    "click_hint": "选择一个开始连接",
+    "online": "已连接",
+    "not_connected": "连接",
     "guide_title": "接入 {{name}}",
     "guide_description": "工具运行在你的电脑上，OhMyAgentTeam 会把已分配的工作路由给它。",
     "install_title": "安装 CLI",
@@ -44,9 +44,9 @@
     "open_connect": "打开连接向导"
   },
   "capacity_pulse": {
-    "machines": "机器",
-    "runtimes": "运行时",
-    "agents": "已绑定智能体",
+    "machines": "连接设备",
+    "runtimes": "桌面智能体",
+    "agents": "团队智能体",
     "work": "执行中任务",
     "online": "在线",
     "ready": "可用",
@@ -54,7 +54,7 @@
     "work_hint": "{{queued}} 个排队"
   },
   "machine": {
-    "search_placeholder": "搜索机器...",
+    "search_placeholder": "搜索设备...",
     "filters": {
       "all": "全部",
       "online": "在线",
@@ -66,13 +66,13 @@
     "this_machine": "本机",
     "local_badge": "本地 · 这台机器",
     "pending_custom_runtimes": "待注册自定义运行时",
-    "runtime_count_other": "{{count}} 个运行时",
+    "runtime_count_other": "{{count}} 个桌面智能体",
     "busy_count_other": "{{count}} 个忙碌",
     "no_matches_title": "没有机器",
     "no_matches_hint": "没有机器匹配当前搜索或筛选。",
-    "select_machine": "选择一台机器查看它的运行时。",
+    "select_machine": "选择一台设备查看它连接的桌面智能体。",
     "metrics": {
-      "runtimes": "运行时",
+      "runtimes": "桌面智能体",
       "runtimes_hint_other": "{{count}} 个在线",
       "health": "健康度",
       "health_clear": "无异常",
@@ -195,26 +195,33 @@
   "running_other": "{{count}} 个运行中",
   "queued_other": "{{count}} 个排队中",
   "connect": {
-    "title": "添加电脑",
-    "description": "在要添加的电脑上运行这两条命令。守护进程一上线，这里就会自动识别。",
-    "step1_label": "安装 OhMyAgentTeam CLI",
-    "step2_label": "启动守护进程",
-    "step2_hint": "会打开浏览器登录，然后在后台保持守护进程运行。",
-    "live_listening": "等待你的电脑上线",
-    "live_listening_hint": "守护进程一启动就会被识别，通常不到一分钟。",
-    "troubleshooting": "那台电脑打不开浏览器？",
-    "trouble_intro": "改用 token 登录替代第 2 步，适用于任何有终端的环境。",
-    "trouble_token_hint_prefix": "在 ",
-    "trouble_token_hint_destination": "设置 → Tokens",
-    "trouble_token_hint_suffix": " 中创建 token。守护进程只使用出站连接 —— 无需开放入站端口。",
-    "trouble_check_status": "检查状态",
-    "trouble_view_logs": "查看日志",
+    "title": "连接桌面智能体",
+    "title_with_name": "连接 {{name}}",
+    "description": "选择这台电脑上的智能体。连接后，可以基于它创建团队智能体。",
+    "description_with_name": "连接后，可以基于这台电脑上的 {{name}} 来创建团队智能体。",
+    "choose_title": "选择这台电脑上的智能体",
+    "selected_hint": "将在这台电脑上运行",
+    "change": "更换",
+    "command_title": "在这台电脑的终端运行",
+    "command_hint": "这条命令会安装连接程序、打开登录，并自动完成连接。",
+    "tool_help_title": "还没有安装 {{name}}？",
+    "tool_help_description": "先安装并登录 {{name}}，再运行上面的连接命令。",
+    "tool_login_hint": "安装后运行 {{command}}，按照提示登录 {{name}}。",
+    "troubleshooting": "无法打开登录页面？",
+    "trouble_intro": "可以改用访问令牌手动连接。以下为高级连接命令。",
     "copy_aria": "复制",
     "cancel": "取消",
-    "success_title": "电脑已连接",
-    "success_description": "电脑已经上线就绪。创建一个智能体，task 就可以派发到这里运行。",
-    "view_runtime": "查看运行时",
-    "create_agent": "创建智能体"
+    "waiting_title": "正在等待 {{name}} 连接",
+    "progress_computer": "等待这台电脑建立连接",
+    "progress_tool": "正在检测 {{name}}",
+    "progress_ready": "正在完成桌面智能体注册",
+    "success_title": "{{name}} 已连接",
+    "success_description": "现在可以基于这台电脑上的 {{name}} 创建团队智能体。",
+    "desktop_agent": "桌面智能体",
+    "device_connected": "这台电脑",
+    "online": "在线",
+    "later": "稍后",
+    "create_team_agent": "创建团队智能体"
   },
   "cloud_runtime": {
     "action": "云端运行时",
@@ -281,7 +288,7 @@
     "tooltip_total": "总计"
   },
   "list": {
-    "col_runtime": "运行时",
+    "col_runtime": "桌面智能体",
     "col_health": "健康度",
     "col_owner": "所有者",
     "col_agents": "智能体",
@@ -302,7 +309,7 @@
     "pending_cli_unknown": "等待中"
   },
   "profiles": {
-    "cta": "添加运行时",
+    "cta": "高级配置",
     "dialog_title": "自定义运行时",
     "dialog_description": "基于下方支持的协议族构建的工作区专属命令。",
     "close": "关闭",

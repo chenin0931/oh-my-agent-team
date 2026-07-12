@@ -51,6 +51,7 @@ export function CreateAgentDialog({
   runtimesLoading,
   members,
   currentUserId,
+  initialRuntimeId,
   template,
   squadId,
   onClose,
@@ -60,6 +61,7 @@ export function CreateAgentDialog({
   runtimesLoading?: boolean;
   members: MemberWithUser[];
   currentUserId: string | null;
+  initialRuntimeId?: string | null;
   // When provided, the dialog opens in "Duplicate" mode: the visible
   // fields (name / description / runtime / visibility / model) are
   // pre-populated from this agent, and the hidden fields
@@ -161,6 +163,12 @@ export function CreateAgentDialog({
       : undefined;
     if (templateRuntime && isRuntimeUsableForUser(templateRuntime, currentUserId)) {
       return templateRuntime.id;
+    }
+    const initialRuntime = initialRuntimeId
+      ? runtimes.find((r) => r.id === initialRuntimeId)
+      : undefined;
+    if (initialRuntime && isRuntimeUsableForUser(initialRuntime, currentUserId)) {
+      return initialRuntime.id;
     }
     return "";
   });

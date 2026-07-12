@@ -123,7 +123,11 @@ function makeTemplate(runtimeId: string): Agent {
   };
 }
 
-function renderDialog(runtimes: RuntimeDevice[], template?: Agent) {
+function renderDialog(
+  runtimes: RuntimeDevice[],
+  template?: Agent,
+  initialRuntimeId?: string,
+) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
@@ -138,6 +142,7 @@ function renderDialog(runtimes: RuntimeDevice[], template?: Agent) {
             runtimes={runtimes}
             members={members}
             currentUserId={ME}
+            initialRuntimeId={initialRuntimeId}
             template={template}
             onClose={onClose}
             onCreate={onCreate}
@@ -184,7 +189,7 @@ describe("CreateAgentDialog runtime visibility gate", () => {
       .closest("button") as HTMLButtonElement;
     expect(disabledRow).not.toBeNull();
     expect(disabledRow.disabled).toBe(true);
-    expect(disabledRow.title).toMatch(/Private runtime/i);
+    expect(disabledRow.title).toMatch(/Private desktop agent/i);
   });
 
   it("lets a plain member pick another member's public runtime", () => {
@@ -229,6 +234,27 @@ describe("CreateAgentDialog runtime visibility gate", () => {
     // first in the input list.
     expect(screen.queryByText("Others Private", { selector: "span.truncate" })).toBeNull();
     expect(screen.getByText("My Runtime", { selector: "span.truncate" })).toBeInTheDocument();
+  });
+
+  it("preselects the desktop agent from the connection flow", () => {
+    const first = makeRuntime({
+      id: "rt-first",
+      name: "First Desktop Agent",
+      owner_id: ME,
+      visibility: "private",
+    });
+    const connected = makeRuntime({
+      id: "rt-connected",
+      name: "Connected Codex",
+      owner_id: ME,
+      visibility: "private",
+    });
+
+    renderDialog([first, connected], undefined, connected.id);
+
+    expect(
+      screen.getByText("Connected Codex", { selector: "span.truncate" }),
+    ).toBeInTheDocument();
   });
 
   it("in duplicate mode, does not pre-fill the template's runtime when it's now locked", async () => {

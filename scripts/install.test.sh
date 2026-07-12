@@ -15,7 +15,11 @@ _setup_sandbox() {
 
   cat >"$payload_dir/omat" <<'STUB'
 #!/usr/bin/env bash
-echo "omat v0.3.2 (commit: test)"
+if [[ "${1:-}" == "version" ]]; then
+  echo "omat v0.3.2 (commit: test)"
+  exit 0
+fi
+printf '%s\n' "$*" >>"${OMAT_TEST_CALLS:?}"
 STUB
   chmod +x "$payload_dir/omat"
   tar -czf "$tmp/omat.tar.gz" -C "$payload_dir" omat
@@ -51,12 +55,14 @@ STUB
 
 _run_installer() {
   local tmp="$1"
+  shift
   local out="$tmp/install.out"
   local err="$tmp/install.err"
   if ! PATH="$tmp/stub-bin:$tmp/install-bin:/usr/bin:/bin" \
     OMAT_BIN_DIR="$tmp/install-bin" \
     OMAT_TEST_ARCHIVE="$tmp/omat.tar.gz" \
-    bash "$ROOT_DIR/scripts/install.sh" >"$out" 2>"$err"; then
+    OMAT_TEST_CALLS="$tmp/omat.calls" \
+    bash "$ROOT_DIR/scripts/install.sh" "$@" >"$out" 2>"$err"; then
     echo "install.sh exited non-zero" >&2
     cat "$out" >&2 || true
     cat "$err" >&2 || true
@@ -75,6 +81,42 @@ _run_installer() {
     cat "$err" >&2 || true
     return 1
   fi
+}
+
+test_connect_runs_cloud_setup() {
+  local tmp
+  tmp="$(mktemp -d)"
+  trap 'rm -rf "$tmp"' RETURN
+
+  _setup_sandbox "$tmp"
+  cat >"$tmp/stub-bin/brew" <<'STUB'
+#!/usr/bin/env bash
+echo "simulated brew failure" >&2
+exit 17
+STUB
+  chmod +x "$tmp/stub-bin/brew"
+
+  _run_installer "$tmp" --connect
+  grep -qx "setup" "$tmp/omat.calls"
+}
+
+test_connect_runs_self_host_setup() {
+  local tmp
+  tmp="$(mktemp -d)"
+  trap 'rm -rf "$tmp"' RETURN
+
+  _setup_sandbox "$tmp"
+  cat >"$tmp/stub-bin/brew" <<'STUB'
+#!/usr/bin/env bash
+echo "simulated brew failure" >&2
+exit 17
+STUB
+  chmod +x "$tmp/stub-bin/brew"
+
+  _run_installer "$tmp" --connect \
+    --server-url https://api.example.com \
+    --app-url https://app.example.com
+  grep -qx "setup self-host --server-url https://api.example.com --app-url https://app.example.com" "$tmp/omat.calls"
 }
 
 test_brew_install_failure_falls_back_to_release_binary() {
@@ -132,4 +174,6 @@ STUB
 
 test_brew_install_failure_falls_back_to_release_binary
 test_brew_tap_failure_falls_back_to_release_binary
+test_connect_runs_cloud_setup
+test_connect_runs_self_host_setup
 echo "install.sh tests passed"

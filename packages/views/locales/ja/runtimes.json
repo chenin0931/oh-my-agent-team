@@ -1,10 +1,10 @@
 {
   "page": {
-    "title": "実行能力",
-    "tagline": "エージェントの CLI セッションを実行するマシンとクラウドワーカーです。",
+    "title": "デスクトップエージェント",
+    "tagline": "コンピュータ上の Codex、Claude Code、WorkBuddy を接続し、チームエージェントを作成します。",
     "learn_more": "詳しく見る →",
-    "connect_remote": "コンピュータを追加",
-    "search_placeholder": "ランタイムを検索…",
+    "connect_remote": "デスクトップエージェントを接続",
+    "search_placeholder": "デスクトップエージェントを検索…",
     "scope_mine": "自分のもの",
     "scope_all": "すべて",
     "live": "ライブ",
@@ -12,8 +12,8 @@
     "filter_all": "すべて",
     "filter_all_description": "このビューのすべてのランタイム",
     "empty": {
-      "title": "まだランタイムがありません",
-      "hint": "デスクトップ版はこのコンピュータを自動でスキャンします。別のマシン — サーバー、開発用マシン、ターミナルのあるコンピュータ — を使うには、ここに追加してください。"
+      "title": "デスクトップエージェントがありません",
+      "hint": "このコンピュータの Codex、Claude Code、WorkBuddy を接続してから、チームエージェントを作成してください。"
     },
     "no_matches": {
       "title": "一致する結果なし",
@@ -28,11 +28,11 @@
     }
   },
   "execution_tools": {
-    "title": "実行ツールを接続",
-    "description": "よく使われる3つのローカル Agent CLI から始めます。",
-    "click_hint": "ツールを選んで手順を表示",
-    "online": "このワークスペースでオンライン",
-    "not_connected": "接続ガイドを表示",
+    "title": "デスクトップエージェントを接続",
+    "description": "このコンピュータのエージェントを協業ネットワークに接続します。",
+    "click_hint": "接続するエージェントを選択",
+    "online": "接続済み",
+    "not_connected": "接続",
     "guide_title": "{{name}} を接続",
     "guide_description": "ツールはコンピュータ上で動作し、OhMyAgentTeam が割り当てられた作業をルーティングします。",
     "install_title": "CLI をインストール",
@@ -44,9 +44,9 @@
     "open_connect": "接続設定を開く"
   },
   "capacity_pulse": {
-    "machines": "マシン",
-    "runtimes": "ランタイム",
-    "agents": "接続済みエージェント",
+    "machines": "接続デバイス",
+    "runtimes": "デスクトップエージェント",
+    "agents": "チームエージェント",
     "work": "実行中",
     "online": "オンライン",
     "ready": "利用可能",
@@ -54,7 +54,7 @@
     "work_hint": "{{queued}} 待機中"
   },
   "machine": {
-    "search_placeholder": "マシンを検索…",
+    "search_placeholder": "デバイスを検索…",
     "filters": {
       "all": "すべて",
       "online": "オンライン",
@@ -195,26 +195,33 @@
   "running_other": "実行中 {{count}} 件",
   "queued_other": "キュー待ち {{count}} 件",
   "connect": {
-    "title": "コンピュータを追加",
-    "description": "追加したいコンピュータで、この 2 つのコマンドを実行してください。デーモンがオンラインになった瞬間に検出します。",
-    "step1_label": "OhMyAgentTeam CLI をインストール",
-    "step2_label": "デーモンを起動",
-    "step2_hint": "サインインのためにブラウザを開き、その後デーモンをバックグラウンドで実行し続けます。",
-    "live_listening": "あなたのコンピュータを待っています",
-    "live_listening_hint": "デーモンが起動するとすぐに検出します — 通常は 1 分以内です。",
-    "troubleshooting": "そのコンピュータでブラウザを開けませんか?",
-    "trouble_intro": "ブラウザでのサインインの代わりにトークンを使ってください。手順 2 を置き換え、ターミナルがある場所ならどこでも動作します。",
-    "trouble_token_hint_prefix": "トークンは ",
-    "trouble_token_hint_destination": "設定 → トークン",
-    "trouble_token_hint_suffix": " で作成できます。デーモンは外向きの接続のみを行うため、インバウンドポートは不要です。",
-    "trouble_check_status": "ステータスを確認",
-    "trouble_view_logs": "ログを表示",
+    "title": "デスクトップエージェントを接続",
+    "title_with_name": "{{name}} を接続",
+    "description": "このコンピュータのエージェントを選択します。接続後、それを使ってチームエージェントを作成できます。",
+    "description_with_name": "接続後、このコンピュータの {{name}} を使ってチームエージェントを作成できます。",
+    "choose_title": "このコンピュータのエージェントを選択",
+    "selected_hint": "このコンピュータで実行されます",
+    "change": "変更",
+    "command_title": "このコンピュータのターミナルで実行",
+    "command_hint": "接続プログラムをインストールし、ログインを開いて、自動的に接続を完了します。",
+    "tool_help_title": "{{name}} が未インストールですか？",
+    "tool_help_description": "{{name}} をインストールしてログインしてから、上の接続コマンドを実行してください。",
+    "tool_login_hint": "インストール後に {{command}} を実行し、{{name}} にログインしてください。",
+    "troubleshooting": "ログインページを開けませんか？",
+    "trouble_intro": "アクセストークンで手動接続できます。以下は高度な接続コマンドです。",
     "copy_aria": "コピー",
     "cancel": "キャンセル",
-    "success_title": "コンピュータを接続しました",
-    "success_description": "コンピュータがオンラインになり、準備ができました。エージェントを作成すると、ここでタスクを引き受け始められます。",
-    "view_runtime": "ランタイムを表示",
-    "create_agent": "エージェントを作成"
+    "waiting_title": "{{name}} の接続を待っています",
+    "progress_computer": "このコンピュータの接続を待っています",
+    "progress_tool": "{{name}} を検出中",
+    "progress_ready": "デスクトップエージェントを登録中",
+    "success_title": "{{name}} を接続しました",
+    "success_description": "このコンピュータの {{name}} を使ってチームエージェントを作成できます。",
+    "desktop_agent": "デスクトップエージェント",
+    "device_connected": "このコンピュータ",
+    "online": "オンライン",
+    "later": "後で",
+    "create_team_agent": "チームエージェントを作成"
   },
   "cloud_runtime": {
     "action": "クラウドランタイム",
@@ -281,7 +288,7 @@
     "tooltip_total": "合計"
   },
   "list": {
-    "col_runtime": "ランタイム",
+    "col_runtime": "デスクトップエージェント",
     "col_health": "状態",
     "col_owner": "所有者",
     "col_agents": "エージェント",
@@ -302,7 +309,7 @@
     "pending_cli_unknown": "待機中"
   },
   "profiles": {
-    "cta": "ランタイムを追加",
+    "cta": "詳細設定",
     "dialog_title": "カスタムランタイム",
     "dialog_description": "下記のサポートされているプロトコルファミリー上に作るワークスペース固有のコマンド。",
     "close": "閉じる",

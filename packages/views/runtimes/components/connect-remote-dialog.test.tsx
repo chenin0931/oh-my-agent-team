@@ -5,7 +5,10 @@ import { I18nProvider } from "@ohmyagentteam/core/i18n/react";
 import { configStore } from "@ohmyagentteam/core/config";
 import enCommon from "../../locales/en/common.json";
 import enRuntimes from "../../locales/en/runtimes.json";
-import { ConnectRemoteDialog } from "./connect-remote-dialog";
+import {
+  ConnectDesktopAgentDialog,
+  desktopAgentConnectCommand,
+} from "./connect-remote-dialog";
 
 const TEST_RESOURCES = { en: { common: enCommon, runtimes: enRuntimes } };
 
@@ -54,7 +57,7 @@ function renderDialog(config?: {
   return render(
     <QueryClientProvider client={qc}>
       <I18nProvider locale="en" resources={TEST_RESOURCES}>
-        <ConnectRemoteDialog onClose={vi.fn()} />
+        <ConnectDesktopAgentDialog initialProvider="codex" onClose={vi.fn()} />
       </I18nProvider>
     </QueryClientProvider>,
   );
@@ -65,12 +68,17 @@ const ligatureClasses = [
   "[font-feature-settings:'liga'_0]",
 ];
 
-describe("ConnectRemoteDialog", () => {
-  it("uses cloud setup commands by default", () => {
+describe("ConnectDesktopAgentDialog", () => {
+  it("uses one cloud connection command by default", () => {
     const { baseElement } = renderDialog();
 
-    expect(baseElement).toHaveTextContent("omat setup");
-    expect(baseElement).not.toHaveTextContent("omat setup self-host");
+    expect(baseElement).toHaveTextContent(
+      "scripts/install.sh | bash -s -- --connect",
+    );
+    expect(baseElement).toHaveTextContent(
+      "Once connected, you can create team agents powered by Codex on this computer.",
+    );
+    expect(baseElement).not.toHaveTextContent("--connect --server-url");
     expect(baseElement).toHaveTextContent(
       "omat config set server_url https://api.ohmyagentteam.com",
     );
@@ -79,14 +87,14 @@ describe("ConnectRemoteDialog", () => {
     );
   });
 
-  it("uses self-host daemon URLs from runtime config", () => {
+  it("adds self-host URLs to the one-click connection command", () => {
     const { baseElement } = renderDialog({
       daemonServerUrl: "https://api.example.com/",
       daemonAppUrl: "https://app.example.com/",
     });
 
     expect(baseElement).toHaveTextContent(
-      "omat setup self-host --server-url https://api.example.com --app-url https://app.example.com",
+      "--connect --server-url https://api.example.com --app-url https://app.example.com",
     );
     expect(baseElement).toHaveTextContent(
       "omat config set server_url https://api.example.com",
@@ -96,11 +104,11 @@ describe("ConnectRemoteDialog", () => {
     );
   });
 
-  it("disables font ligatures in setup command code", () => {
+  it("disables font ligatures in connection command code", () => {
     const { baseElement } = renderDialog();
 
     const setupCode = Array.from(baseElement.querySelectorAll("code")).find((node) =>
-      node.textContent?.includes("omat setup"),
+      node.textContent?.includes("--connect"),
     );
 
     expect(setupCode).toHaveClass(...ligatureClasses);
@@ -114,5 +122,16 @@ describe("ConnectRemoteDialog", () => {
     );
 
     expect(tokenCode).toHaveClass(...ligatureClasses);
+  });
+
+  it("builds normalized self-host commands", () => {
+    expect(
+      desktopAgentConnectCommand(
+        "https://api.example.com/",
+        "https://app.example.com/",
+      ),
+    ).toContain(
+      "--connect --server-url https://api.example.com --app-url https://app.example.com",
+    );
   });
 });

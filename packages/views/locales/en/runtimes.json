@@ -1,10 +1,10 @@
 {
   "page": {
-    "title": "Execution capacity",
-    "tagline": "Machines and cloud workers running CLI sessions for your agents.",
+    "title": "Desktop agents",
+    "tagline": "Connect Codex, Claude Code, or WorkBuddy on your computer, then create team agents from them.",
     "learn_more": "Learn more →",
-    "connect_remote": "Add a computer",
-    "search_placeholder": "Search runtimes…",
+    "connect_remote": "Connect desktop agent",
+    "search_placeholder": "Search desktop agents…",
     "scope_mine": "Mine",
     "scope_all": "All",
     "live": "Live",
@@ -12,8 +12,8 @@
     "filter_all": "All",
     "filter_all_description": "All runtimes in this view",
     "empty": {
-      "title": "No runtimes yet",
-      "hint": "Desktop auto-scans this computer. To use another machine — a server, dev box, or any computer with a terminal — add it here."
+      "title": "No desktop agents yet",
+      "hint": "Connect Codex, Claude Code, or WorkBuddy on this computer, then create an agent that can take team work."
     },
     "no_matches": {
       "title": "No matches",
@@ -23,16 +23,16 @@
       "try_widening": " Try widening the scope or clearing filters."
     },
     "bootstrapping": {
-      "title": "Starting local runtime…",
-      "hint": "This usually takes a few seconds. Your daemon is registering with the workspace."
+      "title": "Connecting desktop agents…",
+      "hint": "This usually takes a few seconds. The connection service is registering agents from this computer."
     }
   },
   "execution_tools": {
-    "title": "Connect an execution tool",
-    "description": "Start with one of the three common local agent CLIs.",
-    "click_hint": "Select a tool for setup steps",
-    "online": "Online in this workspace",
-    "not_connected": "View setup guide",
+    "title": "Connect a desktop agent",
+    "description": "Bring an agent from this computer into the collaboration network, then create team agents from it.",
+    "click_hint": "Select one to connect",
+    "online": "Connected",
+    "not_connected": "Connect",
     "guide_title": "Connect {{name}}",
     "guide_description": "The tool runs on your computer; OhMyAgentTeam routes assigned work to it.",
     "install_title": "Install the CLI",
@@ -44,9 +44,9 @@
     "open_connect": "Open connection setup"
   },
   "capacity_pulse": {
-    "machines": "Machines",
-    "runtimes": "Runtimes",
-    "agents": "Agents bound",
+    "machines": "Connected devices",
+    "runtimes": "Desktop agents",
+    "agents": "Team agents",
     "work": "Running work",
     "online": "online",
     "ready": "ready",
@@ -54,7 +54,7 @@
     "work_hint": "{{queued}} queued"
   },
   "machine": {
-    "search_placeholder": "Search machines…",
+    "search_placeholder": "Search devices…",
     "filters": {
       "all": "All",
       "online": "Online",
@@ -207,26 +207,33 @@
   "queued_one": "{{count}} queued",
   "queued_other": "{{count}} queued",
   "connect": {
-    "title": "Add a computer",
-    "description": "Run these two commands on the computer you want to add. We'll detect it the moment the daemon comes online.",
-    "step1_label": "Install the OhMyAgentTeam CLI",
-    "step2_label": "Start the daemon",
-    "step2_hint": "Opens a browser to sign in, then keeps the daemon running in the background.",
-    "live_listening": "Waiting for your computer",
-    "live_listening_hint": "We'll detect it as soon as the daemon starts — usually under a minute.",
-    "troubleshooting": "Can't open a browser on that computer?",
-    "trouble_intro": "Use a token instead of the browser sign-in. This replaces step 2 and works anywhere you have a terminal.",
-    "trouble_token_hint_prefix": "Create a token in ",
-    "trouble_token_hint_destination": "Settings → Tokens",
-    "trouble_token_hint_suffix": ". The daemon only makes outbound connections — no inbound ports required.",
-    "trouble_check_status": "Check status",
-    "trouble_view_logs": "View logs",
+    "title": "Connect a desktop agent",
+    "title_with_name": "Connect {{name}}",
+    "description": "Choose an agent on this computer. Once connected, you can create team agents from it.",
+    "description_with_name": "Once connected, you can create team agents powered by {{name}} on this computer.",
+    "choose_title": "Choose an agent on this computer",
+    "selected_hint": "Runs on this computer",
+    "change": "Change",
+    "command_title": "Run in this computer's terminal",
+    "command_hint": "This command installs the connection service, opens sign-in, and completes the connection automatically.",
+    "tool_help_title": "Need to install {{name}}?",
+    "tool_help_description": "Install and sign in to {{name}}, then run the connection command above.",
+    "tool_login_hint": "After installation, run {{command}} and follow the sign-in prompts for {{name}}.",
+    "troubleshooting": "Can't open the sign-in page?",
+    "trouble_intro": "Use an access token for a manual connection. These are advanced connection commands.",
     "copy_aria": "Copy",
     "cancel": "Cancel",
-    "success_title": "Computer connected",
-    "success_description": "Your computer is online and ready. Create an agent and it can start picking up tasks here.",
-    "view_runtime": "View runtime",
-    "create_agent": "Create an agent"
+    "waiting_title": "Waiting for {{name}} to connect",
+    "progress_computer": "Waiting for this computer to connect",
+    "progress_tool": "Detecting {{name}}",
+    "progress_ready": "Registering the desktop agent",
+    "success_title": "{{name}} is connected",
+    "success_description": "You can now create team agents powered by {{name}} on this computer.",
+    "desktop_agent": "Desktop agent",
+    "device_connected": "This computer",
+    "online": "Online",
+    "later": "Later",
+    "create_team_agent": "Create team agent"
   },
   "cloud_runtime": {
     "action": "Cloud Runtime",
@@ -293,7 +300,7 @@
     "tooltip_total": "Total"
   },
   "list": {
-    "col_runtime": "Runtime",
+    "col_runtime": "Desktop agent",
     "col_health": "Health",
     "col_owner": "Owner",
     "col_agents": "Agents",
@@ -314,7 +321,7 @@
     "pending_cli_unknown": "waiting"
   },
   "profiles": {
-    "cta": "Add runtime",
+    "cta": "Advanced settings",
     "dialog_title": "Custom runtimes",
     "dialog_description": "Workspace-specific commands built on the supported protocol families below.",
     "close": "Close",

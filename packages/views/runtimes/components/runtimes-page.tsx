@@ -5,7 +5,7 @@ import { useDefaultLayout } from "react-resizable-panels";
 import {
   Cloud,
   Bot,
-  CheckCircle2,
+  Cable,
   CircleGauge,
   ListTodo,
   Monitor,
@@ -13,6 +13,7 @@ import {
   Plus,
   Search,
   Server,
+  SlidersHorizontal,
 } from "lucide-react";
 import type { AgentRuntime } from "@ohmyagentteam/core/types";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -22,17 +23,9 @@ import { agentTaskSnapshotOptions } from "@ohmyagentteam/core/agents";
 import { runtimeListOptions, runtimeKeys } from "@ohmyagentteam/core/runtimes/queries";
 import { useUpdatableRuntimeIds } from "@ohmyagentteam/core/runtimes/hooks";
 import { useWSEvent } from "@ohmyagentteam/core/realtime";
-import { useConfigStore } from "@ohmyagentteam/core/config";
 import { agentListOptions } from "@ohmyagentteam/core/workspace/queries";
 import { memberListOptions } from "@ohmyagentteam/core/workspace/queries";
 import { Button } from "@ohmyagentteam/ui/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@ohmyagentteam/ui/components/ui/dialog";
 import { Input } from "@ohmyagentteam/ui/components/ui/input";
 import {
   ResizableHandle,
@@ -43,14 +36,17 @@ import { Skeleton } from "@ohmyagentteam/ui/components/ui/skeleton";
 import { useIsMobile } from "@ohmyagentteam/ui/hooks/use-mobile";
 import { cn } from "@ohmyagentteam/ui/lib/utils";
 import { PageHeader } from "../../layout/page-header";
-import {
-  ConnectRemoteDialog,
-  daemonCommands,
-} from "./connect-remote-dialog";
+import { useWorkspacePaths } from "@ohmyagentteam/core/paths";
+import { useNavigation } from "../../navigation";
+import { ConnectDesktopAgentDialog } from "./connect-remote-dialog";
 import { CloudRuntimeDialog } from "./cloud-runtime-dialog";
 import { RuntimeProfilesDialog } from "./runtime-profiles-dialog";
 import { RenameMachineDialog } from "./rename-machine-dialog";
 import { ProviderLogo } from "./provider-logo";
+import {
+  DESKTOP_AGENT_CATALOG,
+  type DesktopAgentProvider,
+} from "./desktop-agent-catalog";
 import { RuntimeList, buildWorkloadIndex } from "./runtime-list";
 import {
   pendingRuntimesForProfiles,
@@ -119,6 +115,8 @@ export function RuntimesPage({
   const pendingMachineName = t(($) => $.machine.pending_custom_runtimes);
   const currentUserId = useAuthStore((s) => s.user?.id);
   const wsId = useWorkspaceId();
+  const workspacePaths = useWorkspacePaths();
+  const navigation = useNavigation();
   const qc = useQueryClient();
   const [machineFilter, setMachineFilter] =
     useState<RuntimeMachineFilter>("all");
@@ -134,7 +132,9 @@ export function RuntimesPage({
     userSelectedRef.current = true;
     setSelectedMachineId(id);
   }, []);
-  const [showConnectDialog, setShowConnectDialog] = useState(false);
+  const [connectProvider, setConnectProvider] = useState<
+    DesktopAgentProvider | null | undefined
+  >(undefined);
   const [showCloudRuntimeDialog, setShowCloudRuntimeDialog] = useState(false);
   const [pendingProfiles, setPendingProfiles] = useState<PendingRuntimeProfile[]>(
     [],
@@ -289,7 +289,7 @@ export function RuntimesPage({
     <div className="flex flex-1 min-h-0 flex-col">
       <PageHeaderBar
         totalCount={totalCount}
-        onConnectRemote={() => setShowConnectDialog(true)}
+        onConnectRemote={() => setConnectProvider(null)}
         cloudRuntimeEnabled={cloudRuntimeEnabled}
         onOpenCloudRuntime={() => setShowCloudRuntimeDialog(true)}
         canManageProfiles={canManageProfiles}
@@ -298,7 +298,10 @@ export function RuntimesPage({
 
       <ExecutionToolStarter
         runtimes={visibleRuntimes}
-        onConnect={() => setShowConnectDialog(true)}
+        onConnect={setConnectProvider}
+        onViewRuntime={(runtimeId) =>
+          navigation.push(workspacePaths.runtimeDetail(runtimeId))
+        }
       />
 
       {!showEmpty && (
@@ -316,7 +319,7 @@ export function RuntimesPage({
 
       {showEmpty ? (
         <div className="flex flex-1 items-center justify-center p-6">
-          <EmptyState onConnectRemote={() => setShowConnectDialog(true)} />
+          <EmptyState onConnectRemote={() => setConnectProvider(null)} />
         </div>
       ) : isMobile ? (
         <div className="flex min-h-0 flex-1 flex-col bg-background">
@@ -389,8 +392,11 @@ export function RuntimesPage({
         </div>
       )}
 
-      {showConnectDialog && (
-        <ConnectRemoteDialog onClose={() => setShowConnectDialog(false)} />
+      {connectProvider !== undefined && (
+        <ConnectDesktopAgentDialog
+          initialProvider={connectProvider}
+          onClose={() => setConnectProvider(undefined)}
+        />
       )}
       {cloudRuntimeEnabled && showCloudRuntimeDialog && (
         <CloudRuntimeDialog onClose={() => setShowCloudRuntimeDialog(false)} />
@@ -420,185 +426,76 @@ export function RuntimesPage({
   );
 }
 
-type StarterToolKey = "codex" | "claude" | "codebuddy";
-
-const STARTER_TOOLS: Array<{
-  key: StarterToolKey;
-  name: string;
-  command: string;
-  launch: string;
-}> = [
-  {
-    key: "codex",
-    name: "Codex",
-    command: "npm install -g @openai/codex",
-    launch: "codex",
-  },
-  {
-    key: "claude",
-    name: "Claude Code",
-    command: "npm install -g @anthropic-ai/claude-code",
-    launch: "claude",
-  },
-  {
-    key: "codebuddy",
-    name: "WorkBuddy",
-    command: "npm install -g @tencent-ai/codebuddy-code",
-    launch: "codebuddy",
-  },
-];
-
 function ExecutionToolStarter({
   runtimes,
   onConnect,
+  onViewRuntime,
 }: {
   runtimes: AgentRuntime[];
-  onConnect: () => void;
+  onConnect: (provider: DesktopAgentProvider) => void;
+  onViewRuntime: (runtimeId: string) => void;
 }) {
   const { t } = useT("runtimes");
-  const daemonServerUrl = useConfigStore((state) => state.daemonServerUrl);
-  const daemonAppUrl = useConfigStore((state) => state.daemonAppUrl);
-  const setupCommand = daemonCommands(daemonServerUrl, daemonAppUrl).setupCmd;
-  const [selected, setSelected] = useState<StarterToolKey | null>(null);
-  const tool = STARTER_TOOLS.find((item) => item.key === selected) ?? null;
 
   return (
-    <>
-      <section className="shrink-0 border-b bg-background px-5 py-3">
-        <div className="mb-2 flex items-end justify-between gap-4">
-          <div>
-            <h2 className="font-serif text-[15px] font-medium">
-              {t(($) => $.execution_tools.title)}
-            </h2>
-            <p className="text-[11px] text-muted-foreground">
-              {t(($) => $.execution_tools.description)}
-            </p>
-          </div>
-          <span className="hidden text-[10px] text-muted-foreground sm:inline">
-            {t(($) => $.execution_tools.click_hint)}
-          </span>
+    <section className="shrink-0 border-b bg-background px-5 py-4">
+      <div className="mb-3 flex items-end justify-between gap-4">
+        <div>
+          <h2 className="font-serif text-base font-medium">
+            {t(($) => $.execution_tools.title)}
+          </h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {t(($) => $.execution_tools.description)}
+          </p>
         </div>
-        <div className="grid gap-2 sm:grid-cols-3">
-          {STARTER_TOOLS.map((item) => {
-            const online = runtimes.some(
-              (runtime) =>
-                runtime.provider.toLowerCase() === item.key &&
-                runtime.status === "online",
-            );
-            return (
-              <button
-                key={item.key}
-                type="button"
-                onClick={() => setSelected(item.key)}
-                className="group flex min-h-14 items-center gap-3 rounded-md border bg-background px-3 py-2 text-left transition-colors hover:border-foreground/20 hover:bg-accent/35"
-              >
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-md border bg-background">
-                  <ProviderLogo provider={item.key} className="size-5" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium">{item.name}</span>
-                  <span className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                    <span
-                      className={cn(
-                        "size-1.5 rounded-full",
-                        online ? "bg-success" : "bg-muted-foreground/30",
-                      )}
-                    />
-                    {online
-                      ? t(($) => $.execution_tools.online)
-                      : t(($) => $.execution_tools.not_connected)}
-                  </span>
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
-      <Dialog open={!!tool} onOpenChange={(open) => !open && setSelected(null)}>
-        <DialogContent className="sm:max-w-lg">
-          {tool ? (
-            <>
-              <DialogHeader>
-                <div className="mb-2 flex size-10 items-center justify-center rounded-md border bg-background">
-                  <ProviderLogo provider={tool.key} className="size-6" />
-                </div>
-                <DialogTitle className="font-serif text-xl font-medium">
-                  {t(($) => $.execution_tools.guide_title, { name: tool.name })}
-                </DialogTitle>
-                <DialogDescription>
-                  {t(($) => $.execution_tools.guide_description)}
-                </DialogDescription>
-              </DialogHeader>
-              <ol className="mt-2 divide-y border-y">
-                <GuideStep
-                  index={1}
-                  title={t(($) => $.execution_tools.install_title)}
-                  description={t(($) => $.execution_tools.install_description)}
-                  command={tool.command}
-                />
-                <GuideStep
-                  index={2}
-                  title={t(($) => $.execution_tools.login_title)}
-                  description={t(($) => $.execution_tools.login_description, {
-                    name: tool.name,
-                  })}
-                  command={tool.launch}
-                />
-                <GuideStep
-                  index={3}
-                  title={t(($) => $.execution_tools.connect_title)}
-                  description={t(($) => $.execution_tools.connect_description)}
-                  command={setupCommand}
-                />
-              </ol>
-              <div className="flex justify-end">
-                <Button
-                  onClick={() => {
-                    setSelected(null);
-                    onConnect();
-                  }}
-                >
-                  {t(($) => $.execution_tools.open_connect)}
-                </Button>
-              </div>
-            </>
-          ) : null}
-        </DialogContent>
-      </Dialog>
-    </>
-  );
-}
-
-function GuideStep({
-  index,
-  title,
-  description,
-  command,
-}: {
-  index: number;
-  title: string;
-  description: string;
-  command: string;
-}) {
-  return (
-    <li className="grid grid-cols-[28px_minmax(0,1fr)] gap-2 py-3">
-      <span className="flex size-6 items-center justify-center rounded-full border text-[11px] font-medium">
-        {index}
-      </span>
-      <div className="min-w-0">
-        <p className="flex items-center gap-1.5 text-sm font-medium">
-          {title}
-          <CheckCircle2 className="size-3.5 text-muted-foreground/45" />
-        </p>
-        <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-          {description}
-        </p>
-        <code className="mt-2 block overflow-x-auto rounded bg-muted px-2.5 py-2 font-mono text-[11px]">
-          {command}
-        </code>
+        <span className="hidden text-[11px] text-muted-foreground sm:inline">
+          {t(($) => $.execution_tools.click_hint)}
+        </span>
       </div>
-    </li>
+      <div className="grid gap-2 sm:grid-cols-3">
+        {DESKTOP_AGENT_CATALOG.map((item) => {
+          const onlineRuntime = runtimes.find(
+            (runtime) =>
+              runtime.provider.toLowerCase() === item.provider &&
+              runtime.status === "online",
+          );
+          return (
+            <button
+              key={item.provider}
+              type="button"
+              onClick={() =>
+                onlineRuntime
+                  ? onViewRuntime(onlineRuntime.id)
+                  : onConnect(item.provider)
+              }
+              className="group flex min-h-16 items-center gap-3 rounded-md border bg-background px-3 py-2.5 text-left transition-colors hover:border-foreground/20 hover:bg-accent/35"
+            >
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-md border bg-background">
+                <ProviderLogo provider={item.provider} className="size-5" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-medium">
+                  {item.name}
+                </span>
+                <span className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                  <span
+                    className={cn(
+                      "size-1.5 rounded-full",
+                      onlineRuntime
+                        ? "bg-success"
+                        : "bg-muted-foreground/30",
+                    )}
+                  />
+                  {onlineRuntime
+                    ? t(($) => $.execution_tools.online)
+                    : t(($) => $.execution_tools.not_connected)}
+                </span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -690,7 +587,7 @@ function PageHeaderBar({
             aria-label={t(($) => $.profiles.cta)}
             onClick={onAddRuntime}
           >
-            <Plus className="h-3.5 w-3.5" />
+            <SlidersHorizontal className="h-3.5 w-3.5" />
             <span className="hidden md:inline">
               {t(($) => $.profiles.cta)}
             </span>
@@ -719,7 +616,7 @@ function PageHeaderBar({
           aria-label={t(($) => $.page.connect_remote)}
           onClick={onConnectRemote}
         >
-          <Plus className="h-3.5 w-3.5" />
+          <Cable className="h-3.5 w-3.5" />
           <span className="hidden md:inline">
             {t(($) => $.page.connect_remote)}
           </span>
