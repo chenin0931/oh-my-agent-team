@@ -336,8 +336,9 @@ describe("CreateAgentDialog access picker (MUL-4010, feature-flag gated)", () =>
     const mine = makeRuntime({ id: "rt-mine", name: "My Runtime", owner_id: ME });
     const { onCreate } = renderDialog([mine]);
 
-    // Legacy copy is rendered — matches VISIBILITY_DESCRIPTION.
-    expect(screen.getByText(/All members can assign/i)).toBeInTheDocument();
+    // The legacy permission model stays active, but the UI explains the
+    // assignment consequence in product language instead of raw constants.
+    expect(screen.getByText(/Everyone in this workspace can assign work/i)).toBeInTheDocument();
 
     fireEvent.change(screen.getByPlaceholderText("e.g. Deep Research Agent"), {
       target: { value: "Legacy Agent" },

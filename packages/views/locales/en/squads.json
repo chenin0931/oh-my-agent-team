@@ -1,8 +1,9 @@
 {
   "page": {
-    "title": "Squads",
+    "title": "Collaboration squads",
     "new_button": "New Squad",
-    "empty_no_squads": "No squads yet. Create one to get started.",
+    "empty_no_squads": "No collaboration squads yet",
+    "empty_description": "A lead agent coordinates several members for work that needs delegation, review, and parallel progress.",
     "empty_no_match": "No squads match your filters.",
     "table": {
       "name": "Squad",

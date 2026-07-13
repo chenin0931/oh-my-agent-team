@@ -36,11 +36,7 @@ import { Checkbox } from "@ohmyagentteam/ui/components/ui/checkbox";
 import { Input } from "@ohmyagentteam/ui/components/ui/input";
 import { Label } from "@ohmyagentteam/ui/components/ui/label";
 import { toast } from "sonner";
-import {
-  AGENT_DESCRIPTION_MAX_LENGTH,
-  VISIBILITY_DESCRIPTION,
-  VISIBILITY_LABEL,
-} from "@ohmyagentteam/core/agents";
+import { AGENT_DESCRIPTION_MAX_LENGTH } from "@ohmyagentteam/core/agents";
 import { ActorAvatar } from "../../common/actor-avatar";
 import { CharCounter } from "./char-counter";
 import { useT } from "../../i18n";
@@ -410,9 +406,11 @@ export function CreateAgentDialog({
                   >
                     <Globe className="h-4 w-4 shrink-0 text-muted-foreground" />
                     <div className="text-left">
-                      <div className="font-medium">{VISIBILITY_LABEL.workspace}</div>
+                      <div className="font-medium">
+                        {t(($) => $.create_dialog.visibility_workspace_title)}
+                      </div>
                       <div className="text-xs text-muted-foreground">
-                        {VISIBILITY_DESCRIPTION.workspace}
+                        {t(($) => $.create_dialog.visibility_workspace_description)}
                       </div>
                     </div>
                   </button>
@@ -427,9 +425,11 @@ export function CreateAgentDialog({
                   >
                     <Lock className="h-4 w-4 shrink-0 text-muted-foreground" />
                     <div className="text-left">
-                      <div className="font-medium">{VISIBILITY_LABEL.private}</div>
+                      <div className="font-medium">
+                        {t(($) => $.create_dialog.visibility_private_title)}
+                      </div>
                       <div className="text-xs text-muted-foreground">
-                        {VISIBILITY_DESCRIPTION.private}
+                        {t(($) => $.create_dialog.visibility_private_description)}
                       </div>
                     </div>
                   </button>

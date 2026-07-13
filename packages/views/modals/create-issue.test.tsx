@@ -265,6 +265,24 @@ vi.mock("../projects/components/project-picker", () => ({
   ProjectPicker: () => <div data-testid="project-picker" />,
 }));
 
+vi.mock("../epics/components/epic-picker", () => ({
+  EpicPicker: ({
+    epicId,
+    onChange,
+  }: {
+    epicId: string | null;
+    onChange: (id: string | null) => void;
+  }) => (
+    <button
+      type="button"
+      data-testid="epic-picker"
+      onClick={() => onChange("epic-2")}
+    >
+      {epicId ?? "no-epic"}
+    </button>
+  ),
+}));
+
 vi.mock("@ohmyagentteam/ui/components/ui/dialog", () => ({
   Dialog: ({ children }: { children: React.ReactNode }) => <div data-testid="dialog-root">{children}</div>,
   DialogContent: ({ children, className }: { children: React.ReactNode; className?: string }) => (
@@ -619,6 +637,37 @@ describe("CreateIssueModal", () => {
           status: "backlog",
           epic_id: undefined,
           parent_issue_id: undefined,
+        }),
+      );
+    });
+  });
+
+  it("lets a project work item choose its Epic", async () => {
+    const user = userEvent.setup();
+    renderModal(
+      <CreateIssueModal
+        onClose={vi.fn()}
+        data={{
+          issue_type: "issue",
+          project_id: "proj-1",
+          epic_id: "epic-1",
+        }}
+      />,
+    );
+
+    expect(screen.getByTestId("epic-picker")).toHaveTextContent("epic-1");
+    await user.click(screen.getByTestId("epic-picker"));
+    await user.type(
+      screen.getByPlaceholderText("Issue title"),
+      "Prepare guest briefing",
+    );
+    await user.click(screen.getByRole("button", { name: "Create Issue" }));
+
+    await waitFor(() => {
+      expect(mockCreateIssue).toHaveBeenCalledWith(
+        expect.objectContaining({
+          project_id: "proj-1",
+          epic_id: "epic-2",
         }),
       );
     });

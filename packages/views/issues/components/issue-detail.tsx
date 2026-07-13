@@ -53,6 +53,7 @@ import { StatusIcon, PriorityIcon, StatusPicker, PriorityPicker, StagePicker, St
 import { maxSiblingStage } from "./pickers/stage-picker";
 import { IssueActionsDropdown, useIssueActions } from "../actions";
 import { ProjectPicker } from "../../projects/components/project-picker";
+import { EpicPicker } from "../../epics/components/epic-picker";
 import { LocalDirectoryHint } from "../../projects/components/local-directory-hint";
 import { CommentCard } from "./comment-card";
 import { CommentInput } from "./comment-input";
@@ -741,9 +742,9 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
   const [propertiesOpen, setPropertiesOpen] = useState(true);
   const [detailsOpen, setDetailsOpen] = useState(true);
   const [parentIssueOpen, setParentIssueOpen] = useState(true);
-  const [pullRequestsOpen, setPullRequestsOpen] = useState(true);
+  const [pullRequestsOpen, setPullRequestsOpen] = useState(false);
   const [metadataOpen, setMetadataOpen] = useState(false);
-  const [tokenUsageOpen, setTokenUsageOpen] = useState(true);
+  const [tokenUsageOpen, setTokenUsageOpen] = useState(false);
   const githubSettings = useGitHubSettings();
 
   // Per-issue, per-session set of optional properties currently visible in
@@ -1462,9 +1463,25 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
           <PropRow label={t(($) => $.detail.prop_project)}>
             <ProjectPicker
               projectId={issue.project_id}
-              onUpdate={handleUpdateField}
+              onUpdate={(updates) =>
+                handleUpdateField({
+                  ...updates,
+                  ...(updates.project_id !== issue.project_id
+                    ? { epic_id: null }
+                    : {}),
+                })
+              }
             />
           </PropRow>
+          {issue.issue_type === "issue" && issue.project_id && (
+            <PropRow label={t(($) => $.detail.prop_epic)}>
+              <EpicPicker
+                projectId={issue.project_id}
+                epicId={issue.epic_id ?? null}
+                onChange={(epicId) => handleUpdateField({ epic_id: epicId })}
+              />
+            </PropRow>
+          )}
 
           {/* Optional props — rendered only when set on the issue OR added
               via "+ Add property" in this session. Row order follows the
@@ -1792,7 +1809,7 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
   if (breadcrumbProject) {
     breadcrumbSegments.push({
       href: paths.projectDetail(breadcrumbProject.id),
-      className: "flex items-center gap-1 min-w-0 max-w-56",
+      className: "flex items-center gap-1 min-w-0 max-w-40",
       label: (
         <>
           <ProjectIcon project={breadcrumbProject} size="sm" />
@@ -1804,8 +1821,8 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
   if (breadcrumbEpic) {
     breadcrumbSegments.push({
       href: paths.epicDetail(breadcrumbEpic.id),
-      className: "min-w-0 max-w-56",
-      label: <span className="truncate">{breadcrumbEpic.identifier} {breadcrumbEpic.title}</span>,
+      className: "min-w-0 max-w-40",
+      label: <span className="truncate">{breadcrumbEpic.title}</span>,
     });
   }
   if (parentIssue) {
@@ -1827,8 +1844,8 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
               href={paths.issueDetail(issue.id)}
               className="flex min-w-0 transition-opacity hover:opacity-80"
             >
-              <span className="truncate font-medium text-foreground">
-                {issue.identifier} {issue.title}
+              <span className="shrink-0 font-medium text-foreground">
+                {issue.identifier}
               </span>
             </AppLink>
           }

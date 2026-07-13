@@ -917,10 +917,13 @@ export function SquadsPage() {
       {isLoading ? (
         <LoadingSkeleton />
       ) : squads.length === 0 ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-center">
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-16 text-center">
           <Users className="size-10 text-muted-foreground/50" />
-          <p className="text-sm text-muted-foreground">
+          <h2 className="text-base font-semibold">
             {t(($) => $.page.empty_no_squads)}
+          </h2>
+          <p className="max-w-md text-sm leading-relaxed text-muted-foreground">
+            {t(($) => $.page.empty_description)}
           </p>
           <Button
             size="sm"

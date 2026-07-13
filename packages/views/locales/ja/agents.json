@@ -44,6 +44,11 @@
     "capacity_title": "実行能力",
     "agent_count_other": "{{count}} エージェント",
     "no_capacity": "ランタイム未接続",
+    "roles": {
+      "owner": "ワークスペース所有者",
+      "admin": "管理者",
+      "member": "メンバー"
+    },
     "shared": "共有",
     "squad_asset": "スクワッド",
     "active_issue_count_other": "{{count}} 件の進行中作業"
@@ -257,6 +262,10 @@
     "description_label": "説明",
     "description_placeholder": "このエージェントは何をしますか？",
     "visibility_label": "公開範囲",
+    "visibility_workspace_title": "チーム共有",
+    "visibility_workspace_description": "ワークスペース全員が仕事を割り当てられます",
+    "visibility_private_title": "自分のみ",
+    "visibility_private_description": "あなたと管理者だけが仕事を割り当てられます",
     "access": {
       "label": "アクセス",
       "private_title": "プライベート",

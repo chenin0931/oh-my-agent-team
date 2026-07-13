@@ -6,11 +6,11 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/chenin0931/oh-my-agent-team/server/internal/logger"
 	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
 	"github.com/chenin0931/oh-my-agent-team/server/pkg/protocol"
+	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type InboxItemResponse struct {
@@ -91,6 +91,31 @@ func (h *Handler) enrichInboxResponse(ctx context.Context, resp InboxItemRespons
 	return resp
 }
 
+func (h *Handler) enrichEpicInboxTitle(ctx context.Context, resp InboxItemResponse) InboxItemResponse {
+	if resp.Type != "epic_owned" {
+		return resp
+	}
+	targetID := resp.TargetID
+	if targetID == nil {
+		targetID = resp.IssueID
+	}
+	if targetID == nil {
+		return resp
+	}
+
+	epic, err := h.Queries.GetIssue(ctx, parseUUID(*targetID))
+	if err != nil {
+		return resp
+	}
+	resp.Title = epic.Title
+	if epic.ProjectID.Valid {
+		if project, projectErr := h.Queries.GetProject(ctx, epic.ProjectID); projectErr == nil && project.Title != "" && project.Title != epic.Title {
+			resp.Title = project.Title + " · " + epic.Title
+		}
+	}
+	return resp
+}
+
 func (h *Handler) ListInbox(w http.ResponseWriter, r *http.Request) {
 	userID, ok := requireUserID(w, r)
 	if !ok {
@@ -114,7 +139,7 @@ func (h *Handler) ListInbox(w http.ResponseWriter, r *http.Request) {
 
 	resp := make([]InboxItemResponse, len(items))
 	for i, item := range items {
-		resp[i] = inboxRowToResponse(item)
+		resp[i] = h.enrichEpicInboxTitle(r.Context(), inboxRowToResponse(item))
 	}
 
 	writeJSON(w, http.StatusOK, resp)
@@ -140,6 +165,7 @@ func (h *Handler) MarkInboxRead(w http.ResponseWriter, r *http.Request) {
 	})
 
 	resp := h.enrichInboxResponse(r.Context(), inboxToResponse(item), item.IssueID)
+	resp = h.enrichEpicInboxTitle(r.Context(), resp)
 	writeJSON(w, http.StatusOK, resp)
 }
 
@@ -174,6 +200,7 @@ func (h *Handler) ArchiveInboxItem(w http.ResponseWriter, r *http.Request) {
 	})
 
 	resp := h.enrichInboxResponse(r.Context(), inboxToResponse(item), item.IssueID)
+	resp = h.enrichEpicInboxTitle(r.Context(), resp)
 	writeJSON(w, http.StatusOK, resp)
 }
 

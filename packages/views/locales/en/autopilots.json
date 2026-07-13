@@ -45,24 +45,24 @@
       "summary": "Search and summarize today's news for the team"
     },
     "pr_review": {
-      "title": "PR review reminder",
-      "summary": "Flag stale pull requests that need review"
+      "title": "Decision follow-up",
+      "summary": "Find work waiting for a human decision, approval, or missing input"
     },
     "bug_triage": {
-      "title": "Bug triage",
-      "summary": "Assess and prioritize new bug reports"
+      "title": "Backlog routing",
+      "summary": "Organize unassigned work and recommend the best owner"
     },
     "weekly_progress": {
       "title": "Weekly progress report",
       "summary": "Compile a weekly summary of team progress"
     },
     "dependency_audit": {
-      "title": "Dependency audit",
-      "summary": "Scan for security vulnerabilities and outdated packages"
+      "title": "Project risk review",
+      "summary": "Check schedule, budget, dependencies, ownership, and coordination risks"
     },
     "documentation_check": {
-      "title": "Documentation check",
-      "summary": "Review recent changes for documentation gaps"
+      "title": "Delivery record check",
+      "summary": "Check that decisions, evidence, and follow-up actions are recorded"
     }
   },
   "detail": {

@@ -89,7 +89,7 @@
   "workspace": {
     "tabs": {
       "overview": "Overview",
-      "backlog": "Backlog",
+      "backlog": "Plan",
       "board": "Board",
       "roadmap": "Roadmap",
       "activity": "Activity"
@@ -100,14 +100,16 @@
       "no_description": "No project description yet."
     },
     "backlog": {
-      "title": "Project backlog",
-      "summary": "{{epics}} epics · {{issues}} issues · {{subtasks}} subtasks",
-      "epic": "Epic",
-      "issue": "Issue",
-      "add_issue": "Add issue",
+      "title": "Work breakdown",
+      "description": "Break the project into phases and work items. Work begins when an item moves to To do.",
+      "summary": "{{epics}} phases · {{issues}} work items · {{subtasks}} subtasks",
+      "epic": "Phase",
+      "issue": "Work item",
+      "add_issue": "Add work item",
       "add_subtask": "Add subtask",
-      "ungrouped": "Issues without epic",
-      "empty": "No backlog work yet."
+      "ungrouped": "Work to organize",
+      "ungrouped_description": "Part of this project, but not assigned to a phase yet.",
+      "empty": "Nothing planned yet. Create a phase or work item to begin."
     },
     "activity": {
       "title": "Recent project activity",
@@ -199,7 +201,7 @@
   },
   "epic": {
     "title": "Epic",
-    "planning_container": "Planning container",
+    "planning_container": "Project phase",
     "create": "New epic",
     "create_title": "Create epic",
     "create_description": "Define the outcome before breaking it into executable work.",
@@ -214,6 +216,10 @@
     "lifecycle": "Lifecycle",
     "health": "Health",
     "health_none": "Not assessed",
+    "picker_none": "No phase",
+    "picker_loading": "Loading phases…",
+    "picker_empty": "This project has no available phases",
+    "picker_remove": "Remove from phase",
     "overview": "Overview",
     "work_items": "Work items",
     "updates": "Updates",

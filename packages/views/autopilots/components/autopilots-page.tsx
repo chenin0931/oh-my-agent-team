@@ -4,15 +4,15 @@ import { useMemo, useRef, useState } from "react";
 import {
   AlertCircle,
   BarChart3,
-  Bug,
+  ClipboardCheck,
+  ClipboardList,
   Clock,
   Code,
-  FileSearch,
-  GitPullRequest,
+  ListFilter,
   Newspaper,
   Pause,
   Plus,
-  Shield,
+  ShieldAlert,
   Webhook,
   Zap,
 } from "lucide-react";
@@ -149,23 +149,23 @@ const TEMPLATES: AutopilotTemplate[] = [
   },
   {
     id: "pr_review",
-    prompt: `1. List all open pull requests in the repository
-2. Identify PRs that have been open for more than 24 hours without a review
-3. For each stale PR, note the author, age, and a one-line summary of the change
-4. Post a comment on this issue listing all stale PRs with links
-5. @mention the team to remind them to review`,
-    icon: GitPullRequest,
+    prompt: `1. Review active work items that are in review, blocked, overdue, or due within the next 3 days
+2. Identify which items need a human decision, approval, or missing input
+3. For each item, summarize the owner, deadline, blocker, and exact decision needed
+4. Group the result into "Needs a decision" and "Team follow-up"
+5. Post the summary as a comment and @mention the responsible members`,
+    icon: ClipboardCheck,
     frequency: "weekdays",
     time: "10:00",
   },
   {
     id: "bug_triage",
-    prompt: `1. List all issues with status "triage" or "backlog" that have not been prioritized
-2. For each issue, read the description and any attached logs or screenshots
-3. Assess severity (critical / high / medium / low) based on user impact and scope
-4. Set the priority field on the issue accordingly
-5. Add a comment explaining your assessment and suggested next steps`,
-    icon: Bug,
+    prompt: `1. List all unassigned backlog work items
+2. Read each title, description, acceptance criteria, and project context
+3. Group them by business outcome and assess urgency and importance
+4. Recommend the best human, agent, or squad owner for each item
+5. Post a prioritized routing proposal as a comment without changing any status`,
+    icon: ListFilter,
     frequency: "weekdays",
     time: "09:00",
   },
@@ -183,23 +183,23 @@ const TEMPLATES: AutopilotTemplate[] = [
   },
   {
     id: "dependency_audit",
-    prompt: `1. Run dependency audit tools on the project (npm audit, go vuln check, etc.)
-2. Identify any packages with known security vulnerabilities
-3. List outdated packages that are more than 2 major versions behind
-4. For each finding, note the severity, affected package, and recommended fix
-5. Post a summary report as a comment with actionable items`,
-    icon: Shield,
+    prompt: `1. Review every active project and its open work items
+2. Identify schedule, budget, dependency, ownership, and stakeholder risks
+3. Separate confirmed blockers from early warning signals
+4. For each risk, name the affected outcome, owner, impact, and recommended response
+5. Post a concise risk register as a comment`,
+    icon: ShieldAlert,
     frequency: "weekly",
     time: "08:00",
   },
   {
     id: "documentation_check",
-    prompt: `1. List all code changes merged in the past 7 days (via git log)
-2. For each significant change, check if related documentation was updated
-3. Identify any new APIs, config options, or features missing documentation
-4. Create a list of documentation gaps with file paths and suggested content
-5. Post the findings as a comment on this issue`,
-    icon: FileSearch,
+    prompt: `1. Review work items updated or completed in the past 7 days
+2. Check whether decisions, acceptance evidence, final deliverables, and follow-up actions were recorded
+3. Identify missing context that another teammate would need to continue the work
+4. Suggest the exact note, attachment, or decision record to add
+5. Post the documentation gaps as a prioritized checklist`,
+    icon: ClipboardList,
     frequency: "weekly",
     time: "14:00",
   },

@@ -66,7 +66,7 @@ function epic(id: string, lifecycle: Epic["lifecycle"] = "planned"): Epic {
 }
 
 describe("buildProjectBacklogModel", () => {
-  it("keeps a backlog subtask visible when its parent issue is already active", () => {
+  it("shows the complete issue hierarchy across work item statuses", () => {
     const model = buildProjectBacklogModel([
       issue("parent-1", "issue", "todo", { epic_id: "epic-1" }),
       issue("subtask-1", "subtask", "backlog", {
@@ -84,8 +84,9 @@ describe("buildProjectBacklogModel", () => {
     ]);
     expect(model.subtasksByParent.get("parent-1")?.map((item) => item.id)).toEqual([
       "subtask-1",
+      "subtask-done",
     ]);
-    expect(model.backlogIssueCount).toBe(0);
+    expect(model.issueCount).toBe(1);
   });
 
   it("surfaces backlog subtasks whose parent is missing", () => {

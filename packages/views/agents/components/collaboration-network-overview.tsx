@@ -264,7 +264,9 @@ function TeamMemberRow({
               <span className="rounded bg-muted px-1 text-[10px] text-muted-foreground">{t(($) => $.row.you)}</span>
             ) : null}
           </div>
-          <p className="mt-0.5 text-xs capitalize text-muted-foreground">{member.role}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {t(($) => $.network.roles[member.role])}
+          </p>
           <p className="mt-2 text-[11px] tabular-nums text-muted-foreground">
             {t(($) => $.network.workload_summary, { direct: directWork, delegated: delegatedWork })}
           </p>

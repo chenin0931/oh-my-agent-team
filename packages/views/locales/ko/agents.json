@@ -44,6 +44,11 @@
     "capacity_title": "실행 용량",
     "agent_count_other": "에이전트 {{count}}개",
     "no_capacity": "연결된 런타임 없음",
+    "roles": {
+      "owner": "워크스페이스 소유자",
+      "admin": "관리자",
+      "member": "멤버"
+    },
     "shared": "공유",
     "squad_asset": "스쿼드",
     "active_issue_count_other": "활성 작업 {{count}}개"
@@ -265,6 +270,10 @@
     "description_label": "설명",
     "description_placeholder": "이 에이전트는 무엇을 하나요?",
     "visibility_label": "공개 범위",
+    "visibility_workspace_title": "팀 공유",
+    "visibility_workspace_description": "워크스페이스의 모든 멤버가 업무를 할당할 수 있습니다",
+    "visibility_private_title": "나만 사용",
+    "visibility_private_description": "본인과 관리자만 업무를 할당할 수 있습니다",
     "access": {
       "label": "액세스",
       "private_title": "비공개",

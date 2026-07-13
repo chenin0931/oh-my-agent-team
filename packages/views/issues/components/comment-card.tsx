@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { CheckCircle2, ChevronRight, ListChevronsDownUp, Copy, Loader2, MoreHorizontal, Pencil, RotateCcw, Trash2 } from "lucide-react";
+import { CheckCircle2, ChevronDown, ChevronRight, ChevronUp, ListChevronsDownUp, Copy, Loader2, MoreHorizontal, Pencil, RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@ohmyagentteam/ui/components/ui/card";
 import { Button } from "@ohmyagentteam/ui/components/ui/button";
@@ -264,6 +264,47 @@ function retryableAgentFailureComment(entry: TimelineEntry): entry is TimelineEn
 function displayCommentContent(entry: TimelineEntry): string {
   const content = entry.content ?? "";
   return retryableAgentFailureComment(entry) ? formatAgentError(content) : content;
+}
+
+function ReadonlyCommentContent({
+  entry,
+  className,
+}: {
+  entry: TimelineEntry;
+  className?: string;
+}) {
+  const { t } = useT("issues");
+  const content = displayCommentContent(entry);
+  const [expanded, setExpanded] = useState(false);
+  const isLong = content.length > 1400 || content.split("\n").length > 20;
+
+  return (
+    <div className={className}>
+      <div
+        className={cn(
+          "relative",
+          isLong && !expanded && "max-h-80 overflow-hidden",
+        )}
+      >
+        <ReadonlyContent content={content} attachments={entry.attachments} />
+        {isLong && !expanded && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-card to-transparent" />
+        )}
+      </div>
+      {isLong && (
+        <button
+          type="button"
+          onClick={() => setExpanded((value) => !value)}
+          className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+        >
+          {expanded ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+          {expanded
+            ? t(($) => $.comment.show_less)
+            : t(($) => $.comment.show_full)}
+        </button>
+      )}
+    </div>
+  );
 }
 
 function TaskCommentRetryButton({
@@ -674,9 +715,10 @@ function CommentRow({
         </div>
       ) : (
         <>
-          <div className="pl-12 pr-4 pt-1 text-sm leading-relaxed text-foreground/85">
-            <ReadonlyContent content={displayCommentContent(entry)} attachments={entry.attachments} />
-          </div>
+          <ReadonlyCommentContent
+            entry={entry}
+            className="pl-12 pr-4 pt-1 text-sm leading-relaxed text-foreground/85"
+          />
           <AttachmentList attachments={entry.attachments} content={entry.content} className="mt-1.5 pl-12 pr-4" />
           {retryableAgentFailureComment(entry) && (
             <TaskCommentRetryButton
@@ -964,9 +1006,10 @@ function CommentCardImpl({
               </div>
             ) : (
               <>
-                <div className="pl-10 text-sm leading-relaxed text-foreground/85">
-                  <ReadonlyContent content={displayCommentContent(entry)} attachments={entry.attachments} />
-                </div>
+                <ReadonlyCommentContent
+                  entry={entry}
+                  className="pl-10 text-sm leading-relaxed text-foreground/85"
+                />
                 <AttachmentList attachments={entry.attachments} content={entry.content} className="mt-1.5 pl-10" />
                 {retryableAgentFailureComment(entry) && (
                   <TaskCommentRetryButton

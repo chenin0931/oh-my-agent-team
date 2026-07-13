@@ -3,7 +3,7 @@
     "name_label": "工作区名称",
     "name_placeholder": "我的工作区",
     "url_label": "工作区 URL",
-    "url_placeholder": "my-workspace",
+    "url_placeholder": "my-工作区",
     "submit": "创建工作区",
     "submitting": "创建中...",
     "errors": {
@@ -18,7 +18,7 @@
     "back": "返回",
     "log_out": "退出登录",
     "title": "欢迎使用 OhMyAgentTeam",
-    "description": "一个工作区，让你和 AI 队友并肩协作——一起处理 issue、留下评论、共享同一份上下文。",
+    "description": "一个工作区，让你和 AI 队友并肩协作——一起处理工作项、留下评论、共享同一份上下文。",
     "invite_hint": "工作区创建后可邀请队友加入。"
   },
   "creation_disabled": {
@@ -40,10 +40,10 @@
     "slides": {
       "network": {
         "eyebrow": "协作网络",
-        "title": "把人和 Agent 放进同一个团队",
-        "description": "OhMyAgentTeam 让真人、自己的 Agent 和其他成员的 Agent 围绕同一份工作上下文协作。",
+        "title": "把人和智能体放进同一个团队",
+        "description": "OhMyAgentTeam 让真人、自己的智能体和其他成员的智能体围绕同一份工作上下文协作。",
         "bullet_1": "真人负责目标、判断和最终决策。",
-        "bullet_2": "Agent 负责规划、执行、评论和交付。"
+        "bullet_2": "智能体负责规划、执行、评论和交付。"
       },
       "projects": {
         "eyebrow": "项目与工作项",
@@ -54,31 +54,31 @@
       },
       "planning": {
         "eyebrow": "智能规划",
-        "title": "说出目标，让 Agent 帮你拆解和分配",
-        "description": "在顶部输入一个目标，规划 Agent 会拆成可独立负责的工作项，并按内容分配给最合适的人、Agent 或小队。",
+        "title": "说出目标，让智能体帮你拆解和分配",
+        "description": "在顶部输入一个目标，规划智能体会拆成可独立负责的工作项，并按内容分配给最合适的人、智能体或小队。",
         "bullet_1": "一次可以规划并创建多个工作项。",
         "bullet_2": "所有规划结果先进入待规划，等待确认。"
       },
       "workflow": {
         "eyebrow": "安全执行",
-        "title": "进入待办，Agent 才会开始工作",
-        "description": "状态既是项目进度，也是执行开关。待规划不会触发 Agent，明确推进到待办后才开始处理。",
+        "title": "进入待办，智能体才会开始工作",
+        "description": "状态既是项目进度，也是执行开关。待规划不会触发智能体，明确推进到待办后才开始处理。",
         "bullet_1": "订阅和查看动态不会触发执行。",
         "bullet_2": "过程、评论和结果都保留在工作项动态中。"
       },
       "human": {
         "eyebrow": "真人协作",
-        "title": "人做决定，Agent 在旁边提供建议",
-        "description": "工作分配给真人后会进入行动中心；该成员的顾问 Agent 可以留下各自的建议，但不能替真人改变任务。",
+        "title": "人做决定，智能体在旁边提供建议",
+        "description": "工作分配给真人后会进入行动中心；该成员的顾问智能体可以留下各自的建议，但不能替真人改变任务。",
         "bullet_1": "真人拥有状态和最终处理权。",
-        "bullet_2": "顾问 Agent 只能评论和订阅，不会自动执行。"
+        "bullet_2": "顾问智能体只能评论和订阅，不会自动执行。"
       },
       "runtime": {
         "eyebrow": "执行能力",
-        "title": "连接工具，组建你的 Agent 团队",
-        "description": "执行能力连接 Codex、Claude Code、WorkBuddy 与兼容 CLI；Agent 定义角色和专长；小队把多个 Agent 组织成协作单元。",
-        "bullet_1": "一个运行时可以承载多个专业 Agent。",
-        "bullet_2": "Agent 和小队都能成为工作项负责人。"
+        "title": "连接工具，组建你的智能体团队",
+        "description": "执行能力连接 Codex、Claude Code、WorkBuddy 与兼容 CLI；智能体定义角色和专长；小队把多个智能体组织成协作单元。",
+        "bullet_1": "一个桌面连接可以承载多个不同角色的团队智能体。",
+        "bullet_2": "智能体和小队都能成为工作项负责人。"
       }
     },
     "visual": {
@@ -88,14 +88,14 @@
       "project_item_2": "确认采购方案",
       "project_item_3": "准备上线传播",
       "complete": "已完成",
-      "planning_prompt": "规划一场客户圆桌活动，并分配给合适的人和 Agent",
+      "planning_prompt": "规划一场客户圆桌活动，并分配给合适的人和智能体",
       "analyzing": "正在拆解并匹配负责人",
       "plan_item_1": "设计活动议程",
       "plan_item_2": "准备邀约内容",
       "plan_item_3": "确认活动场地",
-      "product_agent": "产品规划 Agent",
-      "growth_agent": "增长 Agent",
-      "research_agent": "研究 Agent",
+      "product_agent": "产品规划智能体",
+      "growth_agent": "增长智能体",
+      "research_agent": "研究智能体",
       "you": "你",
       "backlog": "待规划",
       "status": {
@@ -109,24 +109,24 @@
       "backlog_waits": "待规划：只整理",
       "todo_starts": "待办：开始执行",
       "activity_started": "工作项推进到待办",
-      "activity_agent": "Agent 已开始处理",
-      "activity_result": "Agent 留下执行结果",
+      "activity_agent": "智能体已开始处理",
+      "activity_result": "智能体留下执行结果",
       "just_now": "刚刚",
       "running": "运行中",
       "activity_feed": "动态",
       "action_center": "行动中心",
       "assigned_to_you": "分配给你",
       "human_task": "确认年度采购预算",
-      "agent_advice": "Agent 建议",
+      "agent_advice": "智能体建议",
       "advice_1": "我整理了三种采购方案及主要风险。",
       "advice_2": "建议先确认预算上限，再进入供应商谈判。",
       "human_decides": "由你确认并推进状态",
-      "runtime_name": "Codex · 本机运行时",
+      "runtime_name": "Codex · 这台电脑",
       "runtime_description": "提供真实工具和本地执行环境",
       "online": "在线",
       "virtual_member": "虚拟成员",
       "squad": "发布协作小队",
-      "squad_summary": "3 个 Agent 协同工作"
+      "squad_summary": "3 个智能体协同工作"
     }
   }
 }

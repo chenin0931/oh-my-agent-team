@@ -88,7 +88,7 @@
   "workspace": {
     "tabs": {
       "overview": "개요",
-      "backlog": "백로그",
+      "backlog": "계획",
       "board": "보드",
       "roadmap": "로드맵",
       "activity": "활동"
@@ -99,14 +99,16 @@
       "no_description": "프로젝트 설명이 아직 없습니다."
     },
     "backlog": {
-      "title": "프로젝트 백로그",
-      "summary": "Epic {{epics}}개 · Issue {{issues}}개 · 하위 작업 {{subtasks}}개",
-      "epic": "Epic",
-      "issue": "Issue",
-      "add_issue": "Issue 추가",
+      "title": "작업 분해",
+      "description": "프로젝트를 단계와 작업 항목으로 나눕니다. 작업 항목을 '할 일'로 옮기면 실행이 시작됩니다.",
+      "summary": "단계 {{epics}}개 · 작업 항목 {{issues}}개 · 하위 작업 {{subtasks}}개",
+      "epic": "단계",
+      "issue": "작업 항목",
+      "add_issue": "작업 항목 추가",
       "add_subtask": "하위 작업 추가",
-      "ungrouped": "Epic이 없는 Issue",
-      "empty": "백로그 작업이 아직 없습니다."
+      "ungrouped": "정리가 필요한 작업",
+      "ungrouped_description": "이 프로젝트에 속하지만 아직 단계에 배정되지 않았습니다.",
+      "empty": "아직 계획된 내용이 없습니다. 단계 또는 작업 항목을 만들어 시작하세요."
     },
     "activity": {
       "title": "최근 프로젝트 활동",
@@ -198,7 +200,7 @@
   },
   "epic": {
     "title": "Epic",
-    "planning_container": "계획 컨테이너",
+    "planning_container": "프로젝트 단계",
     "create": "새 Epic",
     "create_title": "Epic 만들기",
     "create_description": "실행 가능한 작업으로 나누기 전에 결과를 정의하세요.",
@@ -213,6 +215,10 @@
     "lifecycle": "수명 주기",
     "health": "상태",
     "health_none": "평가 안 됨",
+    "picker_none": "단계 없음",
+    "picker_loading": "단계 불러오는 중…",
+    "picker_empty": "이 프로젝트에 선택할 수 있는 단계가 없습니다",
+    "picker_remove": "단계에서 제거",
     "overview": "개요",
     "work_items": "작업 항목",
     "updates": "업데이트",

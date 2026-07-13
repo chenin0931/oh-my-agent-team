@@ -531,6 +531,7 @@ function mockAssigneeGroups(issues: Issue[]) {
 // ---------------------------------------------------------------------------
 
 import { IssuesPage } from "./issues-page";
+import { PlanningQuickCreateBar } from "./planning-quick-create-bar";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -793,6 +794,27 @@ describe("IssuesPage (shared)", () => {
     );
     expect(input).toBeDisabled();
     expect(mockToastSuccess).not.toHaveBeenCalled();
+  });
+
+  it("pins project planning requests to the current project", async () => {
+    const user = userEvent.setup();
+    renderWithQuery(<PlanningQuickCreateBar projectId="project-1" />);
+
+    const input = await screen.findByPlaceholderText(
+      "Describe the project outcome, and let an agent split it into phases and assigned work",
+    );
+    await user.type(input, "Plan the launch");
+    await user.click(screen.getByRole("button", { name: /Create/i }));
+
+    await waitFor(() =>
+      expect(mockQuickCreateIssue).toHaveBeenCalledWith({
+        agent_id: "agent-1",
+        prompt: "Plan the launch",
+        mode: "planning",
+        default_status: "backlog",
+        project_id: "project-1",
+      }),
+    );
   });
 
   it("does not submit planning quick-create while an IME composition is active", async () => {

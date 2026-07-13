@@ -7,6 +7,7 @@ import type { Epic, Issue, Project, ProjectActivityItem } from "@ohmyagentteam/c
 import { cn } from "@ohmyagentteam/ui/lib/utils";
 import { Button } from "@ohmyagentteam/ui/components/ui/button";
 import { IssueSurface, type IssueSurfaceRenderContext } from "../../issues/surface/issue-surface";
+import { PlanningQuickCreateBar } from "../../issues/components/planning-quick-create-bar";
 import { StatusIcon } from "../../issues/components/status-icon";
 import { ActorAvatar } from "../../common/actor-avatar";
 import { AppLink } from "../../navigation";
@@ -16,8 +17,9 @@ import { useWorkspaceId } from "@ohmyagentteam/core/hooks";
 import { projectActivityOptions } from "@ohmyagentteam/core/projects/queries";
 import { epicListOptions } from "@ohmyagentteam/core/epics/queries";
 import { useModalStore } from "@ohmyagentteam/core/modals";
-import { ProjectResourcesSection } from "./project-resources-section";
 import { buildProjectBacklogModel } from "./project-backlog-model";
+import { isProjectBoardItem } from "./project-board-model";
+import { deduplicateProjectActivity } from "./project-activity-model";
 import { formatAgentError } from "../../common/agent-error";
 import { useT } from "../../i18n";
 
@@ -62,13 +64,19 @@ export function ProjectWorkspace({ project }: { project: Project }) {
         ))}
       </div>
 
-      {tab === "overview" && <ProjectOverview project={project} />}
+      {tab === "overview" && <ProjectOverview project={project} epics={epics} />}
       {tab === "backlog" && (
         <IssueSurface
           scope={scope}
           modes={["list"]}
           surfaceKey={`project:${project.id}:backlog`}
-          renderHeader={() => null}
+          renderHeader={() => (
+            <div className="shrink-0 px-5 pt-4">
+              <div className="mx-auto max-w-5xl">
+                <PlanningQuickCreateBar projectId={project.id} />
+              </div>
+            </div>
+          )}
           renderEmpty={(context) => <ProjectBacklog project={project} epics={epics} context={context} />}
           renderContent={(context) => <ProjectBacklog project={project} epics={epics} context={context} />}
           contentClassName="overflow-y-auto"
@@ -79,7 +87,7 @@ export function ProjectWorkspace({ project }: { project: Project }) {
           scope={scope}
           modes={["board"]}
           surfaceKey={`project:${project.id}:board`}
-          clientFilter={(issue) => issue.status !== "backlog" && issue.issue_type !== "epic"}
+          clientFilter={isProjectBoardItem}
         />
       )}
       {tab === "roadmap" && (
@@ -92,8 +100,9 @@ export function ProjectWorkspace({ project }: { project: Project }) {
   );
 }
 
-function ProjectOverview({ project }: { project: Project }) {
+function ProjectOverview({ project, epics }: { project: Project; epics: Epic[] }) {
   const { t } = useT("projects");
+  const paths = useWorkspacePaths();
   const total = project.issue_count;
   const completed = project.done_count;
   const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
@@ -110,10 +119,24 @@ function ProjectOverview({ project }: { project: Project }) {
           </div>
         </section>
         <section>
-          <h2 className="text-sm font-semibold">{t(($) => $.workspace.overview.description)}</h2>
-          <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{project.description || t(($) => $.workspace.overview.no_description)}</p>
+          <h2 className="text-sm font-semibold">{t(($) => $.workspace.roadmap.title)}</h2>
+          <div className="mt-3 divide-y border-y">
+            {epics.map((epic) => (
+              <AppLink key={epic.id} href={paths.epicDetail(epic.id)} className="flex items-center gap-4 py-3 text-sm hover:bg-accent/40">
+                <span className="min-w-0 flex-1 truncate font-medium">{epic.title}</span>
+                <div className="hidden w-40 items-center gap-2 sm:flex">
+                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                    <div className="h-full bg-emerald-500" style={{ width: `${epic.completion_percent}%` }} />
+                  </div>
+                </div>
+                <span className="w-20 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
+                  {t(($) => $.workspace.roadmap.done, { done: epic.done_issues, total: epic.total_issues })}
+                </span>
+              </AppLink>
+            ))}
+            {epics.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">{t(($) => $.workspace.roadmap.empty)}</p>}
+          </div>
         </section>
-        <ProjectResourcesSection projectId={project.id} />
       </div>
     </div>
   );
@@ -127,13 +150,17 @@ function ProjectBacklog({ project, epics: allEpics, context }: { project: Projec
   const {
     epics,
     visibleIssues,
-    backlogIssueCount,
-    backlogSubtasks,
+    issueCount,
+    subtasks,
     subtasksByParent,
     byEpic,
     ungrouped,
     orphanedSubtasks,
   } = backlog;
+  const showUngroupedSection =
+    ungrouped.length > 0 ||
+    orphanedSubtasks.length > 0 ||
+    (epics.length === 0 && visibleIssues.length === 0);
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
@@ -141,8 +168,9 @@ function ProjectBacklog({ project, epics: allEpics, context }: { project: Projec
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 className="text-sm font-semibold">{t(($) => $.workspace.backlog.title)}</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">{t(($) => $.workspace.backlog.description)}</p>
             <p className="text-xs text-muted-foreground">
-              {t(($) => $.workspace.backlog.summary, { epics: epics.length, issues: backlogIssueCount, subtasks: backlogSubtasks.length })}
+              {t(($) => $.workspace.backlog.summary, { epics: epics.length, issues: issueCount, subtasks: subtasks.length })}
             </p>
           </div>
           <div className="flex w-full items-center gap-2 sm:w-auto">
@@ -172,17 +200,28 @@ function ProjectBacklog({ project, epics: allEpics, context }: { project: Projec
           </section>
         ))}
 
-        <section className="border-t pt-3">
-          <h3 className="mb-2 text-xs font-medium uppercase text-muted-foreground">{t(($) => $.workspace.backlog.ungrouped)}</h3>
-          {ungrouped.map((issue) => (
-            <div key={issue.id}>
-              <BacklogRow issue={issue} onAddSubtask={() => controller.openCreateIssue({ issue_type: "subtask", status: "backlog", parent_issue_id: issue.id, project_id: project.id })} />
-              {(subtasksByParent.get(issue.id) ?? []).map((subtask) => <div key={subtask.id} className="ml-7"><BacklogRow issue={subtask} /></div>)}
-            </div>
-          ))}
-          {orphanedSubtasks.map((subtask) => <BacklogRow key={subtask.id} issue={subtask} />)}
-          {epics.length === 0 && visibleIssues.length === 0 && orphanedSubtasks.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">{t(($) => $.workspace.backlog.empty)}</p>}
-        </section>
+        {showUngroupedSection && (
+          <section className="border-t pt-3">
+            {(ungrouped.length > 0 || orphanedSubtasks.length > 0) && (
+              <div className="mb-2">
+                <h3 className="text-xs font-medium text-foreground">
+                  {t(($) => $.workspace.backlog.ungrouped)}
+                </h3>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {t(($) => $.workspace.backlog.ungrouped_description)}
+                </p>
+              </div>
+            )}
+            {ungrouped.map((issue) => (
+              <div key={issue.id}>
+                <BacklogRow issue={issue} onAddSubtask={() => controller.openCreateIssue({ issue_type: "subtask", status: "backlog", parent_issue_id: issue.id, project_id: project.id })} />
+                {(subtasksByParent.get(issue.id) ?? []).map((subtask) => <div key={subtask.id} className="ml-7"><BacklogRow issue={subtask} /></div>)}
+              </div>
+            ))}
+            {orphanedSubtasks.map((subtask) => <BacklogRow key={subtask.id} issue={subtask} />)}
+            {epics.length === 0 && visibleIssues.length === 0 && orphanedSubtasks.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">{t(($) => $.workspace.backlog.empty)}</p>}
+          </section>
+        )}
       </div>
     </div>
   );
@@ -195,7 +234,7 @@ function BacklogRow({ issue, strong, onAddSubtask }: { issue: Issue; strong?: bo
   return (
     <div className="group flex min-h-9 items-center gap-2 rounded px-2 hover:bg-accent/50">
       <StatusIcon status={issue.status} className="size-3.5" />
-      <span className="w-16 shrink-0 text-xs text-muted-foreground">{issue.identifier}</span>
+      <span className="w-14 shrink-0 text-[11px] text-muted-foreground/70">{issue.identifier}</span>
       <AppLink href={paths.issueDetail(issue.id)} className={cn("min-w-0 flex-1 truncate text-sm", strong && "font-semibold")}>{issue.title}</AppLink>
       {issue.assignee_type && issue.assignee_id && (
         <span className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -209,13 +248,16 @@ function BacklogRow({ issue, strong, onAddSubtask }: { issue: Issue; strong?: bo
 }
 
 function EpicBacklogRow({ epic }: { epic: Epic }) {
+  const { t } = useT("projects");
   const paths = useWorkspacePaths();
   const { getActorName } = useActorName();
   return (
-    <div className="group flex min-h-10 items-center gap-2 rounded px-2 hover:bg-accent/50">
-      <span className="grid size-4 place-items-center rounded border text-[9px] font-semibold text-muted-foreground">E</span>
-      <span className="w-16 shrink-0 text-xs text-muted-foreground">{epic.identifier}</span>
-      <AppLink href={paths.epicDetail(epic.id)} className="min-w-0 flex-1 truncate text-sm font-semibold">{epic.title}</AppLink>
+    <div className="flex min-h-10 items-center gap-3 px-2">
+      <AppLink href={paths.epicDetail(epic.id)} className="min-w-0 flex-1 truncate text-sm font-semibold hover:underline">{epic.title}</AppLink>
+      <span className="hidden shrink-0 text-xs text-muted-foreground md:inline">
+        {t(($) => $.epic.statuses[epic.lifecycle])}
+        {epic.health ? ` · ${t(($) => $.epic.healths[epic.health!])}` : ""}
+      </span>
       <span className="text-xs tabular-nums text-muted-foreground">{epic.completion_percent}%</span>
       {epic.owner_type && epic.owner_id && (
         <span className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -233,7 +275,7 @@ function ProjectActivity({ project }: { project: Project }) {
   const { data, isLoading } = useQuery(projectActivityOptions(wsId, project.id));
   const paths = useWorkspacePaths();
   const { getActorName } = useActorName();
-  const items = data?.items ?? [];
+  const items = deduplicateProjectActivity(data?.items ?? []);
   return (
     <div className="flex-1 overflow-y-auto px-8 py-6">
       <div className="mx-auto max-w-3xl">

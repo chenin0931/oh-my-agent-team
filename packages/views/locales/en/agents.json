@@ -46,6 +46,11 @@
     "agent_count_one": "{{count}} agent",
     "agent_count_other": "{{count}} agents",
     "no_capacity": "No runtimes connected",
+    "roles": {
+      "owner": "Workspace owner",
+      "admin": "Administrator",
+      "member": "Member"
+    },
     "shared": "Shared",
     "squad_asset": "Squad",
     "active_issue_count_one": "{{count}} active work item",
@@ -276,6 +281,10 @@
     "description_label": "Description",
     "description_placeholder": "What does this agent do?",
     "visibility_label": "Visibility",
+    "visibility_workspace_title": "Team shared",
+    "visibility_workspace_description": "Everyone in this workspace can assign work to it",
+    "visibility_private_title": "Only me",
+    "visibility_private_description": "Only you and workspace admins can assign work to it",
     "access": {
       "label": "Access",
       "private_title": "Private",

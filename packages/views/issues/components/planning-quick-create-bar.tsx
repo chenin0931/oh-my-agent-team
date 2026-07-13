@@ -12,6 +12,7 @@ import { useAuthStore } from "@ohmyagentteam/core/auth";
 import { inboxKeys } from "@ohmyagentteam/core/inbox/queries";
 import { issueKeys } from "@ohmyagentteam/core/issues/queries";
 import { epicKeys } from "@ohmyagentteam/core/epics/queries";
+import { projectKeys } from "@ohmyagentteam/core/projects/queries";
 import {
   agentListOptions,
   memberListOptions,
@@ -38,9 +39,10 @@ import {
 const POLL_INTERVAL_MS = 1500;
 const MAX_POLL_FAILURES = 20;
 const PROGRESS_STEP_MS = 1200;
+const TERMINAL_SETTLE_MS = 350;
 const COMPLETION_HOLD_MS = 2400;
 
-export function PlanningQuickCreateBar() {
+export function PlanningQuickCreateBar({ projectId }: { projectId?: string } = {}) {
   const { t } = useT("issues");
   const queryClient = useQueryClient();
   const wsId = useWorkspaceId();
@@ -150,6 +152,7 @@ export function PlanningQuickCreateBar() {
         prompt: body,
         mode: "planning",
         default_status: "backlog",
+        ...(projectId ? { project_id: projectId } : {}),
       });
       setLastActor("agent", selectedAgent.id);
       if (!result.task_id) {
@@ -180,7 +183,7 @@ export function PlanningQuickCreateBar() {
     } finally {
       setSubmitting(false);
     }
-  }, [progressActive, prompt, selectedAgent, setLastActor, t, versionBlocked]);
+  }, [progressActive, projectId, prompt, selectedAgent, setLastActor, t, versionBlocked]);
 
   useEffect(() => {
     if (!progressTaskId) return;
@@ -191,6 +194,7 @@ export function PlanningQuickCreateBar() {
     const announcedEpicIds = new Set<string>();
     let backlogConfirmAttempts = 0;
     let consecutivePollFailures = 0;
+    let terminalSnapshot: string | null = null;
 
     const wait = (ms: number) =>
       new Promise<void>((resolve) => {
@@ -203,6 +207,7 @@ export function PlanningQuickCreateBar() {
       setProgressMessage(null);
       queryClient.invalidateQueries({ queryKey: issueKeys.all(wsId) });
       queryClient.invalidateQueries({ queryKey: epicKeys.all(wsId) });
+      queryClient.invalidateQueries({ queryKey: projectKeys.all(wsId) });
       queryClient.invalidateQueries({ queryKey: inboxKeys.list(wsId) });
     };
 
@@ -284,6 +289,15 @@ export function PlanningQuickCreateBar() {
           createdItems.length > 0 &&
           status.all_backlog
         ) {
+          const snapshot = createdItems
+            .map((item) => item.id)
+            .sort()
+            .join(":");
+          if (terminalSnapshot !== snapshot) {
+            terminalSnapshot = snapshot;
+            timeout = setTimeout(poll, TERMINAL_SETTLE_MS);
+            return;
+          }
           setProgressMessage(
             t(($) => $.planning_quick_create.progress_all_done),
           );
@@ -313,7 +327,7 @@ export function PlanningQuickCreateBar() {
   }, [assignmentName, progressTaskId, queryClient, t, wsId]);
 
   return (
-    <div className="shrink-0 px-4 pt-3 pb-2">
+    <div className={cn("shrink-0", projectId ? "pb-4" : "px-4 pt-3 pb-2")}>
       <div
         aria-busy={progressActive}
         aria-live="polite"
@@ -362,7 +376,11 @@ export function PlanningQuickCreateBar() {
               submit();
             }
           }}
-          placeholder={t(($) => $.planning_quick_create.placeholder)}
+          placeholder={t(($) =>
+            projectId
+              ? $.planning_quick_create.project_placeholder
+              : $.planning_quick_create.placeholder,
+          )}
           className="col-span-2 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground disabled:text-muted-foreground sm:col-span-1"
         />
         <Button

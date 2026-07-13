@@ -150,7 +150,6 @@ export function EpicDetail({ epicId, onDone }: { epicId: string; onDone?: () => 
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               {project && <AppLink href={paths.projectDetail(project.id)} className="truncate hover:text-foreground">{project.title}</AppLink>}
               {project && <span>/</span>}
-              <span>{epic.identifier}</span>
               <span className="rounded border px-1.5 py-0.5 text-[10px] uppercase">{t(($) => $.epic.planning_container)}</span>
             </div>
             <EditableEpicTitle epic={epic} />
@@ -251,6 +250,7 @@ function EditableEpicTitle({ epic }: { epic: Epic }) {
 
 function EpicOverview({ epic }: { epic: Epic }) {
   const { t } = useT("projects");
+  const { t: tIssues } = useT("issues");
   const update = useUpdateEpic();
   return (
     <div className="mx-auto max-w-4xl px-5 py-6 md:px-8 md:py-8">
@@ -297,7 +297,7 @@ function EpicOverview({ epic }: { epic: Epic }) {
             {Object.entries(epic.status_distribution).map(([status, count]) => (
               <span key={status} className="inline-flex items-center gap-1.5 text-xs">
                 <StatusIcon status={status as Issue["status"]} className="size-3.5" />
-                <span className="capitalize">{status.replaceAll("_", " ")}</span>
+                <span>{tIssues(($) => $.status[status as Issue["status"]])}</span>
                 <span className="tabular-nums text-muted-foreground">{count}</span>
               </span>
             ))}

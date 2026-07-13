@@ -10,16 +10,16 @@
     "live": "实时",
     "live_tooltip": "实时更新 · 离线检测 75 秒以内",
     "filter_all": "全部",
-    "filter_all_description": "当前视图下的所有运行时",
+    "filter_all_description": "当前视图下的所有桌面连接",
     "empty": {
       "title": "还没有桌面智能体",
       "hint": "先连接这台电脑上的 Codex、Claude Code 或 WorkBuddy，然后创建能接收团队任务的智能体。"
     },
     "no_matches": {
       "title": "无匹配",
-      "with_query": "没有运行时匹配 \"{{query}}\"{{filterSuffix}}。",
+      "with_query": "没有桌面连接匹配 \"{{query}}\"{{filterSuffix}}。",
       "with_query_filter_suffix": "（在当前筛选下）",
-      "no_query": "当前筛选下没有匹配的运行时。",
+      "no_query": "当前筛选下没有匹配的桌面连接。",
       "try_widening": "试试放宽筛选或清除条件。"
     },
     "bootstrapping": {
@@ -65,7 +65,7 @@
     "section_cloud": "云端",
     "this_machine": "本机",
     "local_badge": "本地 · 这台机器",
-    "pending_custom_runtimes": "待注册自定义运行时",
+    "pending_custom_runtimes": "待注册的自定义连接",
     "runtime_count_other": "{{count}} 个桌面智能体",
     "busy_count_other": "{{count}} 个忙碌",
     "no_matches_title": "没有机器",
@@ -88,7 +88,7 @@
     "rename": "重命名机器",
     "rename_dialog": {
       "title": "重命名机器",
-      "description": "给这台机器起一个你能认出来的名字。会应用到这台机器上的所有运行时，并在给 agent 选择运行时时显示。",
+      "description": "给这台电脑起一个容易识别的名字。这个名称会显示在电脑上的所有桌面连接，以及团队智能体的执行能力选择器中。",
       "placeholder": "例如：我的 MacBook",
       "hint": "留空则使用设备的默认名称。",
       "cancel": "取消",
@@ -102,7 +102,7 @@
   "health": {
     "online": {
       "label": "在线",
-      "description": "最近 45 秒内收到心跳。可以派发 task。"
+      "description": "最近 45 秒内收到心跳。可以派发任务。"
     },
     "recently_lost": {
       "label": "最近失联",
@@ -118,19 +118,19 @@
     }
   },
   "detail": {
-    "all_runtimes": "全部运行时",
+    "all_runtimes": "全部桌面连接",
     "read_only": "只读",
-    "delete_button": "删除运行时",
+    "delete_button": "删除连接",
     "last_seen": "最后活跃 {{when}}",
     "fact_owner": "所有者",
     "fact_device": "设备",
-    "fact_runtime": "运行时",
+    "fact_runtime": "执行工具",
     "technical_details": "技术详情",
     "fact_daemon_cli": "守护进程 CLI",
     "fact_daemon_id": "守护进程 ID",
     "serving_title": "服务中",
     "serving_count_other": "{{count}} 个智能体",
-    "no_agents": "还没有智能体绑定到这个运行时。",
+    "no_agents": "还没有团队智能体使用这个桌面连接。",
     "diagnostics_title": "诊断",
     "diagnostics_cli": "CLI",
     "diagnostics_visibility": "可见性",
@@ -156,11 +156,11 @@
       },
       "cascade": {
         "title_other": "归档 {{count}} 个智能体并删除该运行时？",
-        "description": "删除「{{name}}」。下列智能体将被归档并从可用工作流中移除，其排队中或运行中的 task 会被取消，随后运行时本身会被删除。",
-        "warning": "此操作具有破坏性。归档的智能体将从可用工作流中移除，其排队中或运行中的 task 会被取消。",
+        "description": "删除「{{name}}」。下列智能体将被归档并从可用工作流中移除，其排队中或运行中的任务会被取消，随后运行时本身会被删除。",
+        "warning": "此操作具有破坏性。归档的智能体将从可用工作流中移除，其排队中或运行中的任务会被取消。",
         "notice_runtime_has_active_agents": "自打开此弹窗后，又有新的活动智能体加入。请确认新方案后继续。",
         "notice_runtime_delete_plan_changed": "在弹窗打开期间，活动智能体集合发生了变化。请确认新方案后继续。",
-        "checkbox_other": "我已了解：这 {{count}} 个智能体将被归档，其排队中或运行中的 task 会被取消。",
+        "checkbox_other": "我已了解：这 {{count}} 个智能体将被归档，其排队中或运行中的任务会被取消。",
         "cancel": "取消",
         "confirm_other": "归档 {{count}} 个智能体并删除运行时",
         "submitting": "正在归档并删除...",
@@ -352,7 +352,7 @@
       "display_name_label": "显示名称",
       "display_name_placeholder": "我的自定义 Claude",
       "command_name_label": "命令",
-      "command_name_placeholder": "agent --model composer-2.5",
+      "command_name_placeholder": "智能体 --model composer-2.5",
       "description_label": "描述",
       "description_placeholder": "可选 — 此运行时的用途",
       "error_display_name_required": "显示名称为必填项。",

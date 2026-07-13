@@ -37,7 +37,7 @@
     "archive": "归档"
   },
   "types": {
-    "epic_owned": "负责 Epic",
+    "epic_owned": "负责阶段",
     "issue_assigned": "已分配",
     "issue_subscribed": "已订阅",
     "unassigned": "已取消分配",

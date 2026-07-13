@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { ChevronRight, FolderOpen, Maximize2, Minimize2, Search, X as XIcon, UserMinus } from "lucide-react";
+import { ChevronRight, Ellipsis, FolderOpen, Maximize2, Minimize2, Search, X as XIcon, UserMinus } from "lucide-react";
 
 /**
  * GitHub mark — lucide-react v1 dropped brand icons, so we inline the
@@ -141,6 +141,7 @@ export function CreateProjectModal({ onClose }: { onClose: () => void }) {
   // created. Stored as URLs (not full ProjectResource rows) — they're not
   // persisted until handleSubmit fires the createProjectResource calls.
   const [selectedRepos, setSelectedRepos] = useState<string[]>([]);
+  const [showResourceOptions, setShowResourceOptions] = useState(false);
   const [repoPopoverOpen, setRepoPopoverOpen] = useState(false);
   const [repoSearch, setRepoSearch] = useState("");
   const [customRepoUrl, setCustomRepoUrl] = useState("");
@@ -541,6 +542,12 @@ export function CreateProjectModal({ onClose }: { onClose: () => void }) {
             </PopoverContent>
           </Popover>
 
+          {!showResourceOptions ? (
+            <PillButton onClick={() => setShowResourceOptions(true)}>
+              <Ellipsis className="size-3" />
+              <span>{t(($) => $.create_project.more_options)}</span>
+            </PillButton>
+          ) : (
           <Popover
             open={repoPopoverOpen}
             onOpenChange={(v) => {
@@ -789,6 +796,7 @@ export function CreateProjectModal({ onClose }: { onClose: () => void }) {
               )}
             </PopoverContent>
           </Popover>
+          )}
           </div>
 
           <Button

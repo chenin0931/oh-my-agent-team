@@ -569,13 +569,12 @@ describe("IssueDetail (shared)", () => {
     expect(description).toHaveAttribute("data-flush-on-unmount", "true");
   });
 
-  it("renders the issue title leaf as a link to the issue detail page", async () => {
+  it("renders the issue identifier leaf as a link to the issue detail page", async () => {
     renderIssueDetail();
 
-    // The breadcrumb leaf is the whole "identifier + title" string wrapped in a
-    // single link to the issue's own detail route (used to open the full page
-    // from the inline Inbox pane). A bare issue has no ancestor crumbs.
-    const leaf = await screen.findByText("TES-1 Implement authentication");
+    // The full title is already the page heading, so the compact breadcrumb
+    // leaf keeps only the stable identifier and remains a direct link.
+    const leaf = await screen.findByText("TES-1");
     expect(leaf.closest("a")).toHaveAttribute("href", "/test/issues/issue-1");
   });
 
@@ -584,7 +583,7 @@ describe("IssueDetail (shared)", () => {
     renderIssueDetail();
 
     // Leaf renders once loaded; a bare issue has no ancestor crumbs at all.
-    await screen.findByText("TES-1 Implement authentication");
+    await screen.findByText("TES-1");
 
     // Project is never fetched and no project crumb appears.
     expect(mockApiObj.getProject).not.toHaveBeenCalled();

@@ -88,7 +88,7 @@
   "workspace": {
     "tabs": {
       "overview": "概要",
-      "backlog": "バックログ",
+      "backlog": "計画",
       "board": "ボード",
       "roadmap": "ロードマップ",
       "activity": "アクティビティ"
@@ -99,14 +99,16 @@
       "no_description": "プロジェクトの説明はまだありません。"
     },
     "backlog": {
-      "title": "プロジェクトバックログ",
-      "summary": "Epic {{epics}} 件 · Issue {{issues}} 件 · サブタスク {{subtasks}} 件",
-      "epic": "Epic",
-      "issue": "Issue",
-      "add_issue": "Issue を追加",
+      "title": "作業の分解",
+      "description": "プロジェクトをフェーズと作業項目に分解します。作業項目を「To do」に移すと実行が始まります。",
+      "summary": "フェーズ {{epics}} 件 · 作業項目 {{issues}} 件 · サブタスク {{subtasks}} 件",
+      "epic": "フェーズ",
+      "issue": "作業項目",
+      "add_issue": "作業項目を追加",
       "add_subtask": "サブタスクを追加",
-      "ungrouped": "Epic に属さない Issue",
-      "empty": "バックログ項目はまだありません。"
+      "ungrouped": "整理待ちの作業",
+      "ungrouped_description": "このプロジェクトには属していますが、まだフェーズに分類されていません。",
+      "empty": "計画はまだありません。フェーズまたは作業項目を作成してください。"
     },
     "activity": {
       "title": "最近のプロジェクトアクティビティ",
@@ -198,7 +200,7 @@
   },
   "epic": {
     "title": "Epic",
-    "planning_container": "計画コンテナ",
+    "planning_container": "プロジェクトフェーズ",
     "create": "新規 Epic",
     "create_title": "Epic を作成",
     "create_description": "実行可能な作業へ分解する前に成果を定義します。",
@@ -213,6 +215,10 @@
     "lifecycle": "ライフサイクル",
     "health": "健全性",
     "health_none": "未評価",
+    "picker_none": "フェーズなし",
+    "picker_loading": "フェーズを読み込み中…",
+    "picker_empty": "このプロジェクトには選択できるフェーズがありません",
+    "picker_remove": "フェーズから外す",
     "overview": "概要",
     "work_items": "作業項目",
     "updates": "更新",

@@ -39,6 +39,7 @@ import { ContentEditor, type ContentEditorRef, TitleEditor, useFileDropZone, Fil
 import { StatusIcon, StatusPicker, PriorityPicker, StagePicker, AssigneePicker, StartDatePicker, DueDatePicker, LabelPicker } from "../issues/components";
 import { maxSiblingStage } from "../issues/components/pickers/stage-picker";
 import { ProjectPicker } from "../projects/components/project-picker";
+import { EpicPicker } from "../epics/components/epic-picker";
 import { useIssueTriggerPreview } from "../issues/hooks/use-issue-trigger-preview";
 import { useActorName } from "@ohmyagentteam/core/workspace/hooks";
 import { useCurrentWorkspace, useWorkspacePaths } from "@ohmyagentteam/core/paths";
@@ -285,7 +286,8 @@ export function ManualCreatePanel({
             type: issueTypeLabel,
           }),
         };
-  const epicId = (data?.epic_id as string | undefined) || undefined;
+  const initialEpicId = (data?.epic_id as string | undefined) || undefined;
+  const [epicId, setEpicId] = useState<string | undefined>(initialEpicId);
   const canSetParent = !seededIssueType || seededIssueType === "subtask";
   const canAddSubIssues = issueType === "issue";
   const canRemoveParent = !seededIssueType;
@@ -375,6 +377,7 @@ export function ManualCreatePanel({
     setDueDate(null);
     setLabelIds([]);
     setProjectId(initialProjectId);
+    setEpicId(initialEpicId);
     setParentIssueId(initialParentIssueId);
     setStage(initialStage);
     setChildIssues([]);
@@ -735,10 +738,28 @@ export function ManualCreatePanel({
               {/* Project */}
               <ProjectPicker
                 projectId={projectId ?? null}
-                onUpdate={(u) => setProjectId(u.project_id ?? undefined)}
+                onUpdate={(u) => {
+                  const nextProjectId = u.project_id ?? undefined;
+                  if (nextProjectId !== projectId) setEpicId(undefined);
+                  setProjectId(nextProjectId);
+                }}
                 triggerRender={<PillButton />}
                 align="start"
               />
+
+              {/* Epic is project-scoped. Subtasks inherit it from their parent,
+                  so only top-level work items choose a planning phase. */}
+              {issueType === "issue" && projectId && (
+                <EpicPicker
+                  projectId={projectId}
+                  epicId={epicId ?? null}
+                  onChange={(nextEpicId) =>
+                    setEpicId(nextEpicId ?? undefined)
+                  }
+                  triggerRender={<PillButton />}
+                  align="start"
+                />
+              )}
 
               {/* Stage — only relevant when creating a sub-issue under a parent */}
               {parentIssueId && (

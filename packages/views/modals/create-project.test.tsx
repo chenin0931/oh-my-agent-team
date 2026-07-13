@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithI18n } from "../test/i18n";
 
@@ -163,8 +163,11 @@ vi.mock("sonner", () => ({
 import { CreateProjectModal } from "./create-project";
 
 describe("CreateProjectModal", () => {
-  it("exposes full repository URLs in the repository picker", () => {
-    render(<CreateProjectModal onClose={vi.fn()} />);
+  it("exposes full repository URLs in the repository picker", async () => {
+    const user = userEvent.setup();
+    renderWithI18n(<CreateProjectModal onClose={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: "More options" }));
 
     expect(screen.getByTitle(longRepoUrl)).toHaveTextContent(longRepoUrl);
     expect(screen.getByRole("tooltip", { name: longRepoUrl })).toBeInTheDocument();
@@ -174,6 +177,8 @@ describe("CreateProjectModal", () => {
     const user = userEvent.setup();
 
     renderWithI18n(<CreateProjectModal onClose={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: "More options" }));
 
     const repoSearchInput = screen.getByRole("textbox", { name: "Search repositories..." });
 

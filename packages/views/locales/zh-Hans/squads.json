@@ -1,8 +1,9 @@
 {
   "page": {
-    "title": "小队",
+    "title": "协作小队",
     "new_button": "新建小队",
-    "empty_no_squads": "还没有小队，创建一个开始吧。",
+    "empty_no_squads": "还没有协作小队",
+    "empty_description": "小队由一个主智能体协调多个成员，适合需要分工、复核和并行推进的工作。",
     "empty_no_match": "没有匹配筛选条件的小队。",
     "table": {
       "name": "小队",
@@ -31,7 +32,7 @@
   },
   "archive_dialog": {
     "title": "归档这个小队？",
-    "description": "“{{name}}” 将被归档，该小队当前承接的 issue 会转交给小队负责人。此操作无法撤销，如需恢复路由请新建小队。",
+    "description": "“{{name}}” 将被归档，该小队当前承接的工作项会转交给小队负责人。此操作无法撤销，如需恢复路由请新建小队。",
     "cancel": "取消",
     "confirm": "归档",
     "archiving": "归档中…",
@@ -87,7 +88,7 @@
     "more_members_other": "还有 {{count}} 人"
   },
   "instructions_tab": {
-    "description": "小队指引会在 Leader 智能体处理分配给该小队的 issue 时注入到它的 prompt 中。可用来给 Leader 提供贯穿全队的指导、协作规范，或每次任务都应遵循的上下文。",
+    "description": "小队指引会在 主智能体智能体处理分配给该小队的工作项时注入到它的 prompt 中。可用来给 主智能体提供贯穿全队的指导、协作规范，或每次任务都应遵循的上下文。",
     "unsaved_changes": "有未保存的修改",
     "save_button": "保存"
   },
