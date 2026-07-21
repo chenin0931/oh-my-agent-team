@@ -327,29 +327,26 @@ export function PlanningQuickCreateBar({ projectId }: { projectId?: string } = {
   }, [assignmentName, progressTaskId, queryClient, t, wsId]);
 
   return (
-    <div className={cn("shrink-0", projectId ? "pb-4" : "px-4 pt-3 pb-2")}>
+    <div className={cn("shrink-0", projectId ? "pb-4" : "bg-[var(--shell-background)] px-4 pb-4 sm:px-6 lg:px-8")}>
       <div
         aria-busy={progressActive}
         aria-live="polite"
         className={cn(
-          "relative grid min-h-11 w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1.5 overflow-hidden rounded-md border px-2 py-1.5 shadow-sm transition-all duration-200 sm:flex",
+          "relative grid min-h-14 w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1.5 overflow-hidden rounded-md border px-3 py-2 shadow-[0_8px_24px_rgba(15,23,42,0.05)] transition-colors sm:flex",
           progressActive
-            ? "border-primary/35 bg-primary/5 ring-2 ring-primary/15"
-            : "bg-background",
+            ? "border-brand/50 bg-brand/5"
+            : "border-border bg-background",
         )}
       >
         {progressActive && (
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 top-0 h-0.5 animate-nav-progress-sweep bg-gradient-to-r from-transparent via-primary to-transparent"
+            className="pointer-events-none absolute inset-x-0 top-0 h-0.5 animate-pulse bg-brand"
           />
         )}
-        <Sparkles
-          className={cn(
-            "ml-1 size-4 shrink-0 text-muted-foreground",
-            progressActive && "animate-pulse text-primary",
-          )}
-        />
+        <span className={cn("ml-0.5 flex size-8 shrink-0 items-center justify-center rounded-md bg-foreground text-background", progressActive && "bg-brand text-brand-foreground")}>
+          <Sparkles className={cn("size-4", progressActive && "animate-pulse")} />
+        </span>
         <div className="col-span-2 min-w-0 sm:col-span-1 sm:flex-none">
           <PlanningAgentPicker
             agents={visibleAgents}
@@ -361,7 +358,7 @@ export function PlanningQuickCreateBar({ projectId }: { projectId?: string } = {
             }}
           />
         </div>
-        <div className="hidden h-5 w-px shrink-0 bg-border sm:block" />
+        <div className="hidden h-6 w-px shrink-0 bg-border sm:block" />
         <input
           value={displayValue}
           disabled={progressActive}

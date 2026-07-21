@@ -11,7 +11,7 @@ import {
   useSidebar,
 } from "@ohmyagentteam/ui/components/ui/sidebar";
 import { ModalRegistry } from "@ohmyagentteam/views/modals/registry";
-import { AppSidebar } from "@ohmyagentteam/views/layout";
+import { AppSidebar, WorkspaceCommandBar } from "@ohmyagentteam/views/layout";
 import { SearchCommand, SearchTrigger } from "@ohmyagentteam/views/search";
 import { ChatFab, ChatWindow } from "@ohmyagentteam/views/chat";
 import { WorkspaceSlugProvider, paths, useCurrentWorkspace } from "@ohmyagentteam/core/paths";
@@ -212,15 +212,22 @@ export function DesktopShell() {
       <WorkspaceSlugProvider slug={slug}>
         <DesktopInboxBridge />
         <div className="flex h-screen">
-          <SidebarProvider className="flex-1">
+      <SidebarProvider
+        defaultWidth={76}
+            className="flex-1 bg-[oklch(0.975_0.004_90)]"
+            style={{ "--sidebar-width": "76px" } as React.CSSProperties}
+          >
             {slug && <WindowToolbar />}
-            {slug && <AppSidebar topSlot={<SidebarTopSpacer />} searchSlot={<SearchTrigger />} />}
+            {slug && <AppSidebar topSlot={<SidebarTopSpacer />} />}
             {/* Right side: header + content container */}
             <motion.div layout transition={toolbarMotion} className="flex flex-1 min-w-0 flex-col">
               <MainTopBar />
               {/* Content area with inset styling — relative so ChatWindow/ChatFab are constrained here */}
-              <div className="relative flex flex-1 min-h-0 flex-col overflow-hidden mr-2 mb-2 ml-0.5 rounded-xl shadow-sm bg-background">
-                <TabContent />
+              <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden border-l border-border/70 bg-background">
+                {slug && <WorkspaceCommandBar searchSlot={<SearchTrigger compact />} />}
+                <div data-omat-page-canvas className="min-h-0 flex-1 overflow-hidden">
+                  <TabContent />
+                </div>
                 {slug && <ChatWindow />}
                 {slug && <ChatFab />}
               </div>

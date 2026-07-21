@@ -19,6 +19,10 @@ export type InboxItemType =
   | "task_failed"
   | "agent_blocked"
   | "agent_completed"
+  | "session_approval"
+  | "session_waiting_input"
+  | "session_waiting_environment"
+  | "outcome_failed"
   | "reaction_added"
   | "quick_create_done"
   | "quick_create_failed";
@@ -53,5 +57,5 @@ export interface InboxItem {
   read: boolean;
   archived: boolean;
   created_at: string;
-  details: Record<string, string> | null;
+  details: Record<string, any> | null;
 }

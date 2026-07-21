@@ -58,11 +58,17 @@ type QuickCreateAvailableAgentData struct {
 // Task represents a claimed task from the server.
 // Agent data (name, skills) is populated by the claim endpoint.
 type Task struct {
-	ID          string `json:"id"`
-	AgentID     string `json:"agent_id"`
-	RuntimeID   string `json:"runtime_id"`
-	IssueID     string `json:"issue_id"`
-	WorkspaceID string `json:"workspace_id"`
+	ID                     string            `json:"id"`
+	AgentID                string            `json:"agent_id"`
+	RuntimeID              string            `json:"runtime_id"`
+	IssueID                string            `json:"issue_id"`
+	WorkspaceID            string            `json:"workspace_id"`
+	AgentSessionID         string            `json:"agent_session_id,omitempty"`
+	SessionThreadID        string            `json:"session_thread_id,omitempty"`
+	CollaborationRole      string            `json:"collaboration_role,omitempty"`
+	ManagedProtocolVersion string            `json:"managed_protocol_version,omitempty"`
+	PermissionPolicy       json.RawMessage   `json:"permission_policy,omitempty"`
+	AgentVersion           *AgentVersionData `json:"agent_version,omitempty"`
 	// WorkspaceContext mirrors workspace.context (the per-workspace system
 	// prompt set in Settings → General). Server populates this on every claim
 	// regardless of task kind so the daemon can inject `## Workspace Context`
@@ -106,6 +112,9 @@ type Task struct {
 	MemberAssigneeAdvisor      bool                            `json:"member_assignee_advisor,omitempty"`       // one-shot comment-only advice task for a human assignee
 	EpicAdvisor                bool                            `json:"epic_advisor,omitempty"`                  // planning-only advisor for an Epic container
 	AdvisorInstruction         string                          `json:"advisor_instruction,omitempty"`           // optional instruction for a manually requested comment-only advisor run
+	OutcomeReview              bool                            `json:"outcome_review,omitempty"`                // independent acceptance-criteria evaluation turn
+	OutcomeRubric              string                          `json:"outcome_rubric,omitempty"`
+	OutcomeAttempt             int32                           `json:"outcome_attempt,omitempty"`
 
 	SquadID               string `json:"squad_id,omitempty"`                // when the picker was a squad, the squad's UUID; Agent is still the resolved leader
 	SquadName             string `json:"squad_name,omitempty"`              // display name for the picker squad, used in prompt text
@@ -140,6 +149,12 @@ type Task struct {
 	// Empty or non-task-scoped values are fatal for writable agent tasks; the
 	// daemon must not fall back to its own token. See MUL-3292.
 	AuthToken string `json:"auth_token,omitempty"`
+}
+
+type AgentVersionData struct {
+	ID            string `json:"id"`
+	VersionNumber int32  `json:"version_number"`
+	ConfigHash    string `json:"config_hash"`
 }
 
 // ChatAttachmentMeta is the structured attachment metadata the daemon

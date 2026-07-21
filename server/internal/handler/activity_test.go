@@ -134,6 +134,41 @@ func TestListTimeline_MergesCommentsAndActivities(t *testing.T) {
 	}
 }
 
+func TestListTimeline_PreservesActorNameAfterAgentRename(t *testing.T) {
+	issueID := createIssueForTimeline(t, "Actor identity snapshot test")
+	agentID := createHandlerTestAgent(t, "Original Specialist", nil)
+	ctx := context.Background()
+
+	if _, err := testPool.Exec(ctx, `
+		INSERT INTO comment (issue_id, workspace_id, author_type, author_id, content)
+		VALUES ($1, $2, 'agent', $3, 'Historical advice')
+	`, issueID, testWorkspaceID, agentID); err != nil {
+		t.Fatalf("insert agent comment: %v", err)
+	}
+	if _, err := testPool.Exec(ctx, `
+		INSERT INTO activity_log (workspace_id, issue_id, actor_type, actor_id, action)
+		VALUES ($1, $2, 'agent', $3, 'task_completed')
+	`, testWorkspaceID, issueID, agentID); err != nil {
+		t.Fatalf("insert agent activity: %v", err)
+	}
+	if _, err := testPool.Exec(ctx, `UPDATE agent SET name = 'Repurposed Agent' WHERE id = $1`, agentID); err != nil {
+		t.Fatalf("rename agent: %v", err)
+	}
+
+	entries, status := fetchTimeline(t, issueID)
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want 200", status)
+	}
+	if len(entries) != 2 {
+		t.Fatalf("entry count = %d, want 2", len(entries))
+	}
+	for _, entry := range entries {
+		if entry.ActorName == nil || *entry.ActorName != "Original Specialist" {
+			t.Errorf("%s actor snapshot = %v, want Original Specialist", entry.Type, entry.ActorName)
+		}
+	}
+}
+
 // fetchTimelineWrapped exercises the legacy wrapped response shape that
 // stale OhMyAgentTeam.app v0.2.26+ builds still expect — sending any of
 // limit/before/after/around makes the server emit a TimelinePage-style

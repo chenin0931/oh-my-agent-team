@@ -12,6 +12,7 @@
     "try_again": "Try again"
   },
   "network": {
+    "graph_label": "Team relationships and delegation",
     "page_title": "Collaboration network",
     "view_network": "Network",
     "view_directory": "Directory",
@@ -258,6 +259,9 @@
   "tabs": {
     "activity": "Activity",
     "tasks": "Tasks",
+    "sessions": "Sessions",
+    "execution_bindings": "Execution computers",
+    "permissions": "Permissions",
     "instructions": "Instructions",
     "skills": "Skills",
     "environment": "Environment",
@@ -349,6 +353,91 @@
       "save": "Save",
       "add": "Add",
       "unsaved_changes": "Unsaved changes"
+    },
+    "execution_bindings": {
+      "title": "Execution computers",
+      "description": "Choose the compatible desktop agents this team agent can run on. If the preferred computer is unavailable, work moves to the next enabled online computer without losing its Session.",
+      "add_label": "Add execution computer",
+      "add_placeholder": "Choose a compatible computer",
+      "add": "Add",
+      "loading": "Loading execution computers…",
+      "empty_title": "No execution computer configured",
+      "empty_description": "Connect a desktop agent and make it available to this workspace before assigning active work.",
+      "primary": "Preferred",
+      "online": "Online",
+      "offline": "Offline",
+      "active_count_one": "{{count}} active turn",
+      "active_count_other": "{{count}} active turns",
+      "priority": "Order",
+      "toggle": "Enable {{name}}",
+      "remove": "Remove",
+      "order_hint": "The preferred online computer is tried first. Lower order numbers win among the remaining bindings; current load breaks ties.",
+      "saved": "Execution routing saved",
+      "removed": "Execution computer removed",
+      "failed": "Couldn't update execution routing"
+    },
+    "sessions": {
+      "title": "Persistent Sessions",
+      "description": "A Session keeps the work goal, agent configuration snapshot, execution thread, approvals, and outcomes together across comments and retries.",
+      "current_version": "Current configuration",
+      "version": "v{{version}}",
+      "open_sessions": "Open Sessions",
+      "total_sessions": "Recent Sessions",
+      "snapshot_hash": "Snapshot",
+      "provider_default": "Provider default model",
+      "skill_count_one": "{{count}} skill",
+      "skill_count_other": "{{count}} skills",
+      "loading": "Loading Sessions…",
+      "empty_title": "No managed Sessions yet",
+      "empty_description": "A Session will appear when this agent receives an active work item.",
+      "status": {
+        "queued": "Queued",
+        "running": "Running",
+        "waiting_approval": "Needs approval",
+        "waiting_input": "Needs input",
+        "waiting_environment": "Computer offline",
+        "idle": "Idle",
+        "completed": "Completed",
+        "failed": "Failed",
+        "cancelled": "Cancelled"
+      },
+      "role": {
+        "executor": "Executor",
+        "advisor": "Advisor",
+        "coordinator": "Coordinator",
+        "reviewer": "Reviewer",
+        "planner": "Planner"
+      }
+    },
+    "permissions": {
+      "title": "Execution permissions",
+      "description": "These boundaries apply to every managed Session. Approval is one-time and tied to the exact operation; subscription alone never grants execution authority.",
+      "who_can_run": "Who can assign work",
+      "invocation": {
+        "private": "Only the agent owner can start it",
+        "shared": "People explicitly allowed by this agent's access settings"
+      },
+      "labels": { "allow": "Allowed", "ask": "Ask a person", "deny": "Always blocked" },
+      "summary": { "allow": "Runs directly", "ask": "Pauses the Session", "deny": "Never exposed" },
+      "decisions": {
+        "allow": "This action can run inside the Session without interrupting the user.",
+        "ask": "The Session pauses and creates a one-time approval for the exact operation.",
+        "deny": "The capability is not exposed to the Agent, even after approval."
+      },
+      "actions": {
+        "workspace_read": "Read work item and workspace context",
+        "workspace_write": "Write inside the assigned working directory",
+        "comment": "Comment on the assigned work item",
+        "progress_status": "Move the assigned work through active states",
+        "work_item_change": "Change business fields, assignees, or create work items",
+        "external_write": "Write to external systems",
+        "publish": "Publish, deploy, or send externally",
+        "critical_change": "Delete, invite, purchase, or change critical business data",
+        "final_status": "Mark a work item completed or cancelled",
+        "credential_read": "Read raw credentials",
+        "outside_workspace": "Read or write outside the assigned working directory"
+      },
+      "advisor_note": "Advisor and Reviewer threads receive a stricter policy: they can read context and leave one result, but cannot change status, assignees, hierarchy, or create work items."
     },
     "instructions": {
       "intro": "Define this agent's identity and working style. Injected into the agent's context for every task. Markdown is supported.",

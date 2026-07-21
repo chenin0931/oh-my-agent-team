@@ -140,11 +140,11 @@ export function EpicDetail({ epicId, onDone }: { epicId: string; onDone?: () => 
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col bg-background">
-      <header className="shrink-0 border-b px-4 py-3 md:px-6">
-        <div className="flex items-start gap-3">
-          <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-md border bg-muted/30 text-muted-foreground">
-            <Layers3 className="size-4" />
+    <div className="flex min-h-0 flex-1 flex-col bg-[var(--shell-background)]">
+      <header className="shrink-0 border-b bg-background px-4 py-5 md:px-8 md:py-6">
+        <div className="mx-auto flex w-full max-w-[1600px] items-start gap-4">
+          <span className="mt-0.5 grid size-10 shrink-0 place-items-center rounded-md border border-brand/20 bg-brand/10 text-brand">
+            <Layers3 className="size-5" />
           </span>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -184,7 +184,7 @@ export function EpicDetail({ epicId, onDone }: { epicId: string; onDone?: () => 
             </Sheet>
           )}
         </div>
-        <nav className="mt-3 flex gap-1" aria-label={t(($) => $.epic.title)}>
+        <nav className="mx-auto mt-5 flex w-full max-w-[1600px] gap-1 rounded-md bg-[var(--shell-background)] p-1" aria-label={t(($) => $.epic.title)}>
           {(["overview", "work_items", "updates"] as const).map((value) => {
             const Icon = value === "overview" ? Activity : value === "work_items" ? CheckCircle2 : MessageSquare;
             return (
@@ -193,8 +193,8 @@ export function EpicDetail({ epicId, onDone }: { epicId: string; onDone?: () => 
                 key={value}
                 onClick={() => setTab(value)}
                 className={cn(
-                  "inline-flex h-8 items-center gap-1.5 border-b-2 border-transparent px-2 text-xs text-muted-foreground",
-                  tab === value && "border-foreground text-foreground",
+                  "inline-flex h-9 items-center gap-1.5 rounded-md px-3 text-xs font-medium text-muted-foreground",
+                  tab === value && "bg-background text-foreground shadow-sm",
                 )}
               >
                 <Icon className="size-3.5" />
@@ -206,14 +206,14 @@ export function EpicDetail({ epicId, onDone }: { epicId: string; onDone?: () => 
         </nav>
       </header>
 
-      <div className="grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1fr)_288px]">
-        <main className="min-h-0 overflow-y-auto">
+      <div className="grid min-h-0 flex-1 gap-4 p-4 md:p-6 lg:grid-cols-[minmax(0,1fr)_304px]">
+        <main className="min-h-0 overflow-y-auto rounded-md border bg-background">
           {tab === "overview" && <EpicOverview epic={epic} />}
           {tab === "work_items" && <EpicWorkItems epic={epic} />}
           {tab === "updates" && <EpicUpdates epic={epic} />}
         </main>
         {!isMobile && (
-          <aside className="min-h-0 overflow-y-auto border-l bg-muted/10">
+          <aside className="min-h-0 overflow-y-auto rounded-md border bg-background">
             <EpicProperties epic={epic} onDeleted={() => { onDone?.(); navigation.push(paths.projectDetail(epic.project_id)); }} />
           </aside>
         )}
@@ -242,7 +242,7 @@ function EditableEpicTitle({ epic }: { epic: Epic }) {
       onChange={(event) => setTitle(event.target.value)}
       onBlur={save}
       onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }}
-      className="mt-1 h-auto border-0 bg-transparent p-0 font-serif text-xl font-semibold shadow-none focus-visible:ring-0 md:text-2xl"
+      className="mt-1 h-auto border-0 bg-transparent p-0 font-serif text-2xl font-semibold shadow-none focus-visible:ring-0 md:text-3xl"
       aria-label={t(($) => $.epic.title)}
     />
   );
@@ -694,11 +694,11 @@ function SectionHeading({ icon: Icon, title }: { icon: typeof FileText; title: s
 
 function EpicDetailLoading() {
   return (
-    <div className="flex min-h-0 flex-1 flex-col animate-pulse">
-      <div className="h-28 border-b bg-muted/20" />
-      <div className="grid flex-1 lg:grid-cols-[minmax(0,1fr)_288px]">
-        <div className="space-y-8 p-8"><div className="h-6 w-40 rounded bg-muted" /><div className="h-28 rounded bg-muted/60" /><div className="h-6 w-32 rounded bg-muted" /><div className="h-20 rounded bg-muted/60" /></div>
-        <div className="hidden border-l bg-muted/10 lg:block" />
+    <div className="flex min-h-0 flex-1 flex-col animate-pulse bg-[var(--shell-background)]">
+      <div className="h-36 border-b bg-background" />
+      <div className="grid flex-1 gap-4 p-6 lg:grid-cols-[minmax(0,1fr)_304px]">
+        <div className="space-y-8 rounded-md border bg-background p-8"><div className="h-6 w-40 rounded bg-muted" /><div className="h-28 rounded bg-muted/60" /><div className="h-6 w-32 rounded bg-muted" /><div className="h-20 rounded bg-muted/60" /></div>
+        <div className="hidden rounded-md border bg-background lg:block" />
       </div>
     </div>
   );

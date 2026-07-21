@@ -665,7 +665,7 @@ export function ChatWindow() {
     pointerEvents: isOpen ? "auto" : "none",
   };
 
-  const contextItems = useChatContextItems(wsId);
+  const contextItems = useChatContextItems(wsId, isOpen);
 
   return (
     <motion.div

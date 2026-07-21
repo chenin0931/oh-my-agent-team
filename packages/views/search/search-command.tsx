@@ -157,7 +157,10 @@ export function SearchCommand() {
   // if not, this triggers a lookup per id so Recent never depends on whether
   // the issue falls inside the paginated list cache.
   const recentDetailQueries = useQueries({
-    queries: recentItems.map((item) => issueDetailOptions(wsId, item.id)),
+    queries: recentItems.map((item) => ({
+      ...issueDetailOptions(wsId, item.id),
+      enabled: open,
+    })),
   });
   const recentIssues = useMemo(
     () =>

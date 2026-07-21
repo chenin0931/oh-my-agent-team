@@ -18,6 +18,7 @@ function splitRuntimeName(name: string): {
 export function runtimeDisplayName(
   runtime: Pick<AgentRuntime, "name" | "custom_name"> & {
     profile_id?: string | null;
+    provider?: string;
   },
   profile?: Pick<RuntimeProfile, "display_name"> | null,
 ): string {
@@ -28,6 +29,16 @@ export function runtimeDisplayName(
   if (profileName) {
     const hostname = splitRuntimeName(runtime.name).hostname;
     return hostname ? `${profileName} (${hostname})` : profileName;
+  }
+
+  // The connection flow presents Tencent's CodeBuddy-backed desktop agent as
+  // WorkBuddy. Keep that product-facing name consistent in runtime lists and
+  // selectors while leaving the provider id and executable name untouched.
+  if (runtime.provider === "codebuddy") {
+    const { base, hostname } = splitRuntimeName(runtime.name);
+    if (base.toLowerCase() === "codebuddy") {
+      return hostname ? `WorkBuddy (${hostname})` : "WorkBuddy";
+    }
   }
 
   return runtime.name;

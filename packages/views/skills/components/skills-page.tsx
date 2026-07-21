@@ -168,34 +168,25 @@ function PageHeaderBar({
 }) {
   const { t } = useT("skills");
   return (
-    <PageHeader className="justify-between px-5">
-      <div className="flex items-center gap-2">
-        <BookOpen className="h-4 w-4 text-muted-foreground" />
-        <h1 className="font-serif text-[15px] font-medium">{t(($) => $.page.title)}</h1>
-        {totalCount > 0 && (
-          <span className="font-mono text-xs tabular-nums text-muted-foreground/70">
-            {totalCount}
-          </span>
-        )}
-        <p className="ml-2 hidden text-xs text-muted-foreground md:block">
-          {t(($) => $.page.tagline)}{" "}
-          <a
-            href="https://ohmyagentteam.com/docs/skills"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline decoration-muted-foreground/30 underline-offset-4 transition-colors hover:text-foreground"
-          >
-            {t(($) => $.page.learn_more)}
-          </a>
-        </p>
+    <PageHeader className="min-h-[84px] justify-between bg-background px-4 sm:px-6 lg:px-8">
+      <div className="flex min-w-0 items-center gap-3">
+        <span className="grid size-9 shrink-0 place-items-center rounded-md bg-foreground text-background">
+          <BookOpen className="size-4" />
+        </span>
+        <div className="min-w-0">
+          <p className="truncate text-[10px] font-semibold uppercase text-brand">{t(($) => $.page.eyebrow)}</p>
+          <div className="flex items-baseline gap-2">
+            <h1 className="truncate font-serif text-xl font-semibold">{t(($) => $.page.title)}</h1>
+            {totalCount > 0 && <span className="text-xs tabular-nums text-muted-foreground">{totalCount}</span>}
+          </div>
+        </div>
       </div>
       {/* Quiet chrome button (outline, icon-only below md) — primary is
           reserved for the empty state's single CTA. */}
       <Button
         type="button"
         size="sm"
-        variant="outline"
-        className="h-8 w-8 gap-1 px-0 md:w-auto md:px-2.5"
+        className="h-9 w-9 gap-1 bg-brand px-0 text-brand-foreground hover:bg-brand/90 md:w-auto md:px-3"
         aria-label={t(($) => $.page.new_skill)}
         onClick={onCreate}
       >
@@ -809,7 +800,7 @@ export default function SkillsPage() {
   return (
     // relative: positioning anchor for the batch toolbar (page-centered,
     // not viewport-centered).
-    <div className="relative flex flex-1 min-h-0 flex-col">
+    <div className="relative flex min-h-0 flex-1 flex-col bg-[var(--shell-background)]">
       <PageHeaderBar
         totalCount={totalCount}
         onCreate={() => setCreateOpen(true)}
@@ -852,7 +843,7 @@ export default function SkillsPage() {
           />
           <div
             ref={listScrollRef}
-            className="min-h-0 flex-1 overflow-auto @container"
+            className="min-h-0 flex-1 overflow-auto p-4 @container sm:px-6 lg:px-8"
           >
           <ListGrid
             className={`${GRID_COLS} @2xl:min-w-[var(--lgc-minw)]`}

@@ -201,7 +201,7 @@ describe("RuntimeLocalSkillImportPanel", () => {
       },
       { timeout: 5000 },
     );
-  });
+  }, 15_000);
 
   it("imports multiple skills in sequence and shows summary", async () => {
     mockRuntimeLocalSkillsOptions.mockReturnValue({

@@ -1,5 +1,6 @@
 {
   "page": {
+    "execution_label": "Connected computers and local agents",
     "title": "Desktop agents",
     "tagline": "Connect Codex, Claude Code, or WorkBuddy on your computer, then create team agents from them.",
     "learn_more": "Learn more →",

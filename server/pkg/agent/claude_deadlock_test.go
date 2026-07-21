@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log/slog"
 	"os"
@@ -18,6 +19,23 @@ import (
 func TestMain(m *testing.M) {
 	switch mode := os.Getenv("CLAUDE_FAKE_MODE"); mode {
 	case "":
+		// Backend tests launch real subprocess fixtures. The machine-wide
+		// GOMAXPROCS default can otherwise start dozens of fake CLIs at once
+		// and make their five-second safety deadlines fail under ordinary CI
+		// load. Preserve an explicit -parallel value for intentional stress
+		// runs, regardless of whether the generated test main parsed flags
+		// before invoking this hook.
+		explicitParallel := false
+		for _, arg := range os.Args[1:] {
+			if arg == "-parallel" || arg == "-test.parallel" ||
+				strings.HasPrefix(arg, "-parallel=") || strings.HasPrefix(arg, "-test.parallel=") {
+				explicitParallel = true
+				break
+			}
+		}
+		if parallel := flag.Lookup("test.parallel"); parallel != nil && !explicitParallel {
+			_ = parallel.Value.Set("4")
+		}
 		os.Exit(m.Run())
 	case "startup_stdout_burst":
 		runFakeClaudeStartupStdoutBurst()

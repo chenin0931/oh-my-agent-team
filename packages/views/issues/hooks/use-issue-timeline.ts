@@ -46,6 +46,7 @@ function commentToTimelineEntry(c: Comment): TimelineEntry {
     id: c.id,
     actor_type: c.author_type,
     actor_id: c.author_id,
+    actor_name_snapshot: c.author_name_snapshot,
     content: c.content,
     parent_id: c.parent_id,
     created_at: c.created_at,

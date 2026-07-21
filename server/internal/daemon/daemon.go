@@ -3719,9 +3719,9 @@ func (d *Daemon) runTask(ctx context.Context, task Task, provider string, slot i
 		"OMAT_AGENT_ID":     task.AgentID,
 		"OMAT_TASK_ID":      task.ID,
 		"OMAT_TASK_SLOT":    strconv.Itoa(slot),
-		"TMPDIR":               taskTempDir,
-		"TMP":                  taskTempDir,
-		"TEMP":                 taskTempDir,
+		"TMPDIR":            taskTempDir,
+		"TMP":               taskTempDir,
+		"TEMP":              taskTempDir,
 	}
 	if task.AutopilotRunID != "" {
 		agentEnv["OMAT_AUTOPILOT_RUN_ID"] = task.AutopilotRunID
@@ -3807,12 +3807,19 @@ func (d *Daemon) runTask(ctx context.Context, task Task, provider string, slot i
 	if err != nil {
 		return TaskResult{}, fmt.Errorf("create agent backend: %w", err)
 	}
+	capabilities := agent.CapabilitiesOf(backend, provider)
 
 	taskLog.Info("starting agent",
 		"provider", provider,
 		"workdir", env.WorkDir,
 		"model", entry.Model,
 		"reused", reused,
+	)
+	taskLog.Debug("agent backend capabilities",
+		"resume", capabilities.Resume,
+		"interrupt", capabilities.Interrupt,
+		"interactive_approval", capabilities.InteractiveApproval,
+		"sandbox", capabilities.Sandbox,
 	)
 	if task.PriorSessionID != "" {
 		taskLog.Info("resuming session", "session_id", task.PriorSessionID)

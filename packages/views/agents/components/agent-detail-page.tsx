@@ -245,7 +245,7 @@ export function AgentDetailPage({ agentId }: AgentDetailPageProps) {
     : null;
 
   return (
-    <div className="flex flex-1 min-h-0 flex-col">
+    <div className="flex min-h-0 flex-1 flex-col bg-[var(--shell-background)]">
       <DetailHeader
         agent={agent}
         presence={presence}
@@ -301,6 +301,7 @@ export function AgentDetailPage({ agentId }: AgentDetailPageProps) {
           agent={agent}
           runtimes={runtimes}
           onUpdate={handleUpdate}
+          canEdit={canEdit.allowed}
           currentUserId={currentUser?.id ?? null}
           navIntent={tabNavIntent}
           onNavIntentHandled={() => setTabNavIntent(null)}
@@ -381,7 +382,7 @@ function DetailHeader({
       segments={[{ href: backHref, label: t(($) => $.page.title) }]}
       leaf={
         <>
-          <h1 className="min-w-0 truncate font-serif text-[15px] font-medium text-foreground">{agent.name}</h1>
+          <h1 className="min-w-0 truncate font-serif text-lg font-semibold text-foreground">{agent.name}</h1>
           {av && presence && (
             <span
               className={`inline-flex shrink-0 items-center gap-1.5 rounded-md border px-1.5 py-0.5 text-xs ${av.textClass}`}

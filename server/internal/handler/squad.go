@@ -8,13 +8,13 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/chenin0931/oh-my-agent-team/server/internal/analytics"
 	obsmetrics "github.com/chenin0931/oh-my-agent-team/server/internal/metrics"
 	"github.com/chenin0931/oh-my-agent-team/server/internal/util"
 	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
 	"github.com/chenin0931/oh-my-agent-team/server/pkg/protocol"
+	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // ── Response types ──────────────────────────────────────────────────────────
@@ -1080,7 +1080,11 @@ func (h *Handler) enqueueSquadLeaderTask(ctx context.Context, issue db.Issue, tr
 	// triggerCommentID is always empty on the assign/promote path; the handoff
 	// note rides its own task column, never trigger_comment_id.
 	_ = triggerCommentID
-	if _, err := h.TaskService.EnqueueTaskForSquadLeaderWithHandoff(ctx, issue, squad.LeaderID, squad.ID, handoffNote); err != nil {
+	originator := pgtype.UUID{}
+	if authorType == "member" {
+		originator, _ = util.ParseUUID(authorID)
+	}
+	if _, err := h.TaskService.EnqueueTaskForSquadLeaderWithHandoffAs(ctx, issue, squad.LeaderID, squad.ID, handoffNote, originator); err != nil {
 		slog.Warn("enqueue squad leader task failed",
 			"issue_id", uuidToString(issue.ID),
 			"squad_id", uuidToString(squad.ID),

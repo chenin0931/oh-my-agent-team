@@ -12,15 +12,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/chenin0931/oh-my-agent-team/server/internal/analytics"
 	"github.com/chenin0931/oh-my-agent-team/server/internal/events"
 	"github.com/chenin0931/oh-my-agent-team/server/internal/realtime"
 	"github.com/chenin0931/oh-my-agent-team/server/internal/service"
 	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
 	"github.com/chenin0931/oh-my-agent-team/server/pkg/protocol"
+	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 var testHandler *Handler
@@ -1531,6 +1531,20 @@ func TestCreateIssueAcceptsValidMemberAssignee(t *testing.T) {
 
 	var created IssueResponse
 	json.NewDecoder(w.Body).Decode(&created)
+	var assignmentItems int
+	if err := testPool.QueryRow(context.Background(), `
+		SELECT count(*)
+		FROM inbox_item
+		WHERE issue_id = $1
+		  AND recipient_type = 'member'
+		  AND recipient_id = $2
+		  AND type = 'issue_assigned'
+	`, created.ID, testUserID).Scan(&assignmentItems); err != nil {
+		t.Fatalf("count assignment inbox items: %v", err)
+	}
+	if assignmentItems != 1 {
+		t.Fatalf("assignment inbox items = %d, want 1", assignmentItems)
+	}
 	cleanupReq := newRequest("DELETE", "/api/issues/"+created.ID, nil)
 	cleanupReq = withURLParam(cleanupReq, "id", created.ID)
 	testHandler.DeleteIssue(httptest.NewRecorder(), cleanupReq)

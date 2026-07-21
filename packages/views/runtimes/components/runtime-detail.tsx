@@ -154,11 +154,11 @@ export function RuntimeDetail({ runtime }: { runtime: AgentRuntime }) {
   const lastSeen = formatLastSeen(runtime.last_seen_at);
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col bg-[var(--shell-background)]">
       <BreadcrumbHeader
         segments={[{ href: paths.runtimes(), label: t(($) => $.page.title) }]}
         leaf={
-          <span className="truncate font-mono text-xs text-foreground">
+          <span className="truncate font-serif text-lg font-semibold text-foreground">
             {runtimeDisplayName(runtime, runtimeProfile)}
           </span>
         }
@@ -178,7 +178,7 @@ export function RuntimeDetail({ runtime }: { runtime: AgentRuntime }) {
           page boundary rather than mid-content; the topbar stays sticky on
           its own because it's navigation, not data. */}
       <div className="flex-1 min-h-0 overflow-y-auto">
-        <div className="grid grid-cols-1 gap-4 p-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="mx-auto grid w-full max-w-[1500px] grid-cols-1 gap-4 p-4 sm:p-6 lg:grid-cols-[minmax(0,1fr)_336px] lg:p-8">
           <div className="min-w-0 space-y-5">
             <HeroCard
               runtime={runtime}

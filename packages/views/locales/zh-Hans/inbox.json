@@ -1,5 +1,6 @@
 {
   "page": {
+    "queue_label": "需要你判断或关注的事项",
     "title": "行动中心",
     "back": "行动中心"
   },
@@ -53,6 +54,10 @@
     "task_failed": "智能体任务失败",
     "agent_blocked": "智能体被阻塞",
     "agent_completed": "智能体已完成",
+    "session_approval": "需要审批",
+    "session_waiting_input": "需要补充信息",
+    "session_waiting_environment": "需要执行电脑",
+    "outcome_failed": "验收需要决策",
     "reaction_added": "添加了表情反应",
     "quick_create_done": "通过智能体创建",
     "quick_create_failed": "通过智能体创建失败"

@@ -1,5 +1,6 @@
 {
   "page": {
+    "queue_label": "Decisions and signals needing attention",
     "title": "Action center",
     "back": "Action center"
   },
@@ -53,6 +54,10 @@
     "task_failed": "Task failed",
     "agent_blocked": "Agent blocked",
     "agent_completed": "Agent completed",
+    "session_approval": "Approval needed",
+    "session_waiting_input": "Input needed",
+    "session_waiting_environment": "Execution computer needed",
+    "outcome_failed": "Outcome needs a decision",
     "reaction_added": "Reacted",
     "quick_create_done": "Created with agent",
     "quick_create_failed": "Create with agent failed"

@@ -10,6 +10,7 @@ import { clearWorkspaceStorage } from "../platform/storage-cleanup";
 import { defaultStorage } from "../platform/storage";
 import { getCurrentWsId, getCurrentSlug } from "../platform/workspace-storage";
 import { issueKeys } from "../issues/queries";
+import { agentSessionKeys } from "../issues/managed-sessions";
 import { epicKeys } from "../epics/queries";
 import { projectKeys } from "../projects/queries";
 import { pinKeys } from "../pins/queries";
@@ -78,6 +79,8 @@ import type {
   TaskDispatchPayload,
   TaskRunningPayload,
   TaskWaitingLocalDirectoryPayload,
+  AgentSessionEvent,
+  AgentSessionEventsResponse,
   TaskCompletedPayload,
   TaskFailedPayload,
   TaskCancelledPayload,
@@ -921,6 +924,34 @@ export function useRealtimeSync(
       });
     });
 
+    const unsubSessionEvent = ws.on("session:event", (p) => {
+      const payload = p as AgentSessionEvent;
+      const workspaceId = getCurrentWsId();
+      if (!workspaceId || !payload.agent_session_id) return;
+      qc.setQueryData<AgentSessionEventsResponse>(
+        agentSessionKeys.events(workspaceId, payload.agent_session_id),
+        (old) => {
+          if (!old) return { events: [payload], next_seq: payload.seq };
+          if (old.events.some((event) => event.seq === payload.seq)) return old;
+          const events = [...old.events, payload].sort((a, b) => a.seq - b.seq);
+          return { events, next_seq: Math.max(old.next_seq, payload.seq) };
+        },
+      );
+      qc.invalidateQueries({
+        queryKey: agentSessionKeys.detail(workspaceId, payload.agent_session_id),
+      });
+      if (payload.issue_id) {
+        qc.invalidateQueries({
+          queryKey: agentSessionKeys.issue(workspaceId, payload.issue_id),
+        });
+      }
+      if (payload.entry_squad_id) {
+        qc.invalidateQueries({
+          queryKey: [...workspaceKeys.squads(workspaceId), payload.entry_squad_id, "sessions"],
+        });
+      }
+    });
+
     // Helpers reused by chat lifecycle handlers.
     //
     // SECURITY (review on PR #5018 / MUL-4159): chat `task:*` events are a
@@ -1218,6 +1249,7 @@ export function useRealtimeSync(
       unsubInvitationDeclined();
       unsubInvitationRevoked();
       unsubTaskMessage();
+      unsubSessionEvent();
       unsubChatMessage();
       unsubChatDone();
       unsubTaskQueued();

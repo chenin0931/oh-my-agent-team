@@ -80,6 +80,7 @@ export const CommentSchema = z.object({
   issue_id: z.string().default(""),
   author_type: z.string().default("member"),
   author_id: z.string().default(""),
+  author_name_snapshot: z.string().nullable().optional(),
   content: z.string().default(""),
   type: z.string().default("comment"),
   parent_id: z.string().nullable().default(null),

@@ -1,5 +1,6 @@
 {
   "page": {
+    "portfolio_label": "成果ポートフォリオ",
     "title": "プロジェクト",
     "new_project": "新規プロジェクト",
     "empty": "プロジェクトはまだありません",
@@ -70,6 +71,7 @@
     "pin_tooltip": "サイドバーに固定",
     "unpin_tooltip": "サイドバーの固定を解除",
     "sidebar_tooltip": "サイドバーの開閉",
+    "more_actions": "その他のプロジェクト操作",
     "copy_link": "リンクをコピー",
     "delete_action": "プロジェクトを削除",
     "section_properties": "プロパティ",

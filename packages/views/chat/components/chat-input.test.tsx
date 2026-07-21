@@ -246,13 +246,10 @@ describe("ChatInput attachment wiring", () => {
       await Promise.resolve();
     });
 
-    // Wait for the submit button to become enabled (onUpdate has fired and
-    // React has re-rendered). SubmitButton has no aria-label, so we pick
-    // the last action button on the bar (FileUploadButton, SubmitButton).
+    // Wait for the submit button to become enabled after onUpdate fires.
     let sendButton: HTMLElement;
     await waitFor(() => {
-      const buttons = screen.getAllByRole("button");
-      sendButton = buttons[buttons.length - 1]!;
+      sendButton = screen.getByRole("button", { name: /^Send/ });
       expect(sendButton).not.toBeDisabled();
     });
     fireEvent.click(sendButton!);

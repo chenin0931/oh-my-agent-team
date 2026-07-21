@@ -3,8 +3,8 @@ package service
 import (
 	"context"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // RunEnqueueSource identifies which kind of issue write would start an agent
@@ -120,7 +120,7 @@ func (s *IssueService) WillEnqueueRun(ctx context.Context, in IssueTriggerInput,
 	switch issue.AssigneeType.String {
 	case "agent":
 		agent, err := s.Queries.GetAgent(ctx, issue.AssigneeID)
-		if err != nil || !agent.RuntimeID.Valid || agent.ArchivedAt.Valid {
+		if err != nil || agent.ArchivedAt.Valid || (!agent.RuntimeID.Valid && !s.managedExecutionEnabled(ctx)) {
 			return IssueRunTrigger{}, false
 		}
 		if !canAccess(agent) {
@@ -148,9 +148,15 @@ func (s *IssueService) WillEnqueueRun(ctx context.Context, in IssueTriggerInput,
 		if err != nil {
 			return IssueRunTrigger{}, false
 		}
-		ready, _, err := AgentReadiness(ctx, s.Queries, leader)
-		if err != nil || !ready {
-			return IssueRunTrigger{}, false
+		if s.managedExecutionEnabled(ctx) {
+			if leader.ArchivedAt.Valid {
+				return IssueRunTrigger{}, false
+			}
+		} else {
+			ready, _, readinessErr := AgentReadiness(ctx, s.Queries, leader)
+			if readinessErr != nil || !ready {
+				return IssueRunTrigger{}, false
+			}
 		}
 		if !canAccess(leader) {
 			return IssueRunTrigger{}, false
@@ -166,6 +172,10 @@ func (s *IssueService) WillEnqueueRun(ctx context.Context, in IssueTriggerInput,
 		}, true
 	}
 	return IssueRunTrigger{}, false
+}
+
+func (s *IssueService) managedExecutionEnabled(ctx context.Context) bool {
+	return s != nil && s.TaskService != nil && s.TaskService.managedSessionsEnabled(ctx)
 }
 
 // hasPendingRun reports whether the agent already holds a queued or dispatched

@@ -223,6 +223,7 @@ const mockApiObj = vi.hoisted(() => ({
   listMembers: vi.fn().mockResolvedValue([{ user_id: "user-1", name: "Test User", email: "test@test.com", role: "admin" }]),
   listAgents: vi.fn().mockResolvedValue([]),
   getProject: vi.fn(),
+  getEpic: vi.fn(),
   listProjects: vi.fn().mockResolvedValue({ projects: [] }),
 }));
 
@@ -534,6 +535,7 @@ describe("IssueDetail (shared)", () => {
     // Reset project mock — individual tests override per case. Default fixture
     // has project_id: null so getProject is not invoked.
     mockApiObj.getProject.mockReset();
+    mockApiObj.getEpic.mockReset();
   });
 
   it("shows loading skeleton while data is loading", () => {
@@ -615,6 +617,52 @@ describe("IssueDetail (shared)", () => {
     // The whole project segment is a single AppLink pointing at the project
     // detail route under the active workspace slug.
     expect(projectLink.closest("a")).toHaveAttribute("href", "/test/projects/p-1");
+  });
+
+  it("keeps the issue id visible and reveals the container chain from small screens upward", async () => {
+    const projectTitle = "Core component shortage: 48-hour supply decision";
+    const epicTitle = "Build an executable supply plan in 48 hours";
+    mockApiObj.getIssue.mockResolvedValue({
+      ...mockIssue,
+      project_id: "p-1",
+      epic_id: "epic-1",
+    });
+    mockApiObj.getProject.mockResolvedValue({
+      id: "p-1",
+      title: projectTitle,
+      icon: "factory",
+    });
+    mockApiObj.getEpic.mockResolvedValue({
+      id: "epic-1",
+      title: epicTitle,
+    });
+
+    renderIssueDetail();
+
+    const projectLabel = await screen.findByText(projectTitle);
+    const epicLabel = await screen.findByText(epicTitle);
+    const issueIdentifier = screen.getByText("TES-1");
+
+    expect(projectLabel).toHaveAttribute("title", projectTitle);
+    expect(projectLabel.closest("a")).toHaveClass(
+      "hidden",
+      "max-w-56",
+      "shrink-0",
+      "sm:flex",
+    );
+    expect(epicLabel).toHaveAttribute("title", epicTitle);
+    expect(epicLabel.closest("a")).toHaveClass(
+      "hidden",
+      "min-w-0",
+      "max-w-56",
+      "shrink-0",
+      "sm:block",
+    );
+    expect(epicLabel.closest("a")).toHaveAttribute(
+      "href",
+      "/test/projects/p-1?tab=board",
+    );
+    expect(issueIdentifier.closest("a")).toHaveClass("shrink-0");
   });
 
   it("renders properties sidebar with all core rows plus set optional rows", async () => {
@@ -965,6 +1013,40 @@ describe("IssueDetail (shared)", () => {
       expect(screen.getByText(/changed status/i)).toBeInTheDocument();
     });
     expect(screen.getByText(/changed priority/i)).toBeInTheDocument();
+  });
+
+  it("renders the historical agent name snapshot after an agent is renamed", async () => {
+    mockApiObj.listTimeline.mockResolvedValue([
+      {
+        type: "comment",
+        id: "comment-snapshot",
+        actor_type: "agent",
+        actor_id: "agent-1",
+        actor_name_snapshot: "Food Compliance Agent",
+        content: "Historical compliance advice",
+        parent_id: null,
+        created_at: "2026-01-17T00:00:00Z",
+        updated_at: "2026-01-17T00:00:00Z",
+        comment_type: "comment",
+      },
+      {
+        type: "activity",
+        id: "activity-snapshot",
+        actor_type: "agent",
+        actor_id: "agent-1",
+        actor_name_snapshot: "Food Compliance Agent",
+        action: "task_completed",
+        details: {},
+        created_at: "2026-01-18T00:00:00Z",
+      },
+    ] as TimelineEntry[]);
+
+    renderIssueDetail();
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Food Compliance Agent")).toHaveLength(2);
+    });
+    expect(screen.queryByText("Claude Agent")).not.toBeInTheDocument();
   });
 
   it("renders activity rows with unknown status values without crashing", async () => {

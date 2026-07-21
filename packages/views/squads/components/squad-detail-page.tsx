@@ -17,7 +17,7 @@ import { useNavigation } from "../../navigation";
 import { AppLink } from "../../navigation";
 import { BreadcrumbHeader } from "../../layout/breadcrumb-header";
 import { PageHeader } from "../../layout/page-header";
-import { Users, Plus, Trash2, ArrowUpRight, Crown, Camera, Loader2, Pencil, FileText, Save } from "lucide-react";
+import { Users, Plus, Trash2, ArrowUpRight, Crown, Camera, Loader2, Pencil, FileText, Save, Waypoints, Monitor } from "lucide-react";
 import { Button } from "@ohmyagentteam/ui/components/ui/button";
 import { Input } from "@ohmyagentteam/ui/components/ui/input";
 import { Label } from "@ohmyagentteam/ui/components/ui/label";
@@ -60,7 +60,7 @@ import {
 } from "../../issues/components/pickers/property-picker";
 import { ChevronDown, UserPlus } from "lucide-react";
 import { toast } from "sonner";
-import type { Squad, SquadMember, SquadMemberStatus, SquadMemberStatusValue, Agent, CreateAgentRequest, MemberWithUser } from "@ohmyagentteam/core/types";
+import type { Squad, SquadMember, SquadMemberStatus, SquadMemberStatusValue, Agent, AgentSession, CreateAgentRequest, MemberWithUser } from "@ohmyagentteam/core/types";
 import { useT } from "../../i18n";
 import { matchesPinyin } from "../../editor/extensions/pinyin-match";
 
@@ -82,6 +82,12 @@ export function SquadDetailPage() {
   const { data: members = [], refetch: refetchMembers } = useQuery<SquadMember[]>({
     queryKey: [...workspaceKeys.squads(wsId), squadId, "members"],
     queryFn: () => api.listSquadMembers(squadId),
+    enabled: !!workspace?.id && !!squadId,
+  });
+
+  const { data: sessions = [] } = useQuery<AgentSession[]>({
+    queryKey: [...workspaceKeys.squads(wsId), squadId, "sessions"],
+    queryFn: () => api.listSquadAgentSessions(squadId),
     enabled: !!workspace?.id && !!squadId,
   });
 
@@ -243,13 +249,13 @@ export function SquadDetailPage() {
     .slice(0, 2);
 
   return (
-    <div className="flex flex-1 min-h-0 flex-col">
+    <div className="flex min-h-0 flex-1 flex-col bg-[var(--shell-background)]">
       <BreadcrumbHeader
         segments={[{ href: p.squads(), label: t(($) => $.page.title) }]}
         leaf={
           <>
             <SquadHeaderAvatar squad={squad} initials={initials} />
-            <h1 className="truncate font-serif text-[15px] font-medium text-foreground">{squad.name}</h1>
+            <h1 className="truncate font-serif text-lg font-semibold text-foreground">{squad.name}</h1>
           </>
         }
         actions={
@@ -284,6 +290,7 @@ export function SquadDetailPage() {
         <SquadOverviewPane
           squad={squad}
           members={members}
+          sessions={sessions}
           memberStatusById={memberStatusById}
           canManage={canManage}
           isLeader={isLeader}
@@ -694,7 +701,7 @@ function AddMemberDialog({
                 )}
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-medium">
-                    {target?.name ?? "Select a member or agent"}
+                    {target?.name ?? t(($) => $.add_member_dialog.select_placeholder)}
                   </div>
                   {target && (
                     <div className="truncate text-xs text-muted-foreground capitalize">{target.type}</div>
@@ -709,13 +716,13 @@ function AddMemberDialog({
                     type="text"
                     value={pickerFilter}
                     onChange={(e) => setPickerFilter(e.target.value)}
-                    placeholder="Search members or agents..."
+                    placeholder={t(($) => $.add_member_dialog.search_placeholder)}
                     className="w-full bg-transparent text-sm placeholder:text-muted-foreground outline-none"
                   />
                 </div>
                 <div className="p-1 max-h-72 overflow-y-auto">
                   {filteredMembers.length > 0 && (
-                    <PickerSection label="Members">
+                    <PickerSection label={t(($) => $.add_member_dialog.members_section)}>
                       {filteredMembers.map((m) => (
                         <PickerItem
                           key={m.user_id}
@@ -733,7 +740,7 @@ function AddMemberDialog({
                     </PickerSection>
                   )}
                   {filteredAgents.length > 0 && (
-                    <PickerSection label="Agents">
+                    <PickerSection label={t(($) => $.add_member_dialog.agents_section)}>
                       {filteredAgents.map((a) => (
                         <PickerItem
                           key={a.id}
@@ -765,7 +772,7 @@ function AddMemberDialog({
               type="text"
               value={role}
               onChange={(e) => setRole(e.target.value)}
-              placeholder="e.g. Reviewer, Frontend Lead"
+              placeholder={t(($) => $.add_member_dialog.role_placeholder)}
               className="mt-1"
               onKeyDown={(e) => {
                 if (isImeComposing(e)) return;
@@ -778,7 +785,7 @@ function AddMemberDialog({
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>{t(($) => $.add_member_dialog.cancel)}</Button>
           <Button onClick={() => void handleSubmit()} disabled={!canSubmit}>
-            {submitting ? <Loader2 className="size-3.5 animate-spin" /> : "Add"}
+            {submitting ? <Loader2 className="size-3.5 animate-spin" /> : t(($) => $.add_member_dialog.submit)}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -825,7 +832,7 @@ function RoleEditor({ value, onSave }: { value: string; onSave: (next: string) =
           else if (e.key === "Escape") { setDraft(value); setEditing(false); }
         }}
         disabled={saving}
-        placeholder="Role (e.g. Reviewer)"
+        placeholder={t(($) => $.add_member_dialog.placeholder_role_inline)}
         className="h-6 mt-0.5 text-xs px-1.5"
       />
     );
@@ -837,7 +844,11 @@ function RoleEditor({ value, onSave }: { value: string; onSave: (next: string) =
       onClick={() => setEditing(true)}
       className="text-xs text-muted-foreground mt-0.5 text-left hover:text-foreground transition-colors"
     >
-      {value || <span className="italic opacity-60">{t(($) => $.add_member_dialog.placeholder_role_inline)}</span>}
+      {value === "leader"
+        ? t(($) => $.members_tab.leader_chip)
+        : value === "member"
+          ? t(($) => $.members_tab.default_role_member)
+          : value || <span className="italic opacity-60">{t(($) => $.add_member_dialog.placeholder_role_inline)}</span>}
     </button>
   );
 }
@@ -931,13 +942,13 @@ function SquadDetailInspector({
           {t(($) => $.inspector.details_section)}
         </div>
         <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
-          <InspectorRow label="Leader">
+          <InspectorRow label={t(($) => $.page.table.leader)}>
             <span className="flex min-w-0 items-center gap-1.5">
               <ActorAvatar actorType="agent" actorId={squad.leader_id} size={14} />
               <span className="truncate">{leaderName}</span>
             </span>
           </InspectorRow>
-          <InspectorRow label="Members">
+          <InspectorRow label={t(($) => $.page.table.members)}>
             <span className="text-muted-foreground tabular-nums">{memberCount}</span>
           </InspectorRow>
           <InspectorRow label={t(($) => $.page.table.owner)}>
@@ -950,10 +961,10 @@ function SquadDetailInspector({
               onTransfer={onTransferOwner}
             />
           </InspectorRow>
-          <InspectorRow label="Created">
+          <InspectorRow label={t(($) => $.page.table.created)}>
             <span className="text-muted-foreground">{timeAgo(squad.created_at)}</span>
           </InspectorRow>
-          <InspectorRow label="Updated">
+          <InspectorRow label={t(($) => $.page.table.updated)}>
             <span className="text-muted-foreground">{timeAgo(squad.updated_at)}</span>
           </InspectorRow>
         </div>
@@ -1187,16 +1198,18 @@ function SquadDescriptionEditorBody({
 // Mirrors AgentOverviewPane: dirty-guard via AlertDialog when switching tabs
 // with unsaved Instructions.
 // ---------------------------------------------------------------------------
-type SquadDetailTab = "members" | "instructions";
+type SquadDetailTab = "members" | "sessions" | "instructions";
 
-const squadDetailTabs: { id: SquadDetailTab; label: string; icon: typeof FileText }[] = [
-  { id: "members", label: "Members", icon: Users },
-  { id: "instructions", label: "Instructions", icon: FileText },
+const squadDetailTabs: { id: SquadDetailTab; icon: typeof FileText }[] = [
+  { id: "members", icon: Users },
+  { id: "sessions", icon: Waypoints },
+  { id: "instructions", icon: FileText },
 ];
 
 function SquadOverviewPane({
   squad,
   members,
+  sessions,
   memberStatusById,
   canManage,
   isLeader,
@@ -1212,6 +1225,7 @@ function SquadOverviewPane({
 }: {
   squad: Squad;
   members: SquadMember[];
+  sessions: AgentSession[];
   memberStatusById: Map<string, SquadMemberStatus>;
   // Gates every mutating control in the Members and Instructions tabs. When
   // false the tabs render read-only (no add/remove/leader/role edits, no
@@ -1265,7 +1279,7 @@ function SquadOverviewPane({
             }`}
           >
             <tab.icon className="h-3.5 w-3.5" />
-            {tab.label}
+            {t(($) => $.detail_tabs[tab.id])}
           </button>
         ))}
       </div>
@@ -1299,6 +1313,11 @@ function SquadOverviewPane({
             />
           </div>
         )}
+        {activeTab === "sessions" && (
+          <div className="flex h-full flex-col p-4 md:p-6">
+            <SquadSessionsTab sessions={sessions} />
+          </div>
+        )}
       </div>
 
       {pendingTab !== null && (
@@ -1321,6 +1340,78 @@ function SquadOverviewPane({
       )}
     </div>
   );
+}
+
+function SquadSessionsTab({ sessions }: { sessions: AgentSession[] }) {
+  const { t } = useT("squads");
+  const timeAgo = useTimeAgo();
+  const p = useWorkspacePaths();
+  const openStatuses = new Set(["queued", "running", "waiting_approval", "waiting_input", "waiting_environment", "idle"]);
+  const openCount = sessions.filter((session) => openStatuses.has(session.status)).length;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div>
+        <h3 className="text-sm font-medium">{t(($) => $.sessions_tab.title)}</h3>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          {t(($) => $.sessions_tab.summary, { active: openCount, total: sessions.length })}
+        </p>
+      </div>
+      {sessions.length === 0 ? (
+        <div className="border-y py-8 text-center">
+          <Waypoints className="mx-auto size-5 text-muted-foreground" />
+          <p className="mt-2 text-sm font-medium">{t(($) => $.sessions_tab.empty_title)}</p>
+          <p className="mx-auto mt-1 max-w-md text-xs text-muted-foreground">{t(($) => $.sessions_tab.empty_description)}</p>
+        </div>
+      ) : (
+        <div className="divide-y border-y">
+          {sessions.map((session) => (
+            <div key={session.id} className="py-3">
+              <div className="flex min-w-0 items-start justify-between gap-3">
+                <div className="min-w-0">
+                  {session.issue_id ? (
+                    <AppLink href={p.issueDetail(session.issue_id)} className="line-clamp-1 text-sm font-medium hover:underline">
+                      {session.issue_title || session.goal}
+                    </AppLink>
+                  ) : (
+                    <p className="line-clamp-1 text-sm font-medium">{session.goal}</p>
+                  )}
+                  <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{session.goal}</p>
+                </div>
+                <span className={`shrink-0 text-xs font-medium ${squadSessionStatusTone(session.status)}`}>
+                  {t(($) => $.sessions_tab.status[session.status])}
+                </span>
+              </div>
+              <div className="mt-2 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5">
+                {session.threads.map((thread) => (
+                  <span key={thread.id} className="inline-flex min-w-0 items-center gap-1.5 text-xs">
+                    <ActorAvatar actorType="agent" actorId={thread.agent_id} size={20} enableHoverCard />
+                    <span className="max-w-40 truncate">{thread.agent_name}</span>
+                    <span className="text-muted-foreground">{t(($) => $.sessions_tab.role[thread.role])}</span>
+                  </span>
+                ))}
+                {session.threads[0]?.runtime_name && (
+                  <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                    <Monitor className="size-3" />
+                    {session.threads[0].runtime_name}
+                  </span>
+                )}
+                <span className="text-xs text-muted-foreground">{timeAgo(session.updated_at)}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function squadSessionStatusTone(status: AgentSession["status"]) {
+  if (status === "running") return "text-info";
+  if (status === "waiting_approval" || status === "waiting_input" || status === "waiting_environment") return "text-warning";
+  if (status === "completed") return "text-success";
+  if (status === "failed" || status === "cancelled") return "text-destructive";
+  return "text-muted-foreground";
 }
 
 // Visual config for the five squad member status buckets. Mirrors
@@ -1432,7 +1523,11 @@ function SquadMembersTab({
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium">{getEntityName(m.member_type, m.member_id)}</span>
-                  <span className="text-xs text-muted-foreground capitalize">{m.member_type}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {m.member_type === "agent"
+                      ? t(($) => $.members_tab.member_type_agent)
+                      : t(($) => $.members_tab.member_type_human)}
+                  </span>
                   {isLeader(m) && (
                     <span className="inline-flex items-center gap-0.5 text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded">
                       <Crown className="size-3" />
@@ -1613,7 +1708,7 @@ function SquadInstructionsTab({
           onUpdate={canManage ? setValue : () => {}}
           placeholder={
             canManage
-              ? "e.g. Always start by writing a failing test. Prefer small, atomic commits."
+              ? t(($) => $.instructions_tab.placeholder)
               : ""
           }
           debounceMs={150}

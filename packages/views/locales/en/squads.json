@@ -1,6 +1,7 @@
 {
   "page": {
     "title": "Collaboration squads",
+    "eyebrow": "Multi-agent team design",
     "new_button": "New Squad",
     "empty_no_squads": "No collaboration squads yet",
     "empty_description": "A lead agent coordinates several members for work that needs delegation, review, and parallel progress.",
@@ -10,7 +11,8 @@
       "leader": "Leader",
       "members": "Members",
       "owner": "Owner",
-      "created": "Created"
+      "created": "Created",
+      "updated": "Updated"
     },
     "no_matches": "No squads match",
     "row_menu": "Squad actions",
@@ -47,8 +49,14 @@
     "label_member": "Member",
     "label_role": "Role",
     "label_optional": "(optional)",
+    "select_placeholder": "Select a person or agent",
+    "search_placeholder": "Search people and agents...",
+    "members_section": "People",
+    "agents_section": "Agents",
+    "role_placeholder": "e.g. Reviewer or Procurement",
     "placeholder_role_inline": "Add role…",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "submit": "Add"
   },
   "description_dialog": {
     "title": "Edit description",
@@ -61,6 +69,35 @@
     "keep_editing": "Keep editing",
     "discard_button": "Discard"
   },
+  "detail_tabs": {
+    "members": "Members",
+    "sessions": "Coordination sessions",
+    "instructions": "Instructions"
+  },
+  "sessions_tab": {
+    "title": "Squad coordination",
+    "summary": "{{active}} active · {{total}} recent sessions",
+    "empty_title": "No coordination sessions yet",
+    "empty_description": "When this squad receives active work, its leader and delegated agents will appear here as separate threads.",
+    "status": {
+      "queued": "Queued",
+      "running": "Running",
+      "waiting_approval": "Needs approval",
+      "waiting_input": "Needs input",
+      "waiting_environment": "Computer offline",
+      "idle": "Ready for follow-up",
+      "completed": "Completed",
+      "failed": "Failed",
+      "cancelled": "Cancelled"
+    },
+    "role": {
+      "executor": "Executor",
+      "advisor": "Advisor",
+      "coordinator": "Coordinator",
+      "reviewer": "Reviewer",
+      "planner": "Planner"
+    }
+  },
   "members_tab": {
     "section_title": "Members",
     "section_count_one": "{{count}} member in this squad",
@@ -68,6 +105,9 @@
     "add_member_button": "Add Member",
     "create_agent_button": "Create Agent",
     "leader_chip": "Leader",
+    "default_role_member": "Member",
+    "member_type_agent": "Agent",
+    "member_type_human": "Person",
     "view_agent_tooltip": "Open agent detail",
     "make_leader_tooltip": "Make squad leader",
     "remove_member_tooltip": "Remove from squad",
@@ -92,6 +132,7 @@
   },
   "instructions_tab": {
     "description": "Squad instructions are injected into the leader agent's prompt whenever it works on an issue assigned to this squad. Use them to give the leader squad-wide guidance, working agreements, or context the leader should follow on every task.",
+    "placeholder": "For example: verify the facts first, state decision risks, and summarize the team's conclusions.",
     "unsaved_changes": "Unsaved changes",
     "save_button": "Save"
   },

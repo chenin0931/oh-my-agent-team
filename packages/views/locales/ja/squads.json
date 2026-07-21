@@ -1,6 +1,7 @@
 {
   "page": {
     "title": "コラボレーションスクワッド",
+    "eyebrow": "マルチエージェントチーム設計",
     "new_button": "新規スクワッド",
     "empty_no_squads": "コラボレーションスクワッドはまだありません",
     "empty_description": "リードエージェントが複数のメンバーを調整し、分担、レビュー、並行作業を進めます。",
@@ -10,7 +11,8 @@
       "leader": "リーダー",
       "members": "メンバー",
       "owner": "所有者",
-      "created": "作成日時"
+      "created": "作成日時",
+      "updated": "更新日時"
     },
     "no_matches": "該当するスカッドはありません",
     "row_menu": "スカッドの操作",
@@ -47,8 +49,14 @@
     "label_member": "メンバー",
     "label_role": "役割",
     "label_optional": "（任意）",
+    "select_placeholder": "ユーザーまたはエージェントを選択",
+    "search_placeholder": "ユーザーとエージェントを検索…",
+    "members_section": "ユーザー",
+    "agents_section": "エージェント",
+    "role_placeholder": "例：レビュー担当、調達担当",
     "placeholder_role_inline": "役割を追加…",
-    "cancel": "キャンセル"
+    "cancel": "キャンセル",
+    "submit": "追加"
   },
   "description_dialog": {
     "title": "説明を編集",
@@ -61,12 +69,44 @@
     "keep_editing": "編集を続ける",
     "discard_button": "破棄"
   },
+  "detail_tabs": {
+    "members": "Members",
+    "sessions": "Coordination sessions",
+    "instructions": "Instructions"
+  },
+  "sessions_tab": {
+    "title": "Squad coordination",
+    "summary": "{{active}} active · {{total}} recent sessions",
+    "empty_title": "No coordination sessions yet",
+    "empty_description": "When this squad receives active work, its leader and delegated agents will appear here as separate threads.",
+    "status": {
+      "queued": "Queued",
+      "running": "Running",
+      "waiting_approval": "Needs approval",
+      "waiting_input": "Needs input",
+      "waiting_environment": "Computer offline",
+      "idle": "Ready for follow-up",
+      "completed": "Completed",
+      "failed": "Failed",
+      "cancelled": "Cancelled"
+    },
+    "role": {
+      "executor": "Executor",
+      "advisor": "Advisor",
+      "coordinator": "Coordinator",
+      "reviewer": "Reviewer",
+      "planner": "Planner"
+    }
+  },
   "members_tab": {
     "section_title": "メンバー",
     "section_count_other": "このスクワッドのメンバー {{count}}名",
     "add_member_button": "メンバーを追加",
     "create_agent_button": "エージェントを作成",
     "leader_chip": "リーダー",
+    "default_role_member": "メンバー",
+    "member_type_agent": "エージェント",
+    "member_type_human": "ユーザー",
     "view_agent_tooltip": "エージェントの詳細を開く",
     "make_leader_tooltip": "スクワッドリーダーに指定",
     "remove_member_tooltip": "スクワッドから削除",
@@ -89,6 +129,7 @@
   },
   "instructions_tab": {
     "description": "スクワッドの指示は、リーダーエージェントがこのスクワッドに割り当てられたイシューに取り組むたびに、そのプロンプトに挿入されます。スクワッド全体の方針、作業上の取り決め、リーダーがすべてのタスクで従うべきコンテキストを伝えるために使用します。",
+    "placeholder": "例：まず事実を確認して不足情報を示し、意思決定リスクを説明してから、チームの結論をまとめる。",
     "unsaved_changes": "保存していない変更",
     "save_button": "保存"
   },

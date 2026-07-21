@@ -1,6 +1,7 @@
 {
   "page": {
     "title": "협업 스쿼드",
+    "eyebrow": "멀티 에이전트 팀 설계",
     "new_button": "새 스쿼드",
     "empty_no_squads": "아직 협업 스쿼드가 없습니다",
     "empty_description": "리드 에이전트가 여러 구성원을 조율해 역할 분담, 검토, 병렬 작업을 진행합니다.",
@@ -10,7 +11,8 @@
       "leader": "리더",
       "members": "멤버",
       "owner": "소유자",
-      "created": "생성일"
+      "created": "생성일",
+      "updated": "업데이트일"
     },
     "no_matches": "일치하는 스쿼드가 없습니다",
     "row_menu": "스쿼드 작업",
@@ -47,8 +49,14 @@
     "label_member": "멤버",
     "label_role": "역할",
     "label_optional": "(선택 사항)",
+    "select_placeholder": "사용자 또는 에이전트 선택",
+    "search_placeholder": "사용자와 에이전트 검색...",
+    "members_section": "사용자",
+    "agents_section": "에이전트",
+    "role_placeholder": "예: 검토 또는 조달",
     "placeholder_role_inline": "역할 추가...",
-    "cancel": "취소"
+    "cancel": "취소",
+    "submit": "추가"
   },
   "description_dialog": {
     "title": "설명 수정",
@@ -61,12 +69,44 @@
     "keep_editing": "계속 편집",
     "discard_button": "버리기"
   },
+  "detail_tabs": {
+    "members": "Members",
+    "sessions": "Coordination sessions",
+    "instructions": "Instructions"
+  },
+  "sessions_tab": {
+    "title": "Squad coordination",
+    "summary": "{{active}} active · {{total}} recent sessions",
+    "empty_title": "No coordination sessions yet",
+    "empty_description": "When this squad receives active work, its leader and delegated agents will appear here as separate threads.",
+    "status": {
+      "queued": "Queued",
+      "running": "Running",
+      "waiting_approval": "Needs approval",
+      "waiting_input": "Needs input",
+      "waiting_environment": "Computer offline",
+      "idle": "Ready for follow-up",
+      "completed": "Completed",
+      "failed": "Failed",
+      "cancelled": "Cancelled"
+    },
+    "role": {
+      "executor": "Executor",
+      "advisor": "Advisor",
+      "coordinator": "Coordinator",
+      "reviewer": "Reviewer",
+      "planner": "Planner"
+    }
+  },
   "members_tab": {
     "section_title": "멤버",
     "section_count_other": "이 스쿼드의 멤버 {{count}}명",
     "add_member_button": "멤버 추가",
     "create_agent_button": "에이전트 만들기",
     "leader_chip": "리더",
+    "default_role_member": "멤버",
+    "member_type_agent": "에이전트",
+    "member_type_human": "사용자",
     "view_agent_tooltip": "에이전트 상세 열기",
     "make_leader_tooltip": "스쿼드 리더로 지정",
     "remove_member_tooltip": "스쿼드에서 제거",
@@ -89,6 +129,7 @@
   },
   "instructions_tab": {
     "description": "스쿼드에 할당된 이슈를 리더 에이전트가 처리할 때마다 스쿼드 지침이 리더 프롬프트에 포함됩니다. 스쿼드 전체의 방향, 작업 합의, 매 작업마다 따라야 할 맥락을 리더에게 전달할 때 사용하세요.",
+    "placeholder": "예: 먼저 사실과 누락된 정보를 확인하고, 의사결정 위험을 설명한 뒤 팀의 결론을 요약하세요.",
     "unsaved_changes": "저장하지 않은 변경사항",
     "save_button": "저장"
   },

@@ -212,15 +212,20 @@ function PageHeaderBar({
 }) {
   const { t } = useT("agents");
   return (
-    <PageHeader className="justify-between px-5">
-      <div className="flex items-center gap-2">
-        <Bot className="h-4 w-4 text-muted-foreground" />
-        <h1 className="font-serif text-[15px] font-medium">{t(($) => $.network.page_title)}</h1>
+    <PageHeader className="min-h-[84px] justify-between">
+      <div className="min-w-0">
+        <p className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase text-muted-foreground">
+          <Network className="size-3 text-brand" />
+          {t(($) => $.network.graph_label)}
+        </p>
+        <div className="flex items-center gap-2">
+        <h1 className="font-serif text-xl font-semibold">{t(($) => $.network.page_title)}</h1>
         {totalCount > 0 && (
           <span className="font-mono text-xs tabular-nums text-muted-foreground/70">
             {totalCount}
           </span>
         )}
+        </div>
       </div>
       {/* Quiet chrome button (outline, icon-only below md) — primary is
           reserved for the empty state's CTA. */}
@@ -250,8 +255,7 @@ function PageHeaderBar({
         <Button
           type="button"
           size="sm"
-          variant="outline"
-          className="h-8 w-8 gap-1 px-0 md:w-auto md:px-2.5"
+          className="h-9 w-9 gap-1 px-0 md:w-auto md:px-3"
           aria-label={t(($) => $.page.new_agent)}
           onClick={onCreate}
         >

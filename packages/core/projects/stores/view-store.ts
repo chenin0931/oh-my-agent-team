@@ -67,7 +67,7 @@ export interface ProjectViewState {
 }
 
 const DEFAULTS = {
-  viewMode: "compact" as ProjectViewMode,
+  viewMode: "comfortable" as ProjectViewMode,
   sortField: "created" as ProjectSortField,
   sortDirection: PROJECT_SORT_DEFAULT_DIRECTION.created,
   hiddenColumns: PROJECT_DEFAULT_HIDDEN_COLUMNS,

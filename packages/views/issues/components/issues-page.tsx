@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, FolderMinus, ListTodo } from "lucide-react";
+import { ChevronDown, FolderMinus, ListTodo, Orbit } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@ohmyagentteam/ui/components/ui/button";
 import {
@@ -97,7 +97,7 @@ function WorkItemScopeSwitcher() {
             <Button
               variant="ghost"
               size="sm"
-              className="-ml-2 h-8 max-w-[70vw] min-w-0 gap-1.5 px-2 text-sm font-medium sm:max-w-md"
+              className="-ml-2 h-9 max-w-[70vw] min-w-0 gap-2 px-2 font-serif text-lg font-semibold sm:max-w-xl"
               title={scopeLabel}
             >
               {selectedProject ? (
@@ -195,8 +195,22 @@ export function IssuesPage() {
         batchToolbar="list"
         renderHeader={({ controller }) => (
           <>
-            <PageHeader>
-              <WorkItemScopeSwitcher />
+            <PageHeader className="min-h-[84px] justify-between">
+              <div className="min-w-0">
+                <p className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase text-muted-foreground">
+                  <Orbit className="size-3 text-brand" />
+                  {t(($) => $.page.workspace_label)}
+                </p>
+                <WorkItemScopeSwitcher />
+              </div>
+              <div className="hidden items-baseline gap-2 sm:flex">
+                <span className="font-serif text-2xl font-semibold tabular-nums">
+                  {controller.surfaceIssues.length}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {t(($) => $.page.items_count_label)}
+                </span>
+              </div>
             </PageHeader>
             <IssuesSurfaceHeader
               issues={controller.surfaceIssues}

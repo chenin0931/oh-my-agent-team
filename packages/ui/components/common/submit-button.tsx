@@ -15,6 +15,10 @@ interface SubmitButtonProps {
   loading?: boolean;
   running?: boolean;
   onStop?: () => void;
+  /** Accessible name for the send button. Falls back to a string tooltip. */
+  ariaLabel?: string;
+  /** Accessible name for the stop button. Falls back to a string tooltip. */
+  stopAriaLabel?: string;
   /**
    * Tooltip shown over the send button when idle. Pass a string or a node
    * (e.g. `Send · ⌘↵`). Omit to render no tooltip.
@@ -32,12 +36,16 @@ function SubmitButton({
   loading,
   running,
   onStop,
+  ariaLabel,
+  stopAriaLabel,
   tooltip,
   stopTooltip,
 }: SubmitButtonProps) {
   if (running) {
+    const accessibleStopLabel =
+      stopAriaLabel ?? (typeof stopTooltip === "string" ? stopTooltip : undefined);
     const stopButton = (
-      <Button size="icon-sm" onClick={onStop}>
+      <Button size="icon-sm" onClick={onStop} aria-label={accessibleStopLabel}>
         <Square className="fill-current" />
       </Button>
     );
@@ -50,8 +58,15 @@ function SubmitButton({
     );
   }
 
+  const accessibleSubmitLabel =
+    ariaLabel ?? (typeof tooltip === "string" ? tooltip : undefined);
   const submitButton = (
-    <Button size="icon-sm" disabled={disabled || loading} onClick={onClick}>
+    <Button
+      size="icon-sm"
+      disabled={disabled || loading}
+      onClick={onClick}
+      aria-label={accessibleSubmitLabel}
+    >
       {loading ? <Loader2 className="animate-spin" /> : <ArrowUp />}
     </Button>
   );

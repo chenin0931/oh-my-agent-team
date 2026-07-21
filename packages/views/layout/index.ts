@@ -1,4 +1,5 @@
 export { AppSidebar } from "./app-sidebar";
+export { WorkspaceCommandBar } from "./workspace-command-bar";
 export { DashboardGuard } from "./dashboard-guard";
 export { DashboardLayout } from "./dashboard-layout";
 export { useDashboardGuard } from "./use-dashboard-guard";

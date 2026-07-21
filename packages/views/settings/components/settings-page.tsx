@@ -27,6 +27,7 @@ import { IntegrationsTab } from "./integrations-tab";
 import { LabsTab } from "./labs-tab";
 import { NotificationsTab } from "./notifications-tab";
 import { useT } from "../../i18n";
+import { PageHeader } from "../../layout/page-header";
 
 const ACCOUNT_TAB_KEYS = ["profile", "preferences", "notifications", "tokens"] as const;
 const ACCOUNT_TAB_ICONS = {
@@ -121,15 +122,19 @@ export function SettingsPage({ extraAccountTabs }: SettingsPageProps = {}) {
     <Tabs
       value={activeTab}
       onValueChange={handleTabChange}
-      orientation="vertical"
-      className="flex-1 min-h-0 gap-0 flex flex-col md:flex-row md:overflow-hidden overflow-y-auto"
+      orientation="horizontal"
+      className="flex min-h-0 flex-1 flex-col gap-0 overflow-hidden bg-[var(--shell-background)]"
     >
-      {/* Left nav (stacks on top on mobile, sidebar on md+) */}
-      <div className="shrink-0 md:w-52 border-b md:border-b-0 md:border-r md:overflow-y-auto p-3 md:p-4">
-        <h1 className="text-sm font-semibold mb-4 px-2">{t(($) => $.page.title)}</h1>
-        <TabsList variant="line" className="flex-col items-stretch w-full">
+      <PageHeader className="min-h-[84px] bg-background px-4 sm:px-6 lg:px-8">
+        <div>
+          <p className="text-[10px] font-semibold uppercase text-brand">{workspaceName ?? t(($) => $.page.workspace_fallback)}</p>
+          <h1 className="font-serif text-xl font-semibold">{t(($) => $.page.title)}</h1>
+        </div>
+      </PageHeader>
+      <div className="shrink-0 overflow-x-auto border-b bg-background px-4 py-2 sm:px-6 lg:px-8">
+        <TabsList variant="line" className="h-auto min-w-max flex-row items-center justify-start gap-1 bg-transparent">
           {/* My Account group */}
-          <span className="px-2 pb-1 pt-2 text-xs font-medium text-muted-foreground">
+          <span className="px-2 text-[10px] font-semibold uppercase text-muted-foreground">
             {t(($) => $.page.my_account)}
           </span>
           {ACCOUNT_TAB_KEYS.map((key) => {
@@ -149,7 +154,7 @@ export function SettingsPage({ extraAccountTabs }: SettingsPageProps = {}) {
           ))}
 
           {/* Workspace group */}
-          <span className="px-2 pb-1 pt-4 text-xs font-medium text-muted-foreground truncate">
+          <span className="ml-3 border-l px-3 text-[10px] font-semibold uppercase text-muted-foreground">
             {workspaceName ?? t(($) => $.page.workspace_fallback)}
           </span>
           {WORKSPACE_TAB_KEYS.map((key) => {
@@ -165,8 +170,8 @@ export function SettingsPage({ extraAccountTabs }: SettingsPageProps = {}) {
       </div>
 
       {/* Right content */}
-      <div className="flex-1 min-w-0 md:overflow-y-auto">
-        <div className="w-full max-w-3xl mx-auto p-4 md:p-6">
+      <div className="min-w-0 flex-1 overflow-y-auto">
+        <div className="mx-auto w-full max-w-5xl p-4 md:p-6 lg:p-8">
           <TabsContent value="profile"><AccountTab /></TabsContent>
           <TabsContent value="preferences"><PreferencesTab /></TabsContent>
           <TabsContent value="notifications"><NotificationsTab /></TabsContent>

@@ -342,15 +342,20 @@ export function DashboardPage() {
   );
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col bg-[var(--shell-background)]">
       {/* h-auto + min-h-12 + flex-wrap: the toolbar (project filter,
           dimension switch, range switch) wraps on narrow viewports so every
           control stays reachable. Wider viewports still render the original
           single row. */}
-      <PageHeader className="h-auto min-h-12 flex-wrap justify-between gap-y-1.5 px-5 py-1.5 sm:py-0">
-        <div className="flex min-w-0 items-center gap-2">
-          <BarChart3 className="h-4 w-4 shrink-0 text-muted-foreground" />
-          <h1 className="truncate text-sm font-medium">{t(($) => $.title)}</h1>
+      <PageHeader className="h-auto min-h-[84px] flex-wrap justify-between gap-y-3 bg-background px-4 py-4 sm:px-6 lg:px-8">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="grid size-9 shrink-0 place-items-center rounded-md bg-foreground text-background">
+            <BarChart3 className="size-4" />
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-[10px] font-semibold uppercase text-brand">{t(($) => $.subtitle)}</p>
+            <h1 className="truncate font-serif text-xl font-semibold">{t(($) => $.title)}</h1>
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <ProjectFilter
@@ -375,8 +380,7 @@ export function DashboardPage() {
       </PageHeader>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-6xl space-y-5 p-6">
-          <p className="text-xs text-muted-foreground">{t(($) => $.subtitle)}</p>
+        <div className="mx-auto max-w-7xl space-y-5 p-4 sm:p-6 lg:p-8">
 
           {isLoading ? (
             <DashboardSkeleton />

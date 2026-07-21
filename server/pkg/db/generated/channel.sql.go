@@ -309,7 +309,7 @@ RETURNING id, workspace_id, omat_user_id, installation_id, channel_type, channel
 
 type CreateChannelUserBindingParams struct {
 	WorkspaceID    pgtype.UUID `json:"workspace_id"`
-	OmatUserID  pgtype.UUID `json:"omat_user_id"`
+	OmatUserID     pgtype.UUID `json:"omat_user_id"`
 	InstallationID pgtype.UUID `json:"installation_id"`
 	ChannelType    string      `json:"channel_type"`
 	ChannelUserID  string      `json:"channel_user_id"`
@@ -424,8 +424,8 @@ WHERE workspace_id = $1 AND omat_user_id = $2
 `
 
 type DeleteChannelUserBindingsByWorkspaceMemberParams struct {
-	WorkspaceID   pgtype.UUID `json:"workspace_id"`
-	OmatUserID pgtype.UUID `json:"omat_user_id"`
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	OmatUserID  pgtype.UUID `json:"omat_user_id"`
 }
 
 // Application-layer integrity (replaces the old member-FK ON DELETE

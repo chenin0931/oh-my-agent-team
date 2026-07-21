@@ -8,6 +8,7 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -263,14 +264,7 @@ func (c *APIClient) DeleteJSON(ctx context.Context, path string) error {
 
 // DeleteJSONResponse performs a DELETE request and optionally decodes the JSON response.
 func (c *APIClient) DeleteJSONResponse(ctx context.Context, path string, out any) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, c.BaseURL+path, nil)
-	if err != nil {
-		return err
-	}
-	c.setHeaders(req)
-
-	resp, err := c.HTTPClient.Do(req)
-	err = wrapTransport(req, err)
+	resp, err := c.doManagedMutation(ctx, http.MethodDelete, path, nil)
 	if err != nil {
 		return err
 	}
@@ -291,15 +285,7 @@ func (c *APIClient) DeleteJSONWithBody(ctx context.Context, path string, body an
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, c.BaseURL+path, bytes.NewReader(data))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	c.setHeaders(req)
-
-	resp, err := c.HTTPClient.Do(req)
-	err = wrapTransport(req, err)
+	resp, err := c.doManagedMutation(ctx, http.MethodDelete, path, data)
 	if err != nil {
 		return err
 	}
@@ -318,15 +304,7 @@ func (c *APIClient) PostJSON(ctx context.Context, path string, body any, out any
 		return err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.BaseURL+path, bytes.NewReader(data))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	c.setHeaders(req)
-
-	resp, err := c.HTTPClient.Do(req)
-	err = wrapTransport(req, err)
+	resp, err := c.doManagedMutation(ctx, http.MethodPost, path, data)
 	if err != nil {
 		return err
 	}
@@ -348,15 +326,7 @@ func (c *APIClient) PutJSON(ctx context.Context, path string, body any, out any)
 		return err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPut, c.BaseURL+path, bytes.NewReader(data))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	c.setHeaders(req)
-
-	resp, err := c.HTTPClient.Do(req)
-	err = wrapTransport(req, err)
+	resp, err := c.doManagedMutation(ctx, http.MethodPut, path, data)
 	if err != nil {
 		return err
 	}
@@ -378,15 +348,7 @@ func (c *APIClient) PatchJSON(ctx context.Context, path string, body any, out an
 		return err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPatch, c.BaseURL+path, bytes.NewReader(data))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	c.setHeaders(req)
-
-	resp, err := c.HTTPClient.Do(req)
-	err = wrapTransport(req, err)
+	resp, err := c.doManagedMutation(ctx, http.MethodPatch, path, data)
 	if err != nil {
 		return err
 	}
@@ -399,6 +361,122 @@ func (c *APIClient) PatchJSON(ctx context.Context, path string, body any, out an
 		return nil
 	}
 	return json.NewDecoder(resp.Body).Decode(out)
+}
+
+type approvalRequiredPayload struct {
+	Code           string `json:"code"`
+	ApprovalID     string `json:"approval_id"`
+	AgentSessionID string `json:"agent_session_id"`
+	Title          string `json:"title"`
+}
+
+type managedSessionApprovalState struct {
+	Approvals []struct {
+		ID             string `json:"id"`
+		Status         string `json:"status"`
+		DecisionReason string `json:"decision_reason"`
+	} `json:"approvals"`
+}
+
+// doManagedMutation adds the V2 approval handshake without changing legacy
+// command behavior. Only task-scoped clients wait; human CLI calls surface the
+// original 428 response unchanged.
+func (c *APIClient) doManagedMutation(ctx context.Context, method, path string, data []byte) (*http.Response, error) {
+	approvalID := ""
+	for attempt := 0; attempt < 2; attempt++ {
+		var body io.Reader
+		if data != nil {
+			body = bytes.NewReader(data)
+		}
+		req, err := http.NewRequestWithContext(ctx, method, c.BaseURL+path, body)
+		if err != nil {
+			return nil, err
+		}
+		if data != nil {
+			req.Header.Set("Content-Type", "application/json")
+		}
+		c.setHeaders(req)
+		if approvalID != "" {
+			req.Header.Set("X-Approval-ID", approvalID)
+		}
+		resp, err := c.HTTPClient.Do(req)
+		err = wrapTransport(req, err)
+		if err != nil {
+			return nil, err
+		}
+		if resp.StatusCode != http.StatusPreconditionRequired || c.TaskID == "" || approvalID != "" {
+			return resp, nil
+		}
+
+		raw, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+		_ = resp.Body.Close()
+		resp.Body = io.NopCloser(bytes.NewReader(raw))
+		var required approvalRequiredPayload
+		if json.Unmarshal(raw, &required) != nil || required.Code != "approval_required" || required.ApprovalID == "" || required.AgentSessionID == "" {
+			return resp, nil
+		}
+		if err := c.waitForManagedApproval(ctx, required); err != nil {
+			return nil, err
+		}
+		approvalID = required.ApprovalID
+	}
+	return nil, fmt.Errorf("managed action approval retry exhausted")
+}
+
+func (c *APIClient) waitForManagedApproval(ctx context.Context, required approvalRequiredPayload) error {
+	ticker := time.NewTicker(750 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		state, err := c.getManagedApprovalState(ctx, required.AgentSessionID)
+		if err != nil {
+			return fmt.Errorf("wait for approval %s: %w", required.ApprovalID, err)
+		}
+		for _, approval := range state.Approvals {
+			if approval.ID != required.ApprovalID {
+				continue
+			}
+			switch approval.Status {
+			case "approved":
+				return nil
+			case "rejected", "cancelled", "expired":
+				reason := strings.TrimSpace(approval.DecisionReason)
+				if reason == "" {
+					reason = approval.Status
+				}
+				return fmt.Errorf("managed action %q was %s: %s", required.Title, approval.Status, reason)
+			case "consumed":
+				return fmt.Errorf("managed action approval was already used")
+			}
+		}
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("waiting for managed action approval: %w", ctx.Err())
+		case <-ticker.C:
+		}
+	}
+}
+
+func (c *APIClient) getManagedApprovalState(ctx context.Context, sessionID string) (managedSessionApprovalState, error) {
+	path := "/api/agent-sessions/" + url.PathEscape(sessionID)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.BaseURL+path, nil)
+	if err != nil {
+		return managedSessionApprovalState{}, err
+	}
+	c.setHeaders(req)
+	resp, err := c.HTTPClient.Do(req)
+	err = wrapTransport(req, err)
+	if err != nil {
+		return managedSessionApprovalState{}, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 400 {
+		return managedSessionApprovalState{}, newHTTPError(http.MethodGet, path, resp)
+	}
+	var state managedSessionApprovalState
+	if err := json.NewDecoder(resp.Body).Decode(&state); err != nil {
+		return managedSessionApprovalState{}, err
+	}
+	return state, nil
 }
 
 // AttachmentResponse mirrors the server's upload-file response.

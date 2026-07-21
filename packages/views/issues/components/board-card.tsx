@@ -23,6 +23,8 @@ import { LabelChip } from "../../labels/label-chip";
 import { IssueAgentActivityIndicator } from "./issue-agent-activity-indicator";
 import { useIssueSurfaceActionsOptional } from "../surface/actions-context";
 import { useT } from "../../i18n";
+import { STATUS_CONFIG } from "@ohmyagentteam/core/issues/config";
+import { cn } from "@ohmyagentteam/ui/lib/utils";
 
 function formatDate(date: string): string {
   return formatDateOnly(date, { month: "short", day: "numeric" }, "en-US");
@@ -99,6 +101,7 @@ export const BoardCardContent = memo(function BoardCardContent({
       : null;
 
   const priorityLabel = t(($) => $.priority[issue.priority]);
+  const statusVisual = STATUS_CONFIG[issue.status];
   const priorityIconNode = showPriority ? (
     canEdit ? (
       <PickerWrapper>
@@ -165,7 +168,8 @@ export const BoardCardContent = memo(function BoardCardContent({
   const showRightMeta = !!showStartDate || !!showDueDate || !!showChildProgress || showUpdatedHint;
 
   return (
-    <div className="rounded-lg border-[0.5px] border-border bg-card py-3 px-2.5 shadow-[0_3px_6px_-2px_rgba(0,0,0,0.02),0_1px_1px_0_rgba(0,0,0,0.04)] transition-colors group-hover/card:border-accent group-hover/card:bg-accent group-data-[popup-open]/card:border-accent group-data-[popup-open]/card:bg-accent">
+    <div className="relative overflow-hidden rounded-md border border-border/80 bg-card py-3 pl-3.5 pr-2.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-colors group-hover/card:border-foreground/20 group-data-[popup-open]/card:border-foreground/20">
+      <span aria-hidden="true" className={cn("absolute bottom-3 left-0 top-3 w-0.5 rounded-r", statusVisual.dividerColor)} />
       {/* Row 1: priority + identifier (left), agent activity + assignee (right) */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 min-w-0">

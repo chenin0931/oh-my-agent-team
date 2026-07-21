@@ -26,7 +26,7 @@ beforeAll(() => {
 
 beforeEach(() => {
   localStorage.clear();
-  useProjectViewStore.setState({ viewMode: "compact" });
+  useProjectViewStore.setState({ viewMode: "comfortable" });
   setCurrentWorkspace(null, null);
 });
 
@@ -35,8 +35,8 @@ afterEach(() => {
 });
 
 describe("useProjectViewStore", () => {
-  it("defaults to 'compact'", () => {
-    expect(useProjectViewStore.getState().viewMode).toBe("compact");
+  it("defaults to the portfolio card view", () => {
+    expect(useProjectViewStore.getState().viewMode).toBe("comfortable");
   });
 
   it("setViewMode mutates the store", () => {
@@ -83,7 +83,7 @@ describe("useProjectViewStore", () => {
     expect(useProjectViewStore.getState().viewMode).toBe("compact");
   });
 
-  it("resets to 'compact' when switching to a workspace with no persisted value", async () => {
+  it("resets to the portfolio card view when switching to a workspace with no persisted value", async () => {
     localStorage.setItem(
       "omat_projects_view:acme",
       JSON.stringify({ state: { viewMode: "comfortable" }, version: 0 }),
@@ -97,7 +97,7 @@ describe("useProjectViewStore", () => {
     setCurrentWorkspace("beta", "ws_b");
     await flush();
     await flush();
-    expect(useProjectViewStore.getState().viewMode).toBe("compact");
+    expect(useProjectViewStore.getState().viewMode).toBe("comfortable");
     expect(localStorage.getItem("omat_projects_view:acme")).not.toBeNull();
   });
 });

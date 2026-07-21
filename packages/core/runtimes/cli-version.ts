@@ -12,6 +12,7 @@
  */
 export const MIN_QUICK_CREATE_CLI_VERSION = "0.2.21";
 export const MIN_PLANNING_QUICK_CREATE_CLI_VERSION = "0.3.43";
+export const MIN_MANAGED_SESSION_CLI_VERSION = "0.4.0";
 
 export type CliVersionState = "ok" | "too_old" | "missing";
 
@@ -74,6 +75,10 @@ export function checkQuickCreateCliVersion(detected: string | undefined | null):
 
 export function checkPlanningQuickCreateCliVersion(detected: string | undefined | null): CliVersionCheck {
   return checkCliVersion(detected, MIN_PLANNING_QUICK_CREATE_CLI_VERSION);
+}
+
+export function checkManagedSessionCliVersion(detected: string | undefined | null): CliVersionCheck {
+  return checkCliVersion(detected, MIN_MANAGED_SESSION_CLI_VERSION);
 }
 
 /** Pull `cli_version` off a runtime row's loosely-typed metadata bag. */

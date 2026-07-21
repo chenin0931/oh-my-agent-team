@@ -52,4 +52,24 @@ describe("runtimeDisplayName", () => {
       ),
     ).toBe("My Feishu Runtime");
   });
+
+  it("uses the WorkBuddy product name for the built-in codebuddy runtime", () => {
+    expect(
+      runtimeDisplayName({
+        name: "Codebuddy (host)",
+        custom_name: null,
+        provider: "codebuddy",
+      }),
+    ).toBe("WorkBuddy (host)");
+  });
+
+  it("keeps an explicit codebuddy custom name", () => {
+    expect(
+      runtimeDisplayName({
+        name: "Codebuddy (host)",
+        custom_name: "Procurement Desktop Agent",
+        provider: "codebuddy",
+      }),
+    ).toBe("Procurement Desktop Agent");
+  });
 });

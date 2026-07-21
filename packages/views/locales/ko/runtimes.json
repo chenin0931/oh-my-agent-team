@@ -1,5 +1,6 @@
 {
   "page": {
+    "execution_label": "연결된 컴퓨터와 로컬 에이전트",
     "title": "데스크톱 에이전트",
     "tagline": "컴퓨터의 Codex, Claude Code 또는 WorkBuddy를 연결하고 팀 에이전트를 만드세요.",
     "learn_more": "자세히 보기 →",
