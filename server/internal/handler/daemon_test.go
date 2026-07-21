@@ -783,10 +783,22 @@ func TestDaemonRegister_ResumesWaitingManagedSession(t *testing.T) {
 	provider := featureflag.NewStaticProvider()
 	provider.Set(featureflags.AgentSessionsV2, featureflag.Rule{Default: true})
 	flags := featureflag.NewService(provider)
-	originalHandlerFlags := testHandler.FeatureFlags
-	originalTaskFlags := testHandler.TaskService.FeatureFlags
-	testHandler.FeatureFlags = flags
-	testHandler.TaskService.FeatureFlags = flags
+	managedTaskService := service.NewTaskService(
+		testHandler.TaskService.Queries,
+		testHandler.TaskService.TxStarter,
+		testHandler.TaskService.Hub,
+		testHandler.TaskService.Bus,
+		testHandler.TaskService.Wakeup,
+	)
+	managedTaskService.Analytics = testHandler.TaskService.Analytics
+	managedTaskService.Metrics = testHandler.TaskService.Metrics
+	managedTaskService.FeatureFlags = flags
+	managedTaskService.Sessions = testHandler.TaskService.Sessions
+	managedTaskService.EmptyClaim = testHandler.TaskService.EmptyClaim
+	managedTaskService.Composio = testHandler.TaskService.Composio
+	managedHandler := *testHandler
+	managedHandler.FeatureFlags = flags
+	managedHandler.TaskService = managedTaskService
 
 	var runtimeID, agentID, versionID, issueID, sessionID string
 	if err := testPool.QueryRow(ctx, `
@@ -851,8 +863,6 @@ func TestDaemonRegister_ResumesWaitingManagedSession(t *testing.T) {
 	}
 
 	t.Cleanup(func() {
-		testHandler.FeatureFlags = originalHandlerFlags
-		testHandler.TaskService.FeatureFlags = originalTaskFlags
 		testPool.Exec(ctx, `DELETE FROM agent_task_queue WHERE agent_id = $1`, agentID)
 		testPool.Exec(ctx, `DELETE FROM agent_session WHERE id = $1`, sessionID)
 		testPool.Exec(ctx, `DELETE FROM issue WHERE id = $1`, issueID)
@@ -871,7 +881,7 @@ func TestDaemonRegister_ResumesWaitingManagedSession(t *testing.T) {
 				{"name": "Managed recovery runtime " + suffix, "type": "codex", "version": "test", "status": "online"},
 			},
 		}, testWorkspaceID, daemonID)
-		testHandler.DaemonRegister(w, req)
+		managedHandler.DaemonRegister(w, req)
 		if w.Code != http.StatusOK {
 			t.Fatalf("DaemonRegister: expected 200, got %d: %s", w.Code, w.Body.String())
 		}
