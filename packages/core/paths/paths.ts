@@ -24,6 +24,7 @@ function workspaceScoped(slug: string) {
     epicDetail: (id: string) => `${ws}/epics/${encode(id)}`,
     projects: () => `${ws}/projects`,
     projectDetail: (id: string) => `${ws}/projects/${encode(id)}`,
+    projectBoard: (id: string) => `${ws}/projects/${encode(id)}?tab=board`,
     autopilots: () => `${ws}/autopilots`,
     autopilotDetail: (id: string) => `${ws}/autopilots/${encode(id)}`,
     agents: () => `${ws}/agents`,

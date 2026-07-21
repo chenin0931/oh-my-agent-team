@@ -46,6 +46,7 @@ import { TerminateTaskConfirmDialog } from "./terminate-task-confirm-dialog";
 
 interface ExecutionLogSectionProps {
   issueId: string;
+  legacyOnly?: boolean;
 }
 
 // Past-runs sort priority: newest first by timestamp. When two runs
@@ -57,7 +58,7 @@ const PAST_STATUS_RANK: Record<string, number> = {
   completed: 2,
 };
 
-export function ExecutionLogSection({ issueId }: ExecutionLogSectionProps) {
+export function ExecutionLogSection({ issueId, legacyOnly = false }: ExecutionLogSectionProps) {
   const { t } = useT("issues");
   const [open, setOpen] = useState(true);
   const [showPast, setShowPast] = useState(false);
@@ -74,9 +75,14 @@ export function ExecutionLogSection({ issueId }: ExecutionLogSectionProps) {
     refetchOnWindowFocus: true,
   });
 
+  const visibleTasks = useMemo(
+    () => legacyOnly ? tasks.filter((task) => !task.agent_session_id) : tasks,
+    [legacyOnly, tasks],
+  );
+
   const activeTasks = useMemo(
     () =>
-      tasks.filter(
+      visibleTasks.filter(
         (t) =>
           t.status === "queued" ||
           t.status === "dispatched" ||
@@ -86,11 +92,11 @@ export function ExecutionLogSection({ issueId }: ExecutionLogSectionProps) {
           t.status === "waiting_local_directory" ||
           t.status === "running",
       ),
-    [tasks],
+    [visibleTasks],
   );
 
   const pastTasks = useMemo(() => {
-    const past = tasks.filter(
+    const past = visibleTasks.filter(
       (t) =>
         t.status === "completed" ||
         t.status === "failed" ||
@@ -106,7 +112,7 @@ export function ExecutionLogSection({ issueId }: ExecutionLogSectionProps) {
         (PAST_STATUS_RANK[b.status] ?? 99)
       );
     });
-  }, [tasks]);
+  }, [visibleTasks]);
 
   if (activeTasks.length === 0 && pastTasks.length === 0) return null;
 

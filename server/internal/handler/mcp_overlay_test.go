@@ -5,6 +5,25 @@ import (
 	"testing"
 )
 
+func TestFilterMCPConfigByNamesUsesVersionMembership(t *testing.T) {
+	config := json.RawMessage(`{"mcpServers":{"github":{"command":"npx"},"fetch":{"command":"uvx"}},"mode":"strict"}`)
+	got := filterMCPConfigByNames(config, []string{"fetch"})
+	var parsed map[string]any
+	if err := json.Unmarshal(got, &parsed); err != nil {
+		t.Fatalf("unmarshal filtered config: %v", err)
+	}
+	servers := parsed["mcpServers"].(map[string]any)
+	if _, ok := servers["fetch"]; !ok {
+		t.Fatal("snapshotted server was removed")
+	}
+	if _, ok := servers["github"]; ok {
+		t.Fatal("server added after Session snapshot leaked into claim")
+	}
+	if parsed["mode"] != "strict" {
+		t.Fatal("non-server MCP configuration was not preserved")
+	}
+}
+
 // TestMergeMCPOverlayAgentNilOverlayNil covers the "no managed MCP anywhere"
 // branch: both inputs absent must return nil so the daemon's "managed
 // mcp_config?" short-circuit treats the task as no-config — exactly the

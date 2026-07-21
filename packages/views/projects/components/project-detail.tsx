@@ -102,6 +102,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
   const wsId = useWorkspaceId();
   const wsPaths = useWorkspacePaths();
   const router = useNavigation();
+  const workspaceTab = router.searchParams.get("tab");
   const userId = useAuthStore((s) => s.user?.id);
   const { data: project, isLoading } = useQuery(projectDetailOptions(wsId, projectId));
   const recordRecentContext = useRecentContextStore((s) => s.recordVisit);
@@ -148,7 +149,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
   });
   const sidebarRef = usePanelRef();
   const desktopSidebarInitialOpen = getAnimatedRightSidebarInitialOpen(
-    true,
+    !projectTabPrefersWideCanvas(workspaceTab),
     defaultLayout,
   );
   // Desktop and mobile sidebar state must be separate. A single state defaulting
@@ -170,6 +171,16 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
       setMobileSidebarOpen(false);
     }
   }, [isMobile]);
+
+  useEffect(() => {
+    if (isMobile || !projectTabPrefersWideCanvas(workspaceTab)) return;
+    const panel = sidebarRef.current;
+    if (!panel || panel.isCollapsed()) return;
+
+    beginDesktopSidebarToggle(false);
+    const frame = window.requestAnimationFrame(() => panel.collapse());
+    return () => window.cancelAnimationFrame(frame);
+  }, [beginDesktopSidebarToggle, isMobile, sidebarRef, workspaceTab]);
 
   const handleToggleSidebar = useCallback(() => {
     if (isMobile) {
@@ -457,12 +468,12 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
 
   return (
     <>
-    <ResizablePanelGroup orientation="horizontal" className="flex-1 min-h-0" defaultLayout={defaultLayout} onLayoutChanged={onLayoutChanged}>
+    <ResizablePanelGroup orientation="horizontal" className="flex-1 min-h-0 bg-[var(--shell-background)]" defaultLayout={defaultLayout} onLayoutChanged={onLayoutChanged}>
       <ResizablePanel id="content" minSize="50%">
         <div className="flex h-full flex-col">
           <BreadcrumbHeader
             segments={[{ href: wsPaths.projects(), label: t(($) => $.detail.breadcrumb_fallback) }]}
-            leaf={<span className="truncate font-medium text-foreground">{project.title}</span>}
+            leaf={<span className="truncate font-serif text-base font-medium text-foreground">{project.title}</span>}
             actions={
               <>
               <Button
@@ -470,6 +481,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
                 size="icon-sm"
                 className={cn("text-muted-foreground", isPinned && "text-foreground")}
                 title={isPinned ? t(($) => $.detail.unpin_tooltip) : t(($) => $.detail.pin_tooltip)}
+                aria-label={isPinned ? t(($) => $.detail.unpin_tooltip) : t(($) => $.detail.pin_tooltip)}
                 onClick={() => {
                   if (isPinned) {
                     deletePinMut.mutate({ itemType: "project", itemId: projectId });
@@ -483,7 +495,12 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
               <DropdownMenu>
                 <DropdownMenuTrigger
                   render={
-                    <Button variant="ghost" size="icon-sm" className="text-muted-foreground">
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="text-muted-foreground"
+                      aria-label={t(($) => $.detail.more_actions)}
+                    >
                       <MoreHorizontal />
                     </Button>
                   }
@@ -519,6 +536,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
                       size="icon-sm"
                       className={sidebarOpen ? "" : "text-muted-foreground"}
                       onClick={handleToggleSidebar}
+                      aria-label={t(($) => $.detail.sidebar_tooltip)}
                     >
                       <PanelRight />
                     </Button>
@@ -582,4 +600,8 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
       )}
     </>
   );
+}
+
+export function projectTabPrefersWideCanvas(tab: string | null): boolean {
+  return tab === "board" || tab === "roadmap";
 }

@@ -199,6 +199,10 @@ export interface AgentTask {
   id: string;
   agent_id: string;
   runtime_id: string;
+  /** Product-level managed execution identity. Absent on Legacy Tasks. */
+  agent_session_id?: string;
+  session_thread_id?: string;
+  collaboration_role?: "executor" | "advisor" | "coordinator" | "reviewer" | "planner";
   // Empty string ("") when the task has no linked issue — either chat- or
   // autopilot-spawned. Check chat_session_id / autopilot_run_id to tell
   // which source produced it.

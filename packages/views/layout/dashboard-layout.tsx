@@ -7,6 +7,7 @@ import { AppSidebar } from "./app-sidebar";
 import { DashboardGuard } from "./dashboard-guard";
 import { NavigationProgress } from "./navigation-progress";
 import { WorkspacePresencePrefetch } from "./workspace-presence-prefetch";
+import { WorkspaceCommandBar } from "./workspace-command-bar";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -32,12 +33,20 @@ export function DashboardLayout({
         </div>
       }
     >
-      <SidebarProvider className="h-svh">
+      <SidebarProvider
+        defaultOpen={false}
+        open={false}
+        defaultWidth={320}
+        className="h-svh bg-[var(--shell-background)]"
+      >
         <WorkspacePresencePrefetch />
-        <AppSidebar searchSlot={searchSlot} />
-        <SidebarInset className="relative overflow-hidden">
+        <AppSidebar />
+        <SidebarInset className="relative m-0 min-w-0 overflow-hidden rounded-none bg-[var(--shell-background)] md:m-0 md:rounded-none">
           <NavigationProgress />
-          {children}
+          <WorkspaceCommandBar searchSlot={searchSlot} />
+          <div data-omat-page-canvas className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            {children}
+          </div>
           <ModalRegistry />
           {extra}
         </SidebarInset>

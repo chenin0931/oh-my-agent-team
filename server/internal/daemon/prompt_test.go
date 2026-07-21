@@ -101,6 +101,32 @@ func TestBuildPromptManualAdvisorIncludesInstruction(t *testing.T) {
 	}
 }
 
+func TestBuildPromptManagedOutcomeReviewerIsReadOnlyAndStructured(t *testing.T) {
+	out := BuildPrompt(Task{
+		IssueID:        "issue-789",
+		OutcomeReview:  true,
+		OutcomeRubric:  "- Report names three verified customer risks",
+		OutcomeAttempt: 2,
+	}, "codex")
+	for _, want := range []string{
+		"independent outcome reviewer",
+		"attempt 2",
+		"three verified customer risks",
+		"read-only",
+		"revision_requested",
+		"Return ONLY one JSON object",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("outcome reviewer prompt missing %q\n--- output ---\n%s", want, out)
+		}
+	}
+	for _, forbidden := range []string{"then complete it", "omat issue comment add", "omat issue status"} {
+		if strings.Contains(out, forbidden) {
+			t.Errorf("outcome reviewer prompt should not include %q\n--- output ---\n%s", forbidden, out)
+		}
+	}
+}
+
 // TestBuildQuickCreatePromptAssigneeIncludesSquads locks in the MUL-2165
 // fix: the assignee-resolution rules must tell the agent to consult the
 // squad list alongside members and agents. Before this, a quick-create

@@ -5,10 +5,10 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/chenin0931/oh-my-agent-team/server/internal/util"
 	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
+	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type issueAgentActionRequest struct {
@@ -131,7 +131,8 @@ func (h *Handler) RunIssueAgentAction(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusConflict, "the assigned agent already has an active run")
 		return
 	}
-	task, err := h.TaskService.EnqueueTaskForIssueWithHandoff(r.Context(), issue, note)
+	originator, _ := util.ParseUUID(userID)
+	task, err := h.TaskService.EnqueueTaskForIssueWithHandoffAs(r.Context(), issue, note, originator)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return

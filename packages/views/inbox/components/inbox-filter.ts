@@ -8,6 +8,10 @@ const ACTION_TYPES = new Set<InboxItemType>([
   "review_requested",
   "task_failed",
   "agent_blocked",
+  "session_approval",
+  "session_waiting_input",
+  "session_waiting_environment",
+  "outcome_failed",
   "quick_create_failed",
 ]);
 
@@ -16,6 +20,10 @@ const AGENT_TYPES = new Set<InboxItemType>([
   "task_failed",
   "agent_blocked",
   "agent_completed",
+  "session_approval",
+  "session_waiting_input",
+  "session_waiting_environment",
+  "outcome_failed",
 ]);
 
 const SYSTEM_TYPES = new Set<InboxItemType>([

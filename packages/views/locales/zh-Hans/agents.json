@@ -12,6 +12,7 @@
     "try_again": "重试"
   },
   "network": {
+    "graph_label": "团队关系与委派",
     "page_title": "协作网络",
     "view_network": "网络",
     "view_directory": "目录",
@@ -247,6 +248,9 @@
   "tabs": {
     "activity": "概览",
     "tasks": "工作记录",
+    "sessions": "会话",
+    "execution_bindings": "执行电脑",
+    "permissions": "权限",
     "instructions": "角色指令",
     "skills": "技能",
     "environment": "环境变量",
@@ -337,6 +341,89 @@
       "save": "保存",
       "add": "添加",
       "unsaved_changes": "未保存的修改"
+    },
+    "execution_bindings": {
+      "title": "执行电脑",
+      "description": "选择这个团队智能体可以在哪些兼容的桌面智能体上运行。首选电脑不可用时，会在不丢失 Session 的前提下切换到下一个在线环境。",
+      "add_label": "添加执行电脑",
+      "add_placeholder": "选择一台兼容电脑",
+      "add": "添加",
+      "loading": "正在加载执行电脑...",
+      "empty_title": "尚未配置执行电脑",
+      "empty_description": "先连接一个桌面智能体并让当前工作区可用，再分配进入执行状态的工作。",
+      "primary": "首选",
+      "online": "在线",
+      "offline": "离线",
+      "active_count_other": "{{count}} 个活动回合",
+      "priority": "顺序",
+      "toggle": "启用 {{name}}",
+      "remove": "移除",
+      "order_hint": "优先使用在线的首选电脑；其余环境按较小的顺序值优先，顺序相同时选择当前负载较低的环境。",
+      "saved": "已保存执行路由",
+      "removed": "已移除执行电脑",
+      "failed": "更新执行路由失败"
+    },
+    "sessions": {
+      "title": "持续 Session",
+      "description": "Session 把工作目标、智能体配置快照、执行线程、人工审批和验收结果串在一起，评论和重试不会丢失上下文。",
+      "current_version": "当前配置版本",
+      "version": "v{{version}}",
+      "open_sessions": "开放 Session",
+      "total_sessions": "近期 Session",
+      "snapshot_hash": "配置快照",
+      "provider_default": "使用提供方默认模型",
+      "skill_count_other": "{{count}} 个技能",
+      "loading": "正在加载 Session...",
+      "empty_title": "还没有托管 Session",
+      "empty_description": "当这个智能体收到进入执行状态的工作项后，这里会出现 Session。",
+      "status": {
+        "queued": "排队中",
+        "running": "运行中",
+        "waiting_approval": "等待审批",
+        "waiting_input": "等待补充",
+        "waiting_environment": "电脑离线",
+        "idle": "空闲",
+        "completed": "已完成",
+        "failed": "失败",
+        "cancelled": "已取消"
+      },
+      "role": {
+        "executor": "执行者",
+        "advisor": "顾问",
+        "coordinator": "协调者",
+        "reviewer": "验收者",
+        "planner": "规划者"
+      }
+    },
+    "permissions": {
+      "title": "执行权限",
+      "description": "这些边界对每个托管 Session 生效。审批只对一次精确操作有效；订阅工作项本身永远不会获得执行权。",
+      "who_can_run": "谁可以分配工作",
+      "invocation": {
+        "private": "只有智能体拥有者可以启动",
+        "shared": "由智能体访问设置明确允许的成员"
+      },
+      "labels": { "allow": "直接允许", "ask": "需要真人审批", "deny": "始终禁止" },
+      "summary": { "allow": "直接继续", "ask": "暂停 Session", "deny": "不暴露能力" },
+      "decisions": {
+        "allow": "可以在 Session 中直接执行，不打断用户。",
+        "ask": "Session 会暂停，并为这一次精确操作创建审批。",
+        "deny": "不会向智能体暴露该能力，即使人工同意也不能执行。"
+      },
+      "actions": {
+        "workspace_read": "读取工作项与工作区上下文",
+        "workspace_write": "在指定工作目录内读写",
+        "comment": "在所负责的工作项中评论",
+        "progress_status": "推进所负责工作的执行中状态",
+        "work_item_change": "修改业务字段、负责人或创建工作项",
+        "external_write": "写入外部系统",
+        "publish": "发布、部署或对外发送",
+        "critical_change": "删除、邀请、购买或变更关键业务数据",
+        "final_status": "将工作项标记为已完成或已取消",
+        "credential_read": "读取凭据明文",
+        "outside_workspace": "访问指定工作目录之外的文件"
+      },
+      "advisor_note": "顾问与审核线程使用更严格的权限：只能读取上下文并留下一次结果，不能改状态、负责人、层级，也不能创建工作项。"
     },
     "instructions": {
       "intro": "定义这个智能体的身份和工作风格。会注入到每个任务的上下文。支持 Markdown。",

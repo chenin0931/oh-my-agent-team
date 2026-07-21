@@ -1,4 +1,5 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cloneElement } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@ohmyagentteam/core/api";
 import { AppSidebar } from "./app-sidebar";
@@ -51,6 +52,14 @@ vi.mock("@ohmyagentteam/ui/components/ui/sidebar", () => ({
   SidebarGroupLabel: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   SidebarHeader: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   SidebarMenu: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  SidebarMenuAction: ({
+    children,
+    ...props
+  }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+    <button type="button" {...props}>
+      {children}
+    </button>
+  ),
   SidebarMenuButton: ({
     children,
     isActive,
@@ -85,7 +94,16 @@ vi.mock("@ohmyagentteam/ui/components/ui/collapsible", () => ({
 vi.mock("@ohmyagentteam/ui/components/ui/tooltip", () => ({
   Tooltip: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   TooltipContent: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  TooltipTrigger: ({ children }: { children: React.ReactNode }) => <button type="button">{children}</button>,
+  TooltipTrigger: ({
+    children,
+    render,
+  }: {
+    children: React.ReactNode;
+    render?: React.ReactElement;
+  }) =>
+    render
+      ? cloneElement(render, undefined, children)
+      : <button type="button">{children}</button>,
 }));
 vi.mock("./help-launcher", () => ({ HelpLauncher: () => null }));
 vi.mock("../auth", () => ({ useLogout: () => vi.fn() }));
@@ -186,6 +204,19 @@ describe("mobile navigation", () => {
 
     expect(sidebar.current.setOpenMobile).toHaveBeenCalledWith(false);
   });
+
+  it("does not immediately close when the mobile sidebar state changes", () => {
+    navigation.current.pathname = "/acme/issues";
+    sidebar.current.isMobile = true;
+    const setOpenMobile = sidebar.current.setOpenMobile;
+    const { rerender } = render(<AppSidebar />);
+    setOpenMobile.mockClear();
+
+    sidebar.current = { isMobile: true, setOpenMobile };
+    rerender(<AppSidebar />);
+
+    expect(setOpenMobile).not.toHaveBeenCalled();
+  });
 });
 
 describe("PinRow", () => {
@@ -216,7 +247,28 @@ describe("PinRow", () => {
     expect(screen.queryByText("MUL-123 Keep this pin")).not.toBeInTheDocument();
   });
 
-  it("does not also highlight the parent workspace nav for an active pin", async () => {
+  it("renders unpin as a sibling action instead of nesting buttons", async () => {
+    detail.current = {
+      isPending: false,
+      isError: false,
+      data: { identifier: "MUL-123", title: "Keep this pin", status: "todo" },
+      error: null,
+    };
+
+    const { container } = render(<AppSidebar />);
+
+    const pinButton = (await screen.findByText("Keep this pin")).closest("button");
+    const unpinButton = pinButton?.nextElementSibling;
+    expect(container.querySelector("button button")).toBeNull();
+    expect(unpinButton).toBeInstanceOf(HTMLButtonElement);
+    fireEvent.click(unpinButton!);
+    expect(deletePin).toHaveBeenCalledWith({
+      itemType: "issue",
+      itemId: "issue-1",
+    });
+  });
+
+  it("keeps an active pinned item highlighted inside favorites", async () => {
     navigation.current.pathname = "/acme/issues/issue-1";
     detail.current = {
       isPending: false,
@@ -231,7 +283,7 @@ describe("PinRow", () => {
       "data-active",
       "true",
     );
-    expect(container.querySelector('button[data-href="/acme/issues"]')).not.toHaveAttribute("data-active");
+    expect(container.querySelectorAll('button[data-active="true"]')).toHaveLength(1);
   });
 });
 
@@ -243,7 +295,7 @@ describe("workspace-switcher unread dot", () => {
 
   // The aggregate switcher dot is the only `.ring-sidebar` span in the tree
   // (DraftDot is null when there's no draft, and there are no invitations).
-  const dot = (container: HTMLElement) => container.querySelector("span.bg-brand.ring-sidebar");
+  const dot = (container: HTMLElement) => container.querySelector("[data-workspace-unread]");
 
   it("shows a dot when another workspace has unread inbox items", () => {
     summary.current = [{ workspace_id: "ws-2", count: 3 }];

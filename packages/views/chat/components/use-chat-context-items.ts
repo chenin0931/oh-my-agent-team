@@ -72,7 +72,7 @@ export function parseCurrentContextRoute(pathname: string, searchParams: URLSear
   return null;
 }
 
-export function useChatContextItems(wsId: string): MentionItem[] {
+export function useChatContextItems(wsId: string, refreshRecent = true): MentionItem[] {
   const { pathname, searchParams } = useNavigation();
   const currentRoute = parseCurrentContextRoute(pathname, searchParams);
   const recentEntries = useRecentContextStore(selectRecentContexts(wsId));
@@ -96,6 +96,7 @@ export function useChatContextItems(wsId: string): MentionItem[] {
       ...(entry.type === "issue"
         ? issueDetailOptions(wsId, entry.id)
         : projectDetailOptions(wsId, entry.id)),
+      enabled: refreshRecent,
       staleTime: 30_000,
     })),
   });
@@ -114,4 +115,3 @@ export function useChatContextItems(wsId: string): MentionItem[] {
     return [...currentItems, ...recentItems];
   }, [currentIssue, currentProject, recentQueries, visibleRecentEntries]);
 }
-

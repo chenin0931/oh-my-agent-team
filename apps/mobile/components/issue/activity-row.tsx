@@ -115,7 +115,8 @@ export function ActivityRow({ entry }: { entry: TimelineEntry }) {
     id: string | null | undefined,
   ): string =>
     getName(type as "member" | "agent" | null | undefined, id);
-  const actorName = resolveName(entry.actor_type, entry.actor_id);
+  const actorName =
+    entry.actor_name_snapshot ?? resolveName(entry.actor_type, entry.actor_id);
   const verb = formatActivity(entry, resolveName);
   const showCoalesceBadge =
     (entry.coalesced_count ?? 1) > 1 &&

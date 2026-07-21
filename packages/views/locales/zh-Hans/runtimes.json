@@ -1,5 +1,6 @@
 {
   "page": {
+    "execution_label": "连接电脑与本地智能体",
     "title": "桌面智能体",
     "tagline": "连接电脑上的 Codex、Claude Code 或 WorkBuddy，再基于它们创建团队智能体。",
     "learn_more": "了解更多 →",

@@ -196,7 +196,7 @@
   *::-webkit-scrollbar-track { background: var(--scrollbar-track); }
   *::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
   *::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
-  body {
+body {
     @apply bg-background text-foreground;
   }
   html {
@@ -215,6 +215,45 @@
       /* iOS Safari zooms the page when focused editable text is below 16px. */
       font-size: 16px !important;
     }
+  }
+}
+
+/* Product shell: a compact command surface with an editorial content rhythm.
+ * These hooks are intentionally shared by web and desktop so every workspace
+ * route keeps the same hierarchy without page-specific layout forks. */
+[data-omat-command-bar] {
+  box-shadow: 0 8px 24px color-mix(in oklab, var(--foreground) 4%, transparent);
+  backdrop-filter: blur(18px);
+}
+
+[data-omat-page-canvas] {
+  background: var(--shell-background);
+}
+
+[data-omat-page-canvas] > * {
+  min-height: 0;
+}
+
+[data-omat-page-header] h1 {
+  font-family: var(--font-serif), ui-serif, serif;
+  font-size: 1.25rem;
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+[data-omat-page-header] [role="tablist"] {
+  align-self: stretch;
+}
+
+@media (max-width: 767px) {
+  [data-omat-command-bar] {
+    min-height: 6.5rem;
+  }
+
+  [data-omat-page-header] {
+    min-height: 4rem;
+    padding-inline: 1rem;
   }
 }
 

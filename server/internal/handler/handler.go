@@ -13,10 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/chenin0931/oh-my-agent-team/server/internal/analytics"
 	"github.com/chenin0931/oh-my-agent-team/server/internal/auth"
 	"github.com/chenin0931/oh-my-agent-team/server/internal/cloudruntime"
@@ -35,6 +31,10 @@ import (
 	"github.com/chenin0931/oh-my-agent-team/server/internal/util"
 	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
 	"github.com/chenin0931/oh-my-agent-team/server/pkg/featureflag"
+	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // randomID returns a random 16-byte hex string used as a request ID for
@@ -116,6 +116,7 @@ type Handler struct {
 	DaemonProfileRefresh  RuntimeProfileRefreshNotifier
 	Bus                   *events.Bus
 	TaskService           *service.TaskService
+	SessionService        *service.ManagedSessionService
 	IssueService          *service.IssueService
 	AutopilotService      *service.AutopilotService
 	EmailService          *service.EmailService
@@ -231,6 +232,8 @@ func New(queries *db.Queries, txStarter txStarter, hub *realtime.Hub, bus *event
 	}
 
 	taskSvc := service.NewTaskService(queries, txStarter, hub, bus, daemonHub)
+	sessionSvc := service.NewManagedSessionService(queries, txStarter, bus)
+	taskSvc.Sessions = sessionSvc
 	taskSvc.Analytics = analyticsClient
 	return &Handler{
 		Queries:               queries,
@@ -241,6 +244,7 @@ func New(queries *db.Queries, txStarter txStarter, hub *realtime.Hub, bus *event
 		DaemonProfileRefresh:  daemonProfileRefresh,
 		Bus:                   bus,
 		TaskService:           taskSvc,
+		SessionService:        sessionSvc,
 		IssueService:          service.NewIssueService(queries, txStarter, bus, analyticsClient, taskSvc),
 		AutopilotService:      service.NewAutopilotService(queries, txStarter, bus, taskSvc),
 		EmailService:          emailService,

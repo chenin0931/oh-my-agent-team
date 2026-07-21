@@ -20,6 +20,18 @@
     "discord": "Community",
     "feedback": "Feedback"
   },
+  "shell": {
+    "primary_navigation": "Global navigation",
+    "section_navigation": "Current area navigation",
+    "sections": {
+      "work": "Flow",
+      "plan": "Projects",
+      "network": "Team",
+      "capabilities": "Execution",
+      "admin": "Operations"
+    },
+    "favorites": "Favorites"
+  },
   "workspace_loader": {
     "loading_workspace": "Loading workspace…",
     "loading_named_prefix": "Loading"

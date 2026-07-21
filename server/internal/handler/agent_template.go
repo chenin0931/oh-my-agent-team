@@ -500,6 +500,18 @@ func (h *Handler) CreateAgentFromTemplate(w http.ResponseWriter, r *http.Request
 		writeError(w, http.StatusInternalServerError, "failed to create agent: "+err.Error())
 		return
 	}
+	if _, err := qtx.UpsertAgentRuntimeBinding(r.Context(), db.UpsertAgentRuntimeBindingParams{
+		AgentID:   agent.ID,
+		RuntimeID: runtime.ID,
+		Priority:  0,
+		Enabled:   true,
+		CreatedBy: creatorUUID,
+	}); err != nil {
+		slog.Error("agent-template create: failed to create primary execution binding",
+			append(logger.RequestAttrs(r), "agent_id", uuidToString(agent.ID), "runtime_id", uuidToString(runtime.ID), "error", err)...)
+		writeError(w, http.StatusInternalServerError, "failed to bind agent execution environment")
+		return
+	}
 
 	for idx, skillID := range allSkillIDs {
 		if err := qtx.AddAgentSkill(r.Context(), db.AddAgentSkillParams{

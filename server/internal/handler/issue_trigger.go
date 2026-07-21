@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/chenin0931/oh-my-agent-team/server/internal/service"
 	"github.com/chenin0931/oh-my-agent-team/server/internal/util"
 	agentver "github.com/chenin0931/oh-my-agent-team/server/pkg/agent"
 	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // maxPreviewTriggerIssues caps a single preview request so a pathological
@@ -51,9 +51,13 @@ func (h *Handler) issueTriggerPreviewProbe(r *http.Request, actorType, actorID, 
 // context. The squad path still flows through enqueueSquadLeaderTask so the
 // leader access gate and pending dedup stay in one place.
 func (h *Handler) dispatchIssueRun(ctx context.Context, issue db.Issue, trigger service.IssueRunTrigger, actorType, actorID, handoffNote string) {
+	originator := pgtype.UUID{}
+	if actorType == "member" {
+		originator, _ = util.ParseUUID(actorID)
+	}
 	switch trigger.AssigneeType {
 	case "agent":
-		_, _ = h.TaskService.EnqueueTaskForIssueWithHandoff(ctx, issue, handoffNote)
+		_, _ = h.TaskService.EnqueueTaskForIssueWithHandoffAs(ctx, issue, handoffNote, originator)
 	case "squad":
 		h.enqueueSquadLeaderTask(ctx, issue, pgtype.UUID{}, actorType, actorID, handoffNote)
 	}

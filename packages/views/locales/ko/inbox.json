@@ -1,5 +1,6 @@
 {
   "page": {
+    "queue_label": "판단하거나 확인해야 할 항목",
     "title": "작업 센터",
     "back": "작업 센터"
   },
@@ -53,6 +54,10 @@
     "task_failed": "작업 실패함",
     "agent_blocked": "에이전트 막힘",
     "agent_completed": "에이전트 완료됨",
+    "session_approval": "승인 필요",
+    "session_waiting_input": "입력 필요",
+    "session_waiting_environment": "실행 컴퓨터 필요",
+    "outcome_failed": "결과 결정 필요",
     "reaction_added": "반응 추가됨",
     "quick_create_done": "에이전트로 생성됨",
     "quick_create_failed": "에이전트 생성 실패"

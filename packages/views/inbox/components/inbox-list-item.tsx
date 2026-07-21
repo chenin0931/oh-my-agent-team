@@ -44,8 +44,8 @@ export function InboxListItem({
     <button
       type="button"
       onClick={onClick}
-      className={`group flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors ${
-        isSelected ? "bg-accent" : "hover:bg-accent/50"
+      className={`group relative flex w-full items-center gap-3 border-b border-border/55 px-4 py-3 text-left transition-colors ${
+        isSelected ? "bg-brand/5 before:absolute before:inset-y-2 before:left-0 before:w-0.5 before:rounded-r before:bg-brand" : "hover:bg-accent/50"
       }`}
     >
       <ActorAvatar

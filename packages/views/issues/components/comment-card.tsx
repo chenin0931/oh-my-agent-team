@@ -571,7 +571,7 @@ function CommentRow({
       >
         <ActorAvatar actorType={entry.actor_type} actorId={entry.actor_id} size={24} enableHoverCard showStatusDot />
         <span className="cursor-pointer text-sm font-medium">
-          {getActorName(entry.actor_type, entry.actor_id)}
+          {entry.actor_name_snapshot ?? getActorName(entry.actor_type, entry.actor_id)}
         </span>
         <Tooltip>
           <TooltipTrigger
@@ -596,7 +596,12 @@ function CommentRow({
           <DropdownMenu>
             <DropdownMenuTrigger
               render={
-                <Button variant="ghost" size="icon-sm" className="text-muted-foreground">
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="text-muted-foreground"
+                  aria-label={t(($) => $.comment.more_actions)}
+                >
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               }
@@ -847,7 +852,7 @@ function CommentCardImpl({
               </CollapsibleTrigger>
               <ActorAvatar actorType={entry.actor_type} actorId={entry.actor_id} size={24} enableHoverCard showStatusDot />
               <span className="shrink-0 cursor-pointer text-sm font-medium">
-                {getActorName(entry.actor_type, entry.actor_id)}
+                {entry.actor_name_snapshot ?? getActorName(entry.actor_type, entry.actor_id)}
               </span>
               <Tooltip>
                 <TooltipTrigger
@@ -878,7 +883,12 @@ function CommentCardImpl({
                   <DropdownMenu>
                     <DropdownMenuTrigger
                       render={
-                        <Button variant="ghost" size="icon-sm" className="text-muted-foreground">
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="text-muted-foreground"
+                          aria-label={t(($) => $.comment.more_actions)}
+                        >
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       }

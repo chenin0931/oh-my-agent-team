@@ -18,6 +18,9 @@ func BuildPrompt(task Task, provider string) string {
 	if task.ChatSessionID != "" {
 		return buildChatPrompt(task)
 	}
+	if task.OutcomeReview {
+		return buildOutcomeReviewPrompt(task)
+	}
 	if task.TriggerCommentID != "" {
 		return buildCommentPrompt(task, provider)
 	}
@@ -48,6 +51,18 @@ func BuildPrompt(task Task, provider string) string {
 	}
 	fmt.Fprintf(&b, "Start by running `omat issue get %s --output json` to understand your task, then complete it.\n", task.IssueID)
 	fmt.Fprintf(&b, "For comment history, follow the rule in your runtime workflow file (assignment-triggered tasks treat the read as mandatory). Start with `omat issue comment list %s --recent 10 --output json` to read the 10 most recently active threads, then page older threads via the stderr `Next thread cursor: ...` line and the matching `--before` / `--before-id` until you have enough history. Resolved threads come back folded — `--full` to expand. `--since <RFC3339>` is still available for incremental polling and may combine with `--recent`.\n", task.IssueID)
+	return b.String()
+}
+
+func buildOutcomeReviewPrompt(task Task) string {
+	var b strings.Builder
+	b.WriteString("You are an independent outcome reviewer for a managed Agent Session.\n\n")
+	fmt.Fprintf(&b, "Review work item %s against this acceptance rubric (attempt %d):\n\n%s\n\n", task.IssueID, task.OutcomeAttempt, task.OutcomeRubric)
+	fmt.Fprintf(&b, "Read the work item with `omat issue get %s --output json` and its recent discussion with `omat issue comment list %s --recent 20 --output json`. Inspect available evidence, but do not perform the work yourself.\n\n", task.IssueID, task.IssueID)
+	b.WriteString("You are read-only. Do not comment, change status or assignee, modify files, create work items, delegate, publish, or call any write command.\n\n")
+	b.WriteString("Return ONLY one JSON object as your final output, with no Markdown fence:\n")
+	b.WriteString(`{"verdict":"passed|revision_requested","summary":"specific evidence-based conclusion or revision instructions","evidence":["observable fact"]}`)
+	b.WriteString("\nUse passed only when every rubric item has evidence. Otherwise use revision_requested and make the summary directly actionable for the Executor.\n")
 	return b.String()
 }
 

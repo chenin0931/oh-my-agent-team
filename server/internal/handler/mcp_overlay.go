@@ -7,6 +7,42 @@ import (
 	"fmt"
 )
 
+// filterMCPConfigByNames freezes the base MCP server membership captured in
+// an Agent version while resolving each server's live credentials at claim
+// time. Per-task user integrations are merged after this filter.
+func filterMCPConfigByNames(config json.RawMessage, names []string) json.RawMessage {
+	if !hasManagedJSON(config) || len(names) == 0 {
+		return nil
+	}
+	var top map[string]json.RawMessage
+	if err := json.Unmarshal(config, &top); err != nil {
+		return nil
+	}
+	servers, err := unmarshalServerMap(top["mcpServers"])
+	if err != nil {
+		return nil
+	}
+	filtered := make(map[string]json.RawMessage, len(names))
+	for _, name := range names {
+		if server, ok := servers[name]; ok {
+			filtered[name] = server
+		}
+	}
+	if len(filtered) == 0 {
+		return nil
+	}
+	encodedServers, err := json.Marshal(filtered)
+	if err != nil {
+		return nil
+	}
+	top["mcpServers"] = encodedServers
+	encoded, err := json.Marshal(top)
+	if err != nil {
+		return nil
+	}
+	return encoded
+}
+
 // mergeMCPOverlay layers a per-task overlay on top of an agent's saved
 // mcp_config and returns the merged JSON for the daemon claim wire shape.
 //

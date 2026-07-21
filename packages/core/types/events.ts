@@ -7,6 +7,7 @@ import type { TimelineEntry } from "./activity";
 import type { Workspace, MemberWithUser, Invitation } from "./workspace";
 import type { Project } from "./project";
 import type { Label } from "./label";
+import type { AgentSessionEvent } from "./agent-session";
 
 // WebSocket event types (matching Go server protocol/events.go)
 export type WSEventType =
@@ -34,6 +35,7 @@ export type WSEventType =
   | "task:failed"
   | "task:message"
   | "task:cancelled"
+  | "session:event"
   | "inbox:new"
   | "inbox:read"
   | "inbox:archived"
@@ -471,6 +473,7 @@ export interface WSEventPayloadMap {
   "task:failed": TaskFailedPayload;
   "task:message": TaskMessagePayload;
   "task:cancelled": TaskCancelledPayload;
+  "session:event": AgentSessionEvent;
   "task:progress": unknown;
   "inbox:new": InboxNewPayload;
   "inbox:read": InboxReadPayload;

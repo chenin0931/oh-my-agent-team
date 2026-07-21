@@ -322,7 +322,7 @@ export function RuntimesPage({
           <EmptyState onConnectRemote={() => setConnectProvider(null)} />
         </div>
       ) : isMobile ? (
-        <div className="flex min-h-0 flex-1 flex-col bg-background">
+        <div className="mx-4 mb-4 flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border bg-background">
           <MachineSidebar
             machines={filteredMachines}
             totalMachines={machines.length}
@@ -347,7 +347,7 @@ export function RuntimesPage({
           />
         </div>
       ) : (
-        <div className="min-h-0 flex-1 bg-background">
+        <div className="mx-4 mb-4 min-h-0 flex-1 overflow-hidden rounded-md border bg-background sm:mx-6 lg:mx-8">
           <ResizablePanelGroup
             orientation="horizontal"
             className="min-h-0 flex-1"
@@ -438,7 +438,7 @@ function ExecutionToolStarter({
   const { t } = useT("runtimes");
 
   return (
-    <section className="shrink-0 border-b bg-background px-5 py-4">
+    <section className="shrink-0 bg-[var(--shell-background)] px-4 py-4 sm:px-6 lg:px-8">
       <div className="mb-3 flex items-end justify-between gap-4">
         <div>
           <h2 className="font-serif text-base font-medium">
@@ -520,7 +520,7 @@ function RuntimeCapacityPulse({
 }) {
   const { t } = useT("runtimes");
   return (
-    <div className="grid shrink-0 grid-cols-2 border-b bg-muted/15 xl:grid-cols-4">
+    <div className="mx-4 mb-4 grid shrink-0 grid-cols-2 overflow-hidden rounded-md border bg-background sm:mx-6 lg:mx-8 xl:grid-cols-4">
       <CapacityMetric icon={Monitor} label={t(($) => $.capacity_pulse.machines)} value={`${machineOnline}/${machineTotal}`} hint={t(($) => $.capacity_pulse.online)} healthy={machineTotal > 0 && machineOnline === machineTotal} />
       <CapacityMetric icon={CircleGauge} label={t(($) => $.capacity_pulse.runtimes)} value={`${runtimeOnline}/${runtimeTotal}`} hint={t(($) => $.capacity_pulse.ready)} healthy={runtimeTotal > 0 && runtimeOnline === runtimeTotal} />
       <CapacityMetric icon={Bot} label={t(($) => $.capacity_pulse.agents)} value={`${agentBound}/${agentTotal}`} hint={t(($) => $.capacity_pulse.bound)} healthy={agentTotal > 0 && agentBound === agentTotal} />
@@ -563,15 +563,20 @@ function PageHeaderBar({
 }) {
   const { t } = useT("runtimes");
   return (
-    <PageHeader className="justify-between px-5">
-      <div className="flex items-center gap-2">
-        <Server className="h-4 w-4 text-muted-foreground" />
-        <h1 className="font-serif text-[15px] font-medium">{t(($) => $.page.title)}</h1>
+    <PageHeader className="min-h-[84px] justify-between">
+      <div className="min-w-0">
+        <p className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase text-muted-foreground">
+          <Server className="size-3 text-brand" />
+          {t(($) => $.page.execution_label)}
+        </p>
+        <div className="flex items-center gap-2">
+        <h1 className="font-serif text-xl font-semibold">{t(($) => $.page.title)}</h1>
         {totalCount > 0 && (
           <span className="font-mono text-xs tabular-nums text-muted-foreground/70">
             {totalCount}
           </span>
         )}
+        </div>
       </div>
       {/* Quiet chrome buttons (outline, icon-only below md) — primary is
           reserved for the empty state's CTA. All three share the same
@@ -611,8 +616,7 @@ function PageHeaderBar({
         <Button
           type="button"
           size="sm"
-          variant="outline"
-          className="h-8 w-8 gap-1 px-0 md:w-auto md:px-2.5"
+          className="h-9 w-9 gap-1 px-0 md:w-auto md:px-3"
           aria-label={t(($) => $.page.connect_remote)}
           onClick={onConnectRemote}
         >

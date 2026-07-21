@@ -10,7 +10,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <DashboardLayout
       loadingIndicator={<OhMyAgentTeamIcon className="size-6" />}
-      searchSlot={<SearchTrigger />}
+      searchSlot={<SearchTrigger compact />}
       extra={
         <>
           <SearchCommand />

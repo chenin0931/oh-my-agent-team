@@ -15,9 +15,7 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/featureflags"
 	"github.com/chenin0931/oh-my-agent-team/server/internal/issueguard"
 	"github.com/chenin0931/oh-my-agent-team/server/internal/logger"
 	"github.com/chenin0931/oh-my-agent-team/server/internal/middleware"
@@ -26,6 +24,9 @@ import (
 	"github.com/chenin0931/oh-my-agent-team/server/pkg/agent"
 	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
 	"github.com/chenin0931/oh-my-agent-team/server/pkg/protocol"
+	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // IssueResponse is the JSON response for an issue.
@@ -3084,15 +3085,20 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 	// WillEnqueueRun predicate, shared verbatim with the preview endpoint so
 	// the two never drift (MUL-3375).
 	//
-	// A reassignment intentionally does NOT cancel existing tasks on the issue
-	// (#4963 / MUL-4113). The previous "cancel every active task on the issue"
-	// was too coarse: it silently dropped unrelated in-flight work (a
-	// mention-triggered run for another agent, a squad task) with no requeue,
-	// and it self-cancelled a run that reassigned the issue from inside itself.
-	// Ownership handoff no longer implies interruption; the new assignee's run,
-	// if any, is enqueued by WillEnqueueRun below and runs alongside whatever
-	// was already in flight. Explicit terminal actions — issue → cancelled and
-	// delete — still cancel active tasks (see below / DeleteIssue).
+	// Managed ownership Sessions are narrower than the legacy issue-wide task
+	// queue. A handoff closes only the previous Executor/Coordinator Session;
+	// Advisor and reviewer work remains independent. This preserves #4963's
+	// protection against cancelling unrelated mention tasks while preventing an
+	// old owner from continuing after the work item has moved.
+	if statusChanged && (issue.Status == "done" || issue.Status == "cancelled") {
+		if err := h.TaskService.CancelManagedSessionsForIssue(r.Context(), issue.ID, "work item moved to "+issue.Status); err != nil {
+			slog.Warn("cancel managed sessions for terminal issue failed", "issue_id", id, "error", err)
+		}
+	} else if assigneeChanged {
+		if err := h.TaskService.CancelSupersededManagedExecutors(r.Context(), issue.ID, issue.AssigneeType.String, issue.AssigneeID, "work item reassigned"); err != nil {
+			slog.Warn("cancel superseded managed session failed", "issue_id", id, "error", err)
+		}
+	}
 	if trigger, ok := h.IssueService.WillEnqueueRun(r.Context(),
 		service.IssueTriggerInput{
 			Issue:           issue,
@@ -3105,6 +3111,7 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 		h.dispatchIssueRun(r.Context(), issue, trigger, actorType, actorID, req.HandoffNote)
 	}
 	if assigneeChanged && defaultIssueType(issue.IssueType) != service.IssueTypeEpic && issue.AssigneeType.Valid && issue.AssigneeType.String == "member" && issue.AssigneeID.Valid && h.TaskService != nil {
+		h.TaskService.NotifyMemberIssueAssigned(r.Context(), issue, actorType, parseUUID(actorID))
 		h.TaskService.EnqueueMemberAssigneeAdvisors(r.Context(), issue)
 	}
 
@@ -3232,7 +3239,7 @@ func (h *Handler) assigneeFallbackAgent(ctx context.Context, issue db.Issue, act
 		return db.Agent{}, false, false
 	}
 	agent, err := h.Queries.GetAgent(ctx, issue.AssigneeID)
-	if err != nil || !agent.RuntimeID.Valid || agent.ArchivedAt.Valid {
+	if err != nil || agent.ArchivedAt.Valid || (!agent.RuntimeID.Valid && !featureflags.AgentSessionsV2Enabled(ctx, h.FeatureFlags)) {
 		return db.Agent{}, false, false
 	}
 	if !h.canInvokeAgent(ctx, agent, actorType, actorID, opts.OriginatorUserID, uuidToString(issue.WorkspaceID)) {
@@ -3292,7 +3299,7 @@ func (h *Handler) isAgentAssigneeReady(ctx context.Context, issue db.Issue) bool
 	}
 
 	agent, err := h.Queries.GetAgent(ctx, issue.AssigneeID)
-	if err != nil || !agent.RuntimeID.Valid || agent.ArchivedAt.Valid {
+	if err != nil || agent.ArchivedAt.Valid || (!agent.RuntimeID.Valid && !featureflags.AgentSessionsV2Enabled(ctx, h.FeatureFlags)) {
 		return false
 	}
 
@@ -3306,6 +3313,7 @@ func (h *Handler) DeleteIssue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	_ = h.TaskService.CancelManagedSessionsForIssue(r.Context(), issue.ID, "work item deleted")
 	h.TaskService.CancelTasksForIssue(r.Context(), issue.ID)
 	// Fail any linked autopilot runs before delete (ON DELETE SET NULL clears issue_id).
 	h.Queries.FailAutopilotRunsByIssue(r.Context(), issue.ID)
@@ -3705,12 +3713,18 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 			"project_changed":  projectChanged,
 		})
 
-		// Reassignment does not cancel existing tasks (#4963 / MUL-4113) —
-		// mirrors UpdateIssue. See that handler for the rationale.
-		//
 		// Same single predicate as UpdateIssue — batch must not grow its own
 		// copy of the enqueue rule (the historical source of four-entry-point
 		// drift, MUL-3375). suppress_run applies batch-wide.
+		if statusChanged && (issue.Status == "done" || issue.Status == "cancelled") {
+			if err := h.TaskService.CancelManagedSessionsForIssue(r.Context(), issue.ID, "work item moved to "+issue.Status); err != nil {
+				slog.Warn("batch cancel managed sessions for terminal issue failed", "issue_id", issueID, "error", err)
+			}
+		} else if assigneeChanged {
+			if err := h.TaskService.CancelSupersededManagedExecutors(r.Context(), issue.ID, issue.AssigneeType.String, issue.AssigneeID, "work item reassigned"); err != nil {
+				slog.Warn("batch cancel superseded managed session failed", "issue_id", issueID, "error", err)
+			}
+		}
 		if trigger, ok := h.IssueService.WillEnqueueRun(r.Context(),
 			service.IssueTriggerInput{
 				Issue:           issue,
@@ -3721,6 +3735,10 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 			h.issueTriggerWriteProbe(r, actorType, issue),
 		); ok && !req.Updates.SuppressRun {
 			h.dispatchIssueRun(r.Context(), issue, trigger, actorType, actorID, req.Updates.HandoffNote)
+		}
+		if assigneeChanged && issue.AssigneeType.Valid && issue.AssigneeType.String == "member" && issue.AssigneeID.Valid && h.TaskService != nil {
+			h.TaskService.NotifyMemberIssueAssigned(r.Context(), issue, actorType, parseUUID(actorID))
+			h.TaskService.EnqueueMemberAssigneeAdvisors(r.Context(), issue)
 		}
 
 		// Cancel active tasks when the issue is cancelled by a user.

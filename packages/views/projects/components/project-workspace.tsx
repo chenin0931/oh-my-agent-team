@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Activity, Columns3, GanttChart, LayoutDashboard, ListTodo, Plus } from "lucide-react";
 import type { Epic, Issue, Project, ProjectActivityItem } from "@ohmyagentteam/core/types";
@@ -10,7 +10,7 @@ import { IssueSurface, type IssueSurfaceRenderContext } from "../../issues/surfa
 import { PlanningQuickCreateBar } from "../../issues/components/planning-quick-create-bar";
 import { StatusIcon } from "../../issues/components/status-icon";
 import { ActorAvatar } from "../../common/actor-avatar";
-import { AppLink } from "../../navigation";
+import { AppLink, useNavigation } from "../../navigation";
 import { useWorkspacePaths } from "@ohmyagentteam/core/paths";
 import { useActorName } from "@ohmyagentteam/core/workspace/hooks";
 import { useWorkspaceId } from "@ohmyagentteam/core/hooks";
@@ -33,18 +33,36 @@ const tabs: { id: WorkspaceTab; icon: typeof LayoutDashboard }[] = [
   { id: "activity", icon: Activity },
 ];
 
+function parseWorkspaceTab(value: string | null): WorkspaceTab {
+  return tabs.some((tab) => tab.id === value)
+    ? (value as WorkspaceTab)
+    : "backlog";
+}
+
 export function ProjectWorkspace({ project }: { project: Project }) {
   const { t } = useT("projects");
-  const [tab, setTab] = useState<WorkspaceTab>("backlog");
+  const { pathname, searchParams, replace } = useNavigation();
+  const tab = parseWorkspaceTab(searchParams.get("tab"));
   const scope = useMemo(() => ({ type: "project" as const, projectId: project.id }), [project.id]);
   const wsId = useWorkspaceId();
   const { data: epics = [] } = useQuery(epicListOptions(wsId, project.id));
 
+  const selectTab = (nextTab: WorkspaceTab) => {
+    const nextParams = new URLSearchParams(searchParams);
+    if (nextTab === "backlog") {
+      nextParams.delete("tab");
+    } else {
+      nextParams.set("tab", nextTab);
+    }
+    const query = nextParams.toString();
+    replace(`${pathname}${query ? `?${query}` : ""}`);
+  };
+
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex min-h-0 flex-1 flex-col bg-[var(--shell-background)]">
       <div
         role="tablist"
-        className="flex h-10 shrink-0 items-center gap-1 overflow-x-auto border-b px-4"
+        className="flex h-14 shrink-0 items-center gap-1 overflow-x-auto border-b bg-background px-4 sm:px-6"
       >
         {tabs.map(({ id, icon: Icon }) => (
           <button
@@ -52,10 +70,10 @@ export function ProjectWorkspace({ project }: { project: Project }) {
             type="button"
             role="tab"
             aria-selected={tab === id}
-            onClick={() => setTab(id)}
+            onClick={() => selectTab(id)}
             className={cn(
-              "inline-flex h-8 shrink-0 items-center gap-1.5 border-b-2 border-transparent px-2 text-xs text-muted-foreground",
-              tab === id && "border-foreground text-foreground",
+              "inline-flex h-9 shrink-0 items-center gap-2 rounded-md px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground",
+              tab === id && "bg-foreground text-background hover:bg-foreground hover:text-background",
             )}
           >
             <Icon className="size-3.5" />
@@ -64,6 +82,7 @@ export function ProjectWorkspace({ project }: { project: Project }) {
         ))}
       </div>
 
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       {tab === "overview" && <ProjectOverview project={project} epics={epics} />}
       {tab === "backlog" && (
         <IssueSurface
@@ -96,6 +115,7 @@ export function ProjectWorkspace({ project }: { project: Project }) {
       {tab === "activity" && (
         <ProjectActivity project={project} />
       )}
+      </div>
     </div>
   );
 }
@@ -107,7 +127,7 @@ function ProjectOverview({ project, epics }: { project: Project; epics: Epic[] }
   const completed = project.done_count;
   const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
   return (
-    <div className="flex-1 overflow-y-auto px-8 py-8">
+    <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-4xl space-y-8">
         <section>
           <h2 className="text-sm font-semibold">{t(($) => $.workspace.overview.progress)}</h2>
@@ -163,7 +183,7 @@ function ProjectBacklog({ project, epics: allEpics, context }: { project: Projec
     (epics.length === 0 && visibleIssues.length === 0);
 
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+    <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-5xl space-y-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>

@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"sort"
 
+	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
 )
 
 // TimelineEntry represents a single entry in the issue timeline, which can be
@@ -16,9 +16,10 @@ type TimelineEntry struct {
 	Type string `json:"type"` // "activity" or "comment"
 	ID   string `json:"id"`
 
-	ActorType string `json:"actor_type"`
-	ActorID   string `json:"actor_id"`
-	CreatedAt string `json:"created_at"`
+	ActorType string  `json:"actor_type"`
+	ActorID   string  `json:"actor_id"`
+	ActorName *string `json:"actor_name_snapshot,omitempty"`
+	CreatedAt string  `json:"created_at"`
 
 	// Activity-only fields
 	Action  *string         `json:"action,omitempty"`
@@ -179,6 +180,7 @@ func (h *Handler) commentsToEntries(r *http.Request, comments []db.Comment) []Ti
 			ID:             cid,
 			ActorType:      c.AuthorType,
 			ActorID:        uuidToString(c.AuthorID),
+			ActorName:      textToPtr(c.AuthorNameSnapshot),
 			Content:        &content,
 			CommentType:    &commentType,
 			ParentID:       uuidToPtr(c.ParentID),
@@ -206,6 +208,7 @@ func activityToEntry(a db.ActivityLog) TimelineEntry {
 		ID:        uuidToString(a.ID),
 		ActorType: actorType,
 		ActorID:   uuidToString(a.ActorID),
+		ActorName: textToPtr(a.ActorNameSnapshot),
 		Action:    &action,
 		Details:   a.Details,
 		CreatedAt: timestampToString(a.CreatedAt),

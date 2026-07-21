@@ -13,9 +13,6 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/chenin0931/oh-my-agent-team/server/internal/analytics"
 	"github.com/chenin0931/oh-my-agent-team/server/internal/logger"
 	obsmetrics "github.com/chenin0931/oh-my-agent-team/server/internal/metrics"
@@ -24,6 +21,9 @@ import (
 	"github.com/chenin0931/oh-my-agent-team/server/pkg/agent"
 	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
 	"github.com/chenin0931/oh-my-agent-team/server/pkg/protocol"
+	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // Mirrors AGENT_DESCRIPTION_MAX_LENGTH in packages/core/agents/constants.ts
@@ -272,11 +272,17 @@ type QuickCreateAvailableAgentData struct {
 type ConnectedAppData = runtimeapps.ConnectedApp
 
 type AgentTaskResponse struct {
-	ID          string `json:"id"`
-	AgentID     string `json:"agent_id"`
-	RuntimeID   string `json:"runtime_id"`
-	IssueID     string `json:"issue_id"`
-	WorkspaceID string `json:"workspace_id"`
+	ID                     string                 `json:"id"`
+	AgentID                string                 `json:"agent_id"`
+	RuntimeID              string                 `json:"runtime_id"`
+	IssueID                string                 `json:"issue_id"`
+	WorkspaceID            string                 `json:"workspace_id"`
+	AgentSessionID         string                 `json:"agent_session_id,omitempty"`
+	SessionThreadID        string                 `json:"session_thread_id,omitempty"`
+	CollaborationRole      string                 `json:"collaboration_role,omitempty"`
+	ManagedProtocolVersion string                 `json:"managed_protocol_version,omitempty"`
+	PermissionPolicy       json.RawMessage        `json:"permission_policy,omitempty"`
+	AgentVersion           *AgentVersionClaimData `json:"agent_version,omitempty"`
 	// WorkspaceContext is the workspace-level system prompt set in workspace
 	// settings (`workspace.context` DB column). Injected into the agent brief
 	// as `## Workspace Context` so every agent running in this workspace —
@@ -346,10 +352,13 @@ type AgentTaskResponse struct {
 	MemberAssigneeAdvisor      bool                            `json:"member_assignee_advisor,omitempty"`       // true for one-shot comment-only advice tasks spawned when a human member is assigned an issue
 	EpicAdvisor                bool                            `json:"epic_advisor,omitempty"`                  // true for a one-shot planning-only Epic advisor
 	AdvisorInstruction         string                          `json:"advisor_instruction,omitempty"`           // optional human instruction for a manually requested comment-only advisor run
-	SquadID                    string                          `json:"squad_id,omitempty"`                      // for quick-create tasks where the picker was a squad; Agent is still the resolved leader
-	SquadName                  string                          `json:"squad_name,omitempty"`                    // display name for the picker squad
-	ParentIssueID              string                          `json:"parent_issue_id,omitempty"`               // for quick-create tasks opened from "Add sub issue" — UUID of the parent issue the new issue should be filed under
-	ParentIssueIdentifier      string                          `json:"parent_issue_identifier,omitempty"`       // human-readable identifier (e.g. MUL-123) of the quick-create parent issue, resolved on claim for prompt context
+	OutcomeReview              bool                            `json:"outcome_review,omitempty"`
+	OutcomeRubric              string                          `json:"outcome_rubric,omitempty"`
+	OutcomeAttempt             int32                           `json:"outcome_attempt,omitempty"`
+	SquadID                    string                          `json:"squad_id,omitempty"`                // for quick-create tasks where the picker was a squad; Agent is still the resolved leader
+	SquadName                  string                          `json:"squad_name,omitempty"`              // display name for the picker squad
+	ParentIssueID              string                          `json:"parent_issue_id,omitempty"`         // for quick-create tasks opened from "Add sub issue" — UUID of the parent issue the new issue should be filed under
+	ParentIssueIdentifier      string                          `json:"parent_issue_identifier,omitempty"` // human-readable identifier (e.g. MUL-123) of the quick-create parent issue, resolved on claim for prompt context
 	// RequestingUserName + RequestingUserProfileDescription mirror the user
 	// the agent is acting on behalf of (see daemon/types.go). v1 sources them
 	// from the runtime owner so they're populated for daemon runtimes and
@@ -385,6 +394,12 @@ type AgentTaskResponse struct {
 	// owning user; the daemon must not fall back to its own credential. See
 	// MUL-3292.
 	AuthToken string `json:"auth_token,omitempty"`
+}
+
+type AgentVersionClaimData struct {
+	ID            string `json:"id"`
+	VersionNumber int32  `json:"version_number"`
+	ConfigHash    string `json:"config_hash"`
 }
 
 // ChatAttachmentMeta is the structured attachment metadata embedded in
@@ -443,12 +458,16 @@ func taskToResponse(t db.AgentTaskQueue, workspaceID string) AgentTaskResponse {
 	if t.HandoffNote.Valid {
 		handoffNote = t.HandoffNote.String
 	}
+	reviewContext, isOutcomeReview := service.ParseManagedOutcomeReviewContext(t)
 	return AgentTaskResponse{
 		ID:                    uuidToString(t.ID),
 		AgentID:               uuidToString(t.AgentID),
 		RuntimeID:             uuidToString(t.RuntimeID),
 		IssueID:               uuidToString(t.IssueID),
 		WorkspaceID:           workspaceID,
+		AgentSessionID:        uuidToString(t.AgentSessionID),
+		SessionThreadID:       uuidToString(t.SessionThreadID),
+		CollaborationRole:     service.TaskCollaborationRole(t),
 		Status:                t.Status,
 		Priority:              t.Priority,
 		DispatchedAt:          timestampToPtr(t.DispatchedAt),
@@ -468,6 +487,9 @@ func taskToResponse(t db.AgentTaskQueue, workspaceID string) AgentTaskResponse {
 		MemberAssigneeAdvisor: service.IsMemberAssigneeAdvisorTask(t),
 		EpicAdvisor:           service.IsEpicAdvisorTask(t),
 		AdvisorInstruction:    advisorInstruction(t),
+		OutcomeReview:         isOutcomeReview,
+		OutcomeRubric:         reviewContext.Rubric,
+		OutcomeAttempt:        reviewContext.Attempt,
 		WorkDir:               workDir,
 		RelativeWorkDir:       relativeWorkDir(workDir, workspaceID, uuidToString(t.ID)),
 		// Surface task source so the UI can distinguish issue-linked tasks
@@ -982,6 +1004,15 @@ func (h *Handler) CreateAgent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	slog.Info("agent created", append(logger.RequestAttrs(r), "agent_id", uuidToString(created.ID), "name", created.Name, "workspace_id", workspaceID)...)
+	if _, err := h.Queries.UpsertAgentRuntimeBinding(r.Context(), db.UpsertAgentRuntimeBindingParams{
+		AgentID:   created.ID,
+		RuntimeID: runtime.ID,
+		Priority:  0,
+		Enabled:   true,
+		CreatedBy: parseUUID(ownerID),
+	}); err != nil {
+		slog.Warn("create agent: persist primary execution binding failed", append(logger.RequestAttrs(r), "error", err, "agent_id", uuidToString(created.ID))...)
+	}
 
 	// Persist the invocation allow-list (MUL-3963). Best-effort log on failure
 	// but do not fail the create — the agent row already exists and defaults
@@ -1535,6 +1566,17 @@ func (h *Handler) UpdateAgent(w http.ResponseWriter, r *http.Request) {
 			slog.Warn("clear agent composio_toolkit_allowlist failed", append(logger.RequestAttrs(r), "error", err, "agent_id", id)...)
 			writeError(w, http.StatusInternalServerError, "failed to clear composio_toolkit_allowlist: "+err.Error())
 			return
+		}
+	}
+	if req.RuntimeID != nil && updated.RuntimeID.Valid {
+		if _, bindErr := h.Queries.UpsertAgentRuntimeBinding(r.Context(), db.UpsertAgentRuntimeBindingParams{
+			AgentID:   updated.ID,
+			RuntimeID: updated.RuntimeID,
+			Priority:  0,
+			Enabled:   true,
+			CreatedBy: parseUUID(requestUserID(r)),
+		}); bindErr != nil {
+			slog.Warn("update agent: persist primary execution binding failed", append(logger.RequestAttrs(r), "error", bindErr, "agent_id", id)...)
 		}
 	}
 

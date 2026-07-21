@@ -32,6 +32,13 @@ const MinQuickCreateCLIVersion = "0.2.21"
 // as ordinary quick-create and create todo issues, so this is a hard gate.
 const MinPlanningQuickCreateCLIVersion = "0.3.43"
 
+// MinManagedSessionCLIVersion gates protocol features that require a daemon to
+// understand managed Session/Thread identity, interactive approvals and
+// interruption. Basic task execution remains backward compatible below this
+// version; callers must degrade to Legacy Task behavior instead of rejecting
+// normal work.
+const MinManagedSessionCLIVersion = "0.4.0"
+
 // MinHandoffCLIVersion is the lowest ohmyagentteam CLI version whose daemon renders
 // the assignment handoff note into the run's opening prompt + issue_context.md
 // (MUL-3375). Unlike quick-create this is a SOFT gate: assigning an issue with
@@ -97,6 +104,10 @@ func CheckMinCLIVersion(detected string) error {
 // CLI-side backlog enforcement.
 func CheckPlanningQuickCreateCLIVersion(detected string) error {
 	return checkMinCLIVersion(detected, MinPlanningQuickCreateCLIVersion)
+}
+
+func CheckManagedSessionCLIVersion(detected string) error {
+	return checkMinCLIVersion(detected, MinManagedSessionCLIVersion)
 }
 
 func checkMinCLIVersion(detected, minimum string) error {

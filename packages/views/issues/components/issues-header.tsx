@@ -700,8 +700,8 @@ export function IssuesHeader({
   return (
     <div className="shrink-0">
       {showPlanningQuickCreate && <PlanningQuickCreateBar />}
-      <div className="h-12 overflow-x-auto px-4 [-webkit-overflow-scrolling:touch]">
-        <div className="flex h-full w-max min-w-full items-center justify-between gap-2">
+      <div className="overflow-x-auto bg-[var(--shell-background)] px-4 pb-4 sm:px-6 lg:px-8 [-webkit-overflow-scrolling:touch]">
+        <div data-omat-issue-toolbar className="flex h-11 w-max min-w-full items-center justify-between gap-2 rounded-md border bg-background px-2 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
           {/* Left: scope buttons */}
           <div className="hidden shrink-0 items-center gap-1 md:flex">
             {SCOPE_VALUES.map((s) => (
@@ -709,12 +709,12 @@ export function IssuesHeader({
                 <TooltipTrigger
                   render={
                     <Button
-                      variant="outline"
+                      variant="ghost"
                       size="sm"
                       className={
                         scope === s
-                          ? "bg-accent text-accent-foreground hover:bg-accent/80"
-                          : "text-muted-foreground"
+                          ? "bg-accent text-foreground hover:bg-accent/80"
+                          : "text-muted-foreground hover:bg-muted"
                       }
                       onClick={() => setScope(s)}
                     >

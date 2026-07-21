@@ -81,18 +81,20 @@ export function CollaborationNetworkOverview({
   );
 
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto">
-      <div className="grid grid-cols-2 border-b bg-muted/15 md:grid-cols-3 xl:grid-cols-6">
-        <NetworkMetric icon={CircleUserRound} label={t(($) => $.network.metrics.people)} value={members.length} />
-        <NetworkMetric icon={Bot} label={t(($) => $.network.metrics.agents)} value={rows.length} hint={t(($) => $.network.metrics.online_hint, { count: onlineAgents })} />
-        <NetworkMetric icon={UsersRound} label={t(($) => $.network.metrics.squads)} value={activeSquads.length} />
-        <NetworkMetric icon={FolderKanban} label={t(($) => $.network.metrics.active_work)} value={activeIssues.length} hint={t(($) => $.network.metrics.working_hint, { count: workingAgents })} />
-        <NetworkMetric icon={MonitorCog} label={t(($) => $.network.metrics.capacity)} value={`${onlineRuntimes}/${runtimes.length}`} />
-        <NetworkMetric icon={Bot} label={t(($) => $.network.metrics.shared_agents)} value={sharedAgents} />
+    <div className="min-h-0 flex-1 overflow-y-auto bg-[var(--shell-background)]">
+      <div className="p-4 pb-0 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-2 overflow-hidden rounded-md border bg-background md:grid-cols-3 xl:grid-cols-6">
+          <NetworkMetric icon={CircleUserRound} label={t(($) => $.network.metrics.people)} value={members.length} />
+          <NetworkMetric icon={Bot} label={t(($) => $.network.metrics.agents)} value={rows.length} hint={t(($) => $.network.metrics.online_hint, { count: onlineAgents })} />
+          <NetworkMetric icon={UsersRound} label={t(($) => $.network.metrics.squads)} value={activeSquads.length} />
+          <NetworkMetric icon={FolderKanban} label={t(($) => $.network.metrics.active_work)} value={activeIssues.length} hint={t(($) => $.network.metrics.working_hint, { count: workingAgents })} />
+          <NetworkMetric icon={MonitorCog} label={t(($) => $.network.metrics.capacity)} value={`${onlineRuntimes}/${runtimes.length}`} />
+          <NetworkMetric icon={Bot} label={t(($) => $.network.metrics.shared_agents)} value={sharedAgents} />
+        </div>
       </div>
 
-      <div className="grid min-h-0 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.55fr)]">
-        <main className="min-w-0 px-5 py-5 xl:border-r">
+      <div className="grid min-h-0 gap-4 p-4 sm:px-6 lg:px-8 xl:grid-cols-[minmax(0,1.45fr)_minmax(300px,0.55fr)]">
+        <main className="min-w-0 py-2">
           <TeamGroup
             title={t(($) => $.network.my_team_title)}
             description={t(($) => $.network.my_team_description)}
@@ -152,7 +154,7 @@ export function CollaborationNetworkOverview({
           ) : null}
         </main>
 
-        <aside className="min-w-0 px-5 py-5">
+        <aside className="min-w-0 rounded-md border bg-background px-5 py-6">
           <NetworkSideSection title={t(($) => $.network.squads_title)} count={activeSquads.length}>
             {activeSquads.map((squad) => {
               const leader = rows.find((row) => row.agent.id === squad.leader_id);
@@ -333,9 +335,9 @@ function SquadNetworkCell({ squad }: { squad: Squad }) {
 
 function NetworkMetric({ icon: Icon, label, value, hint }: { icon: typeof Bot; label: string; value: string | number; hint?: string }) {
   return (
-    <div className="min-w-0 border-b border-r px-4 py-3 md:border-b-0">
-      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground"><Icon className="size-3.5" />{label}</div>
-      <div className="mt-1 flex items-baseline gap-2"><span className="text-xl font-semibold tabular-nums">{value}</span>{hint ? <span className="truncate text-[10px] text-muted-foreground">{hint}</span> : null}</div>
+    <div className="min-w-0 border-b border-r px-4 py-4 md:border-b-0">
+      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground"><Icon className="size-3.5 text-brand" />{label}</div>
+      <div className="mt-1 flex items-baseline gap-2"><span className="font-serif text-2xl font-semibold tabular-nums">{value}</span>{hint ? <span className="truncate text-[10px] text-muted-foreground">{hint}</span> : null}</div>
     </div>
   );
 }

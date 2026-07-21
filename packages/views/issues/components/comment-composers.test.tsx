@@ -130,6 +130,7 @@ describe("comment composers", () => {
 
     expect(screen.getByPlaceholderText("Leave a comment...")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Attach file" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Send/ })).toBeInTheDocument();
     expect(container.querySelectorAll("button")).toHaveLength(2);
 
     const shell = screen.getByTestId("drop-zone");

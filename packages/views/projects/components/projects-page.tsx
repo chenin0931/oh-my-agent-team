@@ -582,71 +582,63 @@ function ProjectCard({
       : 0;
 
   return (
-    <div className="group/card group/row flex flex-col rounded-md border bg-card transition-colors hover:border-primary/50">
-      <div className="p-3 pb-2">
-        <div className="flex items-center gap-2">
+    <div className="group/card group/row flex min-h-52 flex-col overflow-hidden rounded-md border bg-card transition-colors hover:border-foreground/25">
+      <div className="h-1 w-full bg-brand/80" />
+      <div className="flex flex-1 flex-col p-4 pb-3">
+        <div className="flex items-start gap-2.5">
           <AppLink
             href={wsPaths.projectDetail(project.id)}
-            className="flex min-w-0 flex-1 items-center gap-2"
+            className="flex min-w-0 flex-1 items-start gap-2.5"
           >
-            <ProjectIcon project={project} size="sm" />
-            <h3 className="truncate text-sm font-medium">{project.title}</h3>
+            <ProjectIcon project={project} size="md" />
+            <h3 className="line-clamp-2 font-serif text-lg font-semibold leading-tight">{project.title}</h3>
           </AppLink>
           <ProjectRowActions project={project} pinned={pinned} canDelete={canDelete} />
-          <ProjectStatusBadge project={project} handleUpdate={handleUpdate} triggerClassName="shrink-0" />
         </div>
 
-        {project.issue_count > 0 ? (
-          <div className="flex items-center justify-end gap-1.5 pt-2">
-            <div className="relative h-4 w-4">
-              <svg className="h-4 w-4 -rotate-90" viewBox="0 0 16 16">
-                <circle className="text-muted" strokeWidth="2" stroke="currentColor" fill="none" r="6" cx="8" cy="8" />
-                <circle
-                  className="text-emerald-500"
-                  strokeWidth="2"
-                  stroke="currentColor"
-                  fill="none"
-                  r="6"
-                  cx="8"
-                  cy="8"
-                  strokeDasharray={`${progressPercent * 0.377} 37.7`}
-                  strokeLinecap="round"
-                />
-              </svg>
-            </div>
-            <span className="text-[10px] tabular-nums text-muted-foreground">
-              {project.done_count}/{project.issue_count}
+        <div className="mt-4 flex items-center justify-between gap-3">
+          <ProjectStatusBadge project={project} handleUpdate={handleUpdate} triggerClassName="shrink-0" />
+          <span className="text-xs text-muted-foreground">
+            {project.issue_count > 0 ? `${project.done_count}/${project.issue_count}` : t(($) => $.detail.no_issues_yet)}
+          </span>
+        </div>
+
+        <div className="mt-3">
+          <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-success transition-[width]"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+          <div className="mt-1.5 flex items-center justify-between text-[10px] text-muted-foreground">
+            <span>{t(($) => $.table.progress)}</span>
+            <span className="font-mono tabular-nums">{progressPercent}%</span>
+          </div>
+        </div>
+
+        <div className="mt-auto flex items-end justify-between gap-3 pt-5">
+          <ProjectLeadPicker
+            project={project}
+            handleUpdate={handleUpdate}
+            renderTrigger={(leadName) => (
+              <button type="button" className="-mx-1.5 flex min-w-0 items-center gap-2 rounded px-1.5 py-1 transition-colors hover:bg-accent/60">
+                {project.lead_type && project.lead_id ? (
+                  <ActorAvatar actorType={project.lead_type} actorId={project.lead_id} size={24} enableHoverCard />
+                ) : (
+                  <span className="inline-flex h-6 w-6 rounded-full border border-dashed border-muted-foreground/30" />
+                )}
+                <span className="max-w-28 truncate text-xs text-muted-foreground">
+                  {leadName ?? t(($) => $.lead.no_lead)}
+                </span>
+              </button>
+            )}
+          />
+          <div className="flex shrink-0 items-center gap-2">
+            <ProjectPriorityBadge project={project} handleUpdate={handleUpdate} align="start" />
+            <span className="text-[10px] text-muted-foreground">
+              {formatRelativeDate(project.created_at)}
             </span>
           </div>
-        ) : (
-          <span className="flex justify-end pt-2 text-[10px] text-muted-foreground">
-            {t(($) => $.detail.no_issues_yet)}
-          </span>
-        )}
-      </div>
-
-      <div className="mt-0 flex items-center justify-between border-t px-3 pb-3 pt-2">
-        <ProjectLeadPicker
-          project={project}
-          handleUpdate={handleUpdate}
-          renderTrigger={(leadName) => (
-            <button type="button" className="-mx-1.5 flex items-center gap-1.5 rounded px-1.5 py-0.5 transition-colors hover:bg-accent/60">
-              {project.lead_type && project.lead_id ? (
-                <ActorAvatar actorType={project.lead_type} actorId={project.lead_id} size={20} enableHoverCard />
-              ) : (
-                <span className="inline-flex h-5 w-5 rounded-full border border-dashed border-muted-foreground/30" />
-              )}
-              <span className="max-w-[60px] truncate text-[10px] text-muted-foreground">
-                {leadName ?? t(($) => $.lead.no_lead)}
-              </span>
-            </button>
-          )}
-        />
-        <div className="flex items-center gap-2">
-          <ProjectPriorityBadge project={project} handleUpdate={handleUpdate} align="start" />
-          <span className="text-[10px] text-muted-foreground">
-            {formatRelativeDate(project.created_at)}
-          </span>
         </div>
       </div>
     </div>
@@ -922,20 +914,24 @@ export function ProjectsPage() {
   return (
     // relative: positioning anchor for the page-centered batch toolbar.
     <div className="relative flex flex-1 min-h-0 flex-col">
-      <PageHeader className="justify-between px-5">
-        <div className="flex items-center gap-2">
-          <FolderKanban className="h-4 w-4 text-muted-foreground" />
-          <h1 className="font-serif text-[15px] font-medium">{t(($) => $.page.title)}</h1>
+      <PageHeader className="min-h-[84px] justify-between">
+        <div className="min-w-0">
+          <p className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase text-muted-foreground">
+            <FolderKanban className="size-3 text-brand" />
+            {t(($) => $.page.portfolio_label)}
+          </p>
+          <div className="flex items-center gap-2">
+          <h1 className="font-serif text-xl font-semibold">{t(($) => $.page.title)}</h1>
           {projects.length > 0 && (
             <span className="font-mono text-xs tabular-nums text-muted-foreground/70">
               {projects.length}
             </span>
           )}
+          </div>
         </div>
         <Button
           size="sm"
-          variant="outline"
-          className="h-8 w-8 gap-1 px-0 md:w-auto md:px-2.5"
+          className="h-9 w-9 gap-1 px-0 md:w-auto md:px-3"
           aria-label={t(($) => $.page.new_project)}
           onClick={openCreateProject}
         >
@@ -987,7 +983,7 @@ export function ProjectsPage() {
       ) : (
         <>
           {/* Toolbar */}
-          <div className="flex h-12 shrink-0 items-center justify-between gap-2 px-5">
+          <div className="mx-4 mt-4 flex h-12 shrink-0 items-center justify-between gap-2 rounded-md border bg-background px-3 sm:mx-6 lg:mx-8">
             <div className="flex min-w-0 items-center gap-2">
               <div className="relative hidden md:block">
                 <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -1264,9 +1260,9 @@ export function ProjectsPage() {
               </ListGrid>
             </div>
           ) : (
-            <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-4">
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6 pt-4 sm:px-6 lg:px-8">
               <div
-                className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4"
+                className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
                 style={{ paddingBottom: LIST_GRID_BOTTOM_CLEARANCE }}
               >
                 {visible.map((project) => (

@@ -13,15 +13,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/chenin0931/oh-my-agent-team/server/internal/auth"
 	"github.com/chenin0931/oh-my-agent-team/server/internal/daemonws"
+	"github.com/chenin0931/oh-my-agent-team/server/internal/featureflags"
 	"github.com/chenin0931/oh-my-agent-team/server/internal/middleware"
 	"github.com/chenin0931/oh-my-agent-team/server/internal/service"
 	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
+	"github.com/chenin0931/oh-my-agent-team/server/pkg/featureflag"
 	"github.com/chenin0931/oh-my-agent-team/server/pkg/protocol"
+	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 func TestLogClaimEndpointSlowIncludesPayloadFields(t *testing.T) {
@@ -767,6 +770,147 @@ func TestDaemonRegister_WithDaemonToken(t *testing.T) {
 	rt := runtimes[0].(map[string]any)
 	runtimeID := rt["id"].(string)
 	testPool.Exec(context.Background(), `DELETE FROM agent_runtime WHERE id = $1`, runtimeID)
+}
+
+func TestDaemonRegister_ResumesWaitingManagedSession(t *testing.T) {
+	if testHandler == nil || testPool == nil {
+		t.Skip("database not available")
+	}
+	ctx := context.Background()
+	suffix := uuid.NewString()
+	daemonID := "managed-recovery-" + suffix
+
+	provider := featureflag.NewStaticProvider()
+	provider.Set(featureflags.AgentSessionsV2, featureflag.Rule{Default: true})
+	flags := featureflag.NewService(provider)
+	originalHandlerFlags := testHandler.FeatureFlags
+	originalTaskFlags := testHandler.TaskService.FeatureFlags
+	testHandler.FeatureFlags = flags
+	testHandler.TaskService.FeatureFlags = flags
+
+	var runtimeID, agentID, versionID, issueID, sessionID string
+	if err := testPool.QueryRow(ctx, `
+		INSERT INTO agent_runtime (
+			workspace_id, daemon_id, name, runtime_mode, provider, status,
+			device_info, metadata, owner_id, last_seen_at
+		) VALUES ($1, $2, $3, 'local', 'codex', 'offline', 'test',
+			'{"cli_version":"0.4.0"}'::jsonb, $4, now() - interval '10 minutes')
+		RETURNING id
+	`, testWorkspaceID, daemonID, "Managed recovery runtime "+suffix, testUserID).Scan(&runtimeID); err != nil {
+		t.Fatalf("insert runtime: %v", err)
+	}
+	if err := testPool.QueryRow(ctx, `
+		INSERT INTO agent (
+			workspace_id, name, description, runtime_mode, runtime_config,
+			runtime_id, visibility, max_concurrent_tasks, owner_id
+		) VALUES ($1, $2, '', 'local', '{}'::jsonb, $3, 'private', 1, $4)
+		RETURNING id
+	`, testWorkspaceID, "Managed recovery agent "+suffix, runtimeID, testUserID).Scan(&agentID); err != nil {
+		t.Fatalf("insert agent: %v", err)
+	}
+	if _, err := testPool.Exec(ctx, `
+		INSERT INTO agent_runtime_binding (agent_id, runtime_id, priority, enabled, created_by)
+		VALUES ($1, $2, 0, TRUE, $3)
+	`, agentID, runtimeID, testUserID); err != nil {
+		t.Fatalf("insert runtime binding: %v", err)
+	}
+	if err := testPool.QueryRow(ctx, `
+		INSERT INTO agent_version (
+			agent_id, workspace_id, version_number, name, description,
+			instructions, skill_ids, tool_config, runtime_config, config_hash
+		) VALUES ($1, $2, 1, $3, '', '', '[]'::jsonb, '{}'::jsonb, '{}'::jsonb, $4)
+		RETURNING id
+	`, agentID, testWorkspaceID, "Managed recovery agent "+suffix, suffix).Scan(&versionID); err != nil {
+		t.Fatalf("insert agent version: %v", err)
+	}
+	if err := testPool.QueryRow(ctx, `
+		INSERT INTO issue (
+			workspace_id, title, status, priority, creator_id, creator_type,
+			assignee_type, assignee_id, number, position
+		) VALUES (
+			$1, $2, 'todo', 'none', $3, 'member', 'agent', $4,
+			(SELECT COALESCE(MAX(number), 83000) + 1 FROM issue WHERE workspace_id = $1), 0
+		) RETURNING id
+	`, testWorkspaceID, "Managed recovery issue "+suffix, testUserID, agentID).Scan(&issueID); err != nil {
+		t.Fatalf("insert issue: %v", err)
+	}
+	if err := testPool.QueryRow(ctx, `
+		INSERT INTO agent_session (
+			workspace_id, issue_id, goal, mode, status, entry_agent_id, created_by
+		) VALUES ($1, $2, $3, 'executor', 'waiting_environment', $4, $5)
+		RETURNING id
+	`, testWorkspaceID, issueID, "Resume after registration", agentID, testUserID).Scan(&sessionID); err != nil {
+		t.Fatalf("insert managed session: %v", err)
+	}
+	if _, err := testPool.Exec(ctx, `
+		INSERT INTO agent_session_thread (
+			agent_session_id, agent_id, agent_version_id, role, status, permission_policy
+		) VALUES ($1, $2, $3, 'executor', 'waiting_environment', '{}'::jsonb)
+	`, sessionID, agentID, versionID); err != nil {
+		t.Fatalf("insert managed session thread: %v", err)
+	}
+
+	t.Cleanup(func() {
+		testHandler.FeatureFlags = originalHandlerFlags
+		testHandler.TaskService.FeatureFlags = originalTaskFlags
+		testPool.Exec(ctx, `DELETE FROM agent_task_queue WHERE agent_id = $1`, agentID)
+		testPool.Exec(ctx, `DELETE FROM agent_session WHERE id = $1`, sessionID)
+		testPool.Exec(ctx, `DELETE FROM issue WHERE id = $1`, issueID)
+		testPool.Exec(ctx, `DELETE FROM agent WHERE id = $1`, agentID)
+		testPool.Exec(ctx, `DELETE FROM agent_runtime WHERE id = $1`, runtimeID)
+	})
+
+	register := func() {
+		w := httptest.NewRecorder()
+		req := newDaemonTokenRequest("POST", "/api/daemon/register", map[string]any{
+			"workspace_id": testWorkspaceID,
+			"daemon_id":    daemonID,
+			"device_name":  "managed-recovery-device",
+			"cli_version":  "0.4.0",
+			"runtimes": []map[string]any{
+				{"name": "Managed recovery runtime " + suffix, "type": "codex", "version": "test", "status": "online"},
+			},
+		}, testWorkspaceID, daemonID)
+		testHandler.DaemonRegister(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("DaemonRegister: expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+	}
+
+	register()
+	deadline := time.Now().Add(3 * time.Second)
+	for {
+		var status string
+		var taskCount int
+		if err := testPool.QueryRow(ctx, `
+			SELECT s.status, COUNT(t.id)
+			FROM agent_session s
+			LEFT JOIN agent_task_queue t ON t.agent_session_id = s.id
+			WHERE s.id = $1
+			GROUP BY s.status
+		`, sessionID).Scan(&status, &taskCount); err != nil {
+			t.Fatalf("read resumed session: %v", err)
+		}
+		if status == "queued" && taskCount == 1 {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("session status = %q, task count = %d; want queued with one task", status, taskCount)
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+
+	// A reconnect can immediately repeat registration. The waiting-session
+	// claim and open-task guard must keep that retry idempotent.
+	register()
+	time.Sleep(100 * time.Millisecond)
+	var taskCount int
+	if err := testPool.QueryRow(ctx, `SELECT COUNT(*) FROM agent_task_queue WHERE agent_session_id = $1`, sessionID).Scan(&taskCount); err != nil {
+		t.Fatalf("count resumed tasks: %v", err)
+	}
+	if taskCount != 1 {
+		t.Fatalf("repeated registration created %d tasks, want 1", taskCount)
+	}
 }
 
 func TestDaemonRegister_RecordsRuntimeProfileRegistrationFailure(t *testing.T) {
@@ -3471,6 +3615,21 @@ func TestClaimTask_IssuePriorSessionRuntimeGuard(t *testing.T) {
 	}
 	if task.PriorWorkDir != "" {
 		t.Fatalf("force fresh: expected empty PriorWorkDir, got %q", task.PriorWorkDir)
+	}
+}
+
+func TestShouldUseLegacyIssueResumeExcludesManagedThreads(t *testing.T) {
+	if !shouldUseLegacyIssueResume(db.AgentTaskQueue{}) {
+		t.Fatal("legacy issue task should use the issue-level resume lookup")
+	}
+	if shouldUseLegacyIssueResume(db.AgentTaskQueue{ForceFreshSession: true}) {
+		t.Fatal("force-fresh task must not resume")
+	}
+	if shouldUseLegacyIssueResume(db.AgentTaskQueue{AgentSessionID: pgtype.UUID{Valid: true}}) {
+		t.Fatal("managed Session task must use only its thread provider context")
+	}
+	if shouldUseLegacyIssueResume(db.AgentTaskQueue{SessionThreadID: pgtype.UUID{Valid: true}}) {
+		t.Fatal("partially linked managed task must not fall back across threads")
 	}
 }
 

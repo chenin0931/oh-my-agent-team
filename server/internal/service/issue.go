@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/chenin0931/oh-my-agent-team/server/internal/analytics"
 	"github.com/chenin0931/oh-my-agent-team/server/internal/events"
 	"github.com/chenin0931/oh-my-agent-team/server/internal/issueguard"
@@ -15,6 +14,7 @@ import (
 	"github.com/chenin0931/oh-my-agent-team/server/internal/util"
 	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
 	"github.com/chenin0931/oh-my-agent-team/server/pkg/protocol"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // IssueService is the single service-layer entry point for creating issues.
@@ -344,6 +344,7 @@ func (s *IssueService) Create(ctx context.Context, p IssueCreateParams, opts Iss
 	s.publishIssueCreated(issue, attachments, p.CreatorType, actorID, opts)
 	s.captureCreatedAnalytics(issue, p.CreatorType, actorID, opts)
 	s.maybeEnqueueOnAssign(ctx, issue, p.CreatorType, actorID)
+	s.maybeNotifyMemberAssignee(ctx, issue, p.CreatorType, actorID)
 	s.maybeEnqueueMemberAssigneeAdvisors(ctx, issue)
 
 	return IssueCreateResult{Issue: issue, Attachments: attachments}, nil
@@ -483,6 +484,17 @@ func (s *IssueService) maybeEnqueueMemberAssigneeAdvisors(ctx context.Context, i
 		return
 	}
 	s.TaskService.EnqueueMemberAssigneeAdvisors(ctx, issue)
+}
+
+func (s *IssueService) maybeNotifyMemberAssignee(ctx context.Context, issue db.Issue, actorType, actorID string) {
+	if s.TaskService == nil || !issue.AssigneeType.Valid || issue.AssigneeType.String != "member" {
+		return
+	}
+	parsedActorID, err := util.ParseUUID(actorID)
+	if err != nil {
+		parsedActorID = issue.CreatorID
+	}
+	s.TaskService.NotifyMemberIssueAssigned(ctx, issue, actorType, parsedActorID)
 }
 
 // shouldEnqueueAgentTask returns true when an issue create or assignment

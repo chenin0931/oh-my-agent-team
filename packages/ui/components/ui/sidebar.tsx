@@ -67,6 +67,7 @@ function useSidebarSafe() {
 
 function SidebarProvider({
   defaultOpen = true,
+  defaultWidth,
   open: openProp,
   onOpenChange: setOpenProp,
   className,
@@ -75,18 +76,23 @@ function SidebarProvider({
   ...props
 }: React.ComponentProps<"div"> & {
   defaultOpen?: boolean
+  defaultWidth?: number
   open?: boolean
   onOpenChange?: (open: boolean) => void
 }) {
   const isMobile = useIsMobile()
   const [openMobile, setOpenMobile] = React.useState(false)
 
-  const [width, _setWidth] = React.useState(SIDEBAR_WIDTH_DEFAULT)
+  const [width, _setWidth] = React.useState(defaultWidth ?? SIDEBAR_WIDTH_DEFAULT)
   const [isResizing, setIsResizing] = React.useState(false)
   React.useEffect(() => {
+    if (defaultWidth !== undefined) {
+      _setWidth(defaultWidth)
+      return
+    }
     const stored = localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY)
     if (stored) _setWidth(Number(stored))
-  }, [])
+  }, [defaultWidth])
   const setWidth = React.useCallback((w: number) => {
     const clamped = Math.max(SIDEBAR_WIDTH_MIN, Math.min(SIDEBAR_WIDTH_MAX, w))
     _setWidth(clamped)

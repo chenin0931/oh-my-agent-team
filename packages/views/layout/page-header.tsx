@@ -1,13 +1,6 @@
 "use client";
 
 import { cn } from "@ohmyagentteam/ui/lib/utils";
-import { SidebarTrigger, useSidebarSafe } from "@ohmyagentteam/ui/components/ui/sidebar";
-
-function MobileSidebarTrigger() {
-  const sidebar = useSidebarSafe();
-  if (!sidebar) return null;
-  return <SidebarTrigger className="mr-2 md:hidden" />;
-}
 
 interface PageHeaderProps {
   children: React.ReactNode;
@@ -16,8 +9,13 @@ interface PageHeaderProps {
 
 export function PageHeader({ children, className }: PageHeaderProps) {
   return (
-    <div className={cn("flex h-12 shrink-0 items-center border-b px-4", className)}>
-      <MobileSidebarTrigger />
+    <div
+      data-omat-page-header
+      className={cn(
+        "flex min-h-[72px] shrink-0 items-center border-b border-border/60 bg-[var(--shell-background)] px-4 py-3 sm:px-6 lg:px-8",
+        className,
+      )}
+    >
       {children}
     </div>
   );

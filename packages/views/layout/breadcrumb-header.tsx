@@ -43,14 +43,14 @@ interface BreadcrumbHeaderProps {
  */
 export function BreadcrumbHeader({ segments, leaf, actions, className }: BreadcrumbHeaderProps) {
   return (
-    <PageHeader className={cn("gap-2 bg-background text-sm", className)}>
+    <PageHeader className={cn("gap-2 text-sm", className)}>
       <div className="flex flex-1 items-center gap-1.5 min-w-0">
         {segments.map((segment) => (
           <Fragment key={segment.href}>
             <AppLink
               href={segment.href}
               className={cn(
-                "text-muted-foreground hover:text-foreground transition-colors",
+                "text-muted-foreground transition-colors hover:text-foreground",
                 segment.className ?? "shrink-0",
               )}
             >

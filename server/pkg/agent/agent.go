@@ -20,6 +20,62 @@ type Backend interface {
 	Execute(ctx context.Context, prompt string, opts ExecOptions) (*Session, error)
 }
 
+// BackendCapabilities describes protocol features a provider can support
+// natively. Product-level cancellation and server-side approval still work
+// when a capability is false; callers use these values only to decide whether
+// a provider-specific optimization or callback can be enabled safely.
+type BackendCapabilities struct {
+	Resume              bool `json:"resume"`
+	Interrupt           bool `json:"interrupt"`
+	InteractiveApproval bool `json:"interactive_approval"`
+	Sandbox             bool `json:"sandbox"`
+}
+
+// CapabilityReporter is optional so third-party and test Backends compiled
+// against the historical Execute-only interface continue to work.
+type CapabilityReporter interface {
+	Capabilities() BackendCapabilities
+}
+
+// ApprovalRequest is emitted only by providers that can pause before a
+// concrete local action. Details must already be scrubbed of credentials and
+// absolute paths before crossing the callback boundary.
+type ApprovalRequest struct {
+	ActionNamespace string
+	Title           string
+	RiskLevel       string
+	Details         map[string]any
+}
+
+type ApprovalDecision struct {
+	Approved bool
+	Reason   string
+}
+
+type ApprovalCallback func(context.Context, ApprovalRequest) (ApprovalDecision, error)
+
+// CapabilitiesOf returns an explicit provider report when available and falls
+// back to the conservative built-in matrix otherwise.
+func CapabilitiesOf(backend Backend, provider string) BackendCapabilities {
+	if reporter, ok := backend.(CapabilityReporter); ok {
+		return reporter.Capabilities()
+	}
+	return CapabilitiesForProvider(provider)
+}
+
+// CapabilitiesForProvider intentionally under-claims support. In particular,
+// no provider is marked for interactive approval until its native protocol is
+// wired to ApprovalCallback; server API and MCP proxy approvals are handled
+// independently from this matrix.
+func CapabilitiesForProvider(provider string) BackendCapabilities {
+	switch provider {
+	case "claude", "codebuddy", "codex", "copilot", "opencode", "openclaw", "hermes", "pi", "cursor", "kimi", "kiro", "antigravity", "qoder", "traecli":
+		return BackendCapabilities{Resume: true}
+	default:
+		return BackendCapabilities{}
+	}
+}
+
 // ExecOptions configures a single execution.
 type ExecOptions struct {
 	Cwd   string
@@ -57,6 +113,10 @@ type ExecOptions struct {
 	// ignore this field, mirroring ThinkingLevel's renderer-side fall-through
 	// pattern. See issue #3260.
 	OpenclawMode string
+	// ApprovalCallback is set only when the selected provider advertises
+	// InteractiveApproval. Providers that cannot pause before local tool use
+	// must ignore it and rely on server-side API/MCP approval enforcement.
+	ApprovalCallback ApprovalCallback
 }
 
 // runContext derives the execution context for an agent subprocess from the

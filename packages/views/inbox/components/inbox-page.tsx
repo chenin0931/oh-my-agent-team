@@ -265,14 +265,20 @@ export function InboxPage() {
   // -- Shared sub-components --------------------------------------------------
 
   const listHeader = (
-    <PageHeader className="justify-between">
-      <div className="flex items-center gap-2">
-        <h1 className="font-serif text-[15px] font-medium">{t(($) => $.page.title)}</h1>
+    <PageHeader className="min-h-[76px] justify-between bg-background px-4">
+      <div className="min-w-0">
+        <p className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase text-muted-foreground">
+          <CircleAlert className="size-3 text-brand" />
+          {t(($) => $.page.queue_label)}
+        </p>
+        <div className="flex items-center gap-2">
+        <h1 className="font-serif text-lg font-semibold">{t(($) => $.page.title)}</h1>
         {unreadCount > 0 && (
           <span className="text-xs text-muted-foreground">
             {unreadCount}
           </span>
         )}
+        </div>
       </div>
       <DropdownMenu>
         <DropdownMenuTrigger
@@ -310,7 +316,7 @@ export function InboxPage() {
   );
 
   const viewTabs = (
-    <div className="grid h-10 shrink-0 grid-cols-4 gap-0.5 border-b px-1" role="tablist" aria-label={t(($) => $.filters.label)}>
+    <div className="grid h-12 shrink-0 grid-cols-4 gap-1 border-b bg-[var(--shell-background)] p-1.5" role="tablist" aria-label={t(($) => $.filters.label)}>
       {([
         ["all", Inbox],
         ["action", CircleAlert],
@@ -323,9 +329,9 @@ export function InboxPage() {
           role="tab"
           aria-selected={view === id}
           onClick={() => setView(id)}
-          className={`my-auto inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded px-1 text-[11px] @md:px-2 @md:text-xs ${
+          className={`my-auto inline-flex h-8 min-w-0 items-center justify-center gap-1 rounded-md px-1 text-[11px] @md:px-2 @md:text-xs ${
             view === id
-              ? "bg-accent font-medium text-foreground"
+              ? "bg-background font-medium text-foreground shadow-sm"
               : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
           }`}
         >
@@ -510,7 +516,8 @@ export function InboxPage() {
 
   if (loading) {
     return (
-      <ResizablePanelGroup orientation="horizontal" className="flex-1 min-h-0" defaultLayout={defaultLayout} onLayoutChanged={onLayoutChanged}>
+      <div className="flex min-h-0 flex-1 bg-[var(--shell-background)] p-4 sm:p-5">
+      <ResizablePanelGroup orientation="horizontal" className="min-h-0 flex-1 overflow-hidden rounded-md border bg-background" defaultLayout={defaultLayout} onLayoutChanged={onLayoutChanged}>
         <ResizablePanel id="list" defaultSize={320} minSize={240} maxSize={480} groupResizeBehavior="preserve-pixel-size">
           <div className="flex flex-col border-r h-full">
             <div className="flex h-12 shrink-0 items-center border-b px-4">
@@ -537,11 +544,13 @@ export function InboxPage() {
           </div>
         </ResizablePanel>
       </ResizablePanelGroup>
+      </div>
     );
   }
 
   return (
-    <ResizablePanelGroup orientation="horizontal" className="flex-1 min-h-0" defaultLayout={defaultLayout} onLayoutChanged={onLayoutChanged}>
+    <div className="flex min-h-0 flex-1 bg-[var(--shell-background)] p-4 sm:p-5">
+    <ResizablePanelGroup orientation="horizontal" className="min-h-0 flex-1 overflow-hidden rounded-md border bg-background" defaultLayout={defaultLayout} onLayoutChanged={onLayoutChanged}>
       <ResizablePanel id="list" defaultSize={320} minSize={240} maxSize={480} groupResizeBehavior="preserve-pixel-size">
       <div className="flex flex-col border-r h-full @container">
         {listHeader}
@@ -567,5 +576,6 @@ export function InboxPage() {
       </div>
       </ResizablePanel>
     </ResizablePanelGroup>
+    </div>
   );
 }

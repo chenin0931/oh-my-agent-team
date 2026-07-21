@@ -477,7 +477,7 @@ function SquadListToolbar({
   const sortLabel = SORT_LABELS[sortField];
 
   return (
-    <div className="flex h-12 shrink-0 items-center justify-between gap-2 px-5">
+    <div className="mx-4 mt-4 flex h-12 shrink-0 items-center justify-between gap-2 rounded-md border bg-background px-3 sm:mx-6 lg:mx-8">
       <div className="flex min-w-0 items-center gap-2">
         <div className="hidden shrink-0 items-center gap-1 md:flex">
           {SQUAD_SCOPES.map((s) => (
@@ -889,23 +889,27 @@ export function SquadsPage() {
   );
 
   return (
-    <div className="flex flex-1 min-h-0 flex-col">
-      <PageHeader className="justify-between px-5">
-        <div className="flex items-center gap-2">
-          <Users className="h-4 w-4 text-muted-foreground" />
-          <h1 className="font-serif text-[15px] font-medium">{t(($) => $.page.title)}</h1>
-          {squads.length > 0 && (
-            <span className="font-mono text-xs tabular-nums text-muted-foreground/70">
-              {squads.length}
-            </span>
-          )}
+    <div className="flex min-h-0 flex-1 flex-col bg-[var(--shell-background)]">
+      <PageHeader className="min-h-[84px] justify-between bg-background px-4 sm:px-6 lg:px-8">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="grid size-9 shrink-0 place-items-center rounded-md bg-foreground text-background">
+            <Users className="size-4" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase text-brand">{t(($) => $.page.eyebrow)}</p>
+            <div className="flex items-baseline gap-2">
+              <h1 className="truncate font-serif text-xl font-semibold">{t(($) => $.page.title)}</h1>
+              {squads.length > 0 && (
+                <span className="text-xs tabular-nums text-muted-foreground">{squads.length}</span>
+              )}
+            </div>
+          </div>
         </div>
         {/* Quiet chrome button (outline, icon-only below md) — primary is
             reserved for the empty state. */}
         <Button
           size="sm"
-          variant="outline"
-          className="h-8 w-8 gap-1 px-0 md:w-auto md:px-2.5"
+          className="h-9 w-9 gap-1 bg-brand px-0 text-brand-foreground hover:bg-brand/90 md:w-auto md:px-3"
           aria-label={t(($) => $.page.new_button)}
           onClick={() => useModalStore.getState().open("create-squad")}
         >
@@ -953,7 +957,7 @@ export function SquadsPage() {
             hiddenColumns={hiddenColumns}
             onToggleColumn={toggleColumn}
           />
-          <div className="min-h-0 flex-1 overflow-auto @container">
+          <div className="min-h-0 flex-1 overflow-auto p-4 @container sm:px-6 lg:px-8">
             <ListGrid
               className={`${GRID_COLS} @2xl:min-w-[var(--sqc-minw)]`}
               style={{

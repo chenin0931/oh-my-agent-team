@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Activity,
   Blocks,
@@ -8,8 +8,11 @@ import {
   FileText,
   KeyRound,
   ListTodo,
+  History,
+  MonitorCog,
   Plug,
   Router,
+  ShieldCheck,
   Terminal,
   Webhook,
 } from "lucide-react";
@@ -17,7 +20,12 @@ import { useQuery } from "@tanstack/react-query";
 import type { Agent, AgentRuntime } from "@ohmyagentteam/core/types";
 import { providerSupportsMcpConfig } from "@ohmyagentteam/core/agents";
 import { useFeatureEnabled } from "@ohmyagentteam/core/config";
-import { COMPOSIO_MCP_APPS_FLAG } from "@ohmyagentteam/core/feature-flags";
+import {
+  AGENT_ACTION_APPROVALS_FLAG,
+  AGENT_RUNTIME_POOLING_FLAG,
+  AGENT_SESSIONS_V2_FLAG,
+  COMPOSIO_MCP_APPS_FLAG,
+} from "@ohmyagentteam/core/feature-flags";
 import { useWorkspaceId } from "@ohmyagentteam/core/hooks";
 import { larkInstallationsOptions } from "@ohmyagentteam/core/lark";
 import { slackInstallationsOptions } from "@ohmyagentteam/core/slack";
@@ -40,12 +48,18 @@ import { McpConfigTab } from "./tabs/mcp-config-tab";
 import { AgentMcpTab } from "./tabs/agent-mcp-tab";
 import { IntegrationsTab } from "./tabs/integrations-tab";
 import { RuntimeConfigTab } from "./tabs/runtime-config-tab";
+import { ExecutionBindingsTab } from "./tabs/execution-bindings-tab";
+import { SessionsTab } from "./tabs/sessions-tab";
+import { PermissionsTab } from "./tabs/permissions-tab";
 import { ActorIssuesPanel } from "../../common/actor-issues-panel";
 import { useT } from "../../i18n";
 
 export type DetailTab =
   | "activity"
   | "tasks"
+  | "sessions"
+  | "execution_bindings"
+  | "permissions"
   | "instructions"
   | "skills"
   | "env"
@@ -55,9 +69,12 @@ export type DetailTab =
   | "integrations"
   | "runtime_config";
 
-const TAB_LABEL_KEY: Record<DetailTab, "activity" | "tasks" | "instructions" | "skills" | "environment" | "custom_args" | "mcp_config" | "composio_mcp" | "integrations" | "runtime_config"> = {
+const TAB_LABEL_KEY: Record<DetailTab, "activity" | "tasks" | "sessions" | "execution_bindings" | "permissions" | "instructions" | "skills" | "environment" | "custom_args" | "mcp_config" | "composio_mcp" | "integrations" | "runtime_config"> = {
   activity: "activity",
   tasks: "tasks",
+  sessions: "sessions",
+  execution_bindings: "execution_bindings",
+  permissions: "permissions",
   instructions: "instructions",
   skills: "skills",
   env: "environment",
@@ -74,6 +91,9 @@ const detailTabs: {
 }[] = [
   { id: "activity", icon: Activity },
   { id: "tasks", icon: ListTodo },
+  { id: "sessions", icon: History },
+  { id: "execution_bindings", icon: MonitorCog },
+  { id: "permissions", icon: ShieldCheck },
   { id: "instructions", icon: FileText },
   { id: "skills", icon: BookOpenText },
   { id: "env", icon: KeyRound },
@@ -95,6 +115,7 @@ interface AgentOverviewPaneProps {
    * (MUL-3870). `null` while auth is still loading hides the tab.
    */
   currentUserId?: string | null;
+  canEdit?: boolean;
   /**
    * One-shot request from a sibling (the inspector's compact Lark status
    * row) to focus a specific tab. Routed through the same `requestTabChange`
@@ -133,12 +154,16 @@ export function AgentOverviewPane({
   runtimes,
   onUpdate,
   currentUserId,
+  canEdit = false,
   navIntent,
   onNavIntentHandled,
 }: AgentOverviewPaneProps) {
   const { t } = useT("agents");
   const wsId = useWorkspaceId();
   const composioMCPAppsEnabled = useFeatureEnabled(COMPOSIO_MCP_APPS_FLAG, false);
+  const agentSessionsEnabled = useFeatureEnabled(AGENT_SESSIONS_V2_FLAG, false);
+  const actionApprovalsEnabled = useFeatureEnabled(AGENT_ACTION_APPROVALS_FLAG, false);
+  const runtimePoolingEnabled = useFeatureEnabled(AGENT_RUNTIME_POOLING_FLAG, false);
   const [activeTab, setActiveTab] = useState<DetailTab>("activity");
   const [activeDirty, setActiveDirty] = useState(false);
   // Holds the destination when a tab change is intercepted by the dirty
@@ -195,12 +220,15 @@ export function AgentOverviewPane({
       agent.owner_id === currentUserId;
     return detailTabs.filter((tab) => {
       if (tab.id === "mcp_config") return showMcp;
+      if (tab.id === "sessions") return agentSessionsEnabled;
+      if (tab.id === "execution_bindings") return agentSessionsEnabled && runtimePoolingEnabled;
+      if (tab.id === "permissions") return agentSessionsEnabled && actionApprovalsEnabled;
       if (tab.id === "composio_mcp") return showComposioMcp;
       if (tab.id === "integrations") return integrationsConfigured;
       if (tab.id === "runtime_config") return showRuntimeConfig;
       return true;
     });
-  }, [runtime, integrationsConfigured, composioMCPAppsEnabled, currentUserId, agent.owner_id]);
+  }, [runtime, integrationsConfigured, composioMCPAppsEnabled, currentUserId, agent.owner_id, agentSessionsEnabled, runtimePoolingEnabled, actionApprovalsEnabled]);
 
   // If the active tab disappears (e.g. user just switched the agent's
   // runtime to one that doesn't read mcp_config), fall back to Activity
@@ -211,14 +239,14 @@ export function AgentOverviewPane({
     ? activeTab
     : "activity";
 
-  const requestTabChange = (next: DetailTab) => {
+  const requestTabChange = useCallback((next: DetailTab) => {
     if (next === activeTab) return;
     if (activeDirty) {
       setPendingTab(next);
       return;
     }
     setActiveTab(next);
-  };
+  }, [activeDirty, activeTab]);
 
   const commitTabChange = () => {
     if (pendingTab) {
@@ -271,6 +299,15 @@ export function AgentOverviewPane({
           <div className="flex h-full min-h-[520px] flex-col">
             <ActorIssuesPanel actorType="agent" actorId={agent.id} />
           </div>
+        )}
+        {effectiveTab === "sessions" && (
+          <TabContent><SessionsTab agent={agent} /></TabContent>
+        )}
+        {effectiveTab === "execution_bindings" && (
+          <TabContent><ExecutionBindingsTab agent={agent} runtimes={runtimes} canEdit={canEdit} /></TabContent>
+        )}
+        {effectiveTab === "permissions" && (
+          <TabContent><PermissionsTab agent={agent} /></TabContent>
         )}
         {effectiveTab === "instructions" && (
           <TabContent>

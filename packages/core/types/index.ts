@@ -85,6 +85,22 @@ export type {
   AssigneeFrequencyEntry,
 } from "./activity";
 export type { IssueSubscriber } from "./subscriber";
+export type {
+  AgentSession,
+  AgentSessionMode,
+  AgentSessionStatus,
+  AgentSessionThread,
+  AgentSessionEvent,
+  AgentSessionEventsResponse,
+  AgentSessionTask,
+  AgentVersionSummary,
+  SessionApproval,
+  SessionOutcome,
+  OutcomeEvaluation,
+  PostAgentSessionEventRequest,
+  AgentExecutionBinding,
+  UpsertAgentExecutionBindingRequest,
+} from "./agent-session";
 export type * from "./events";
 export type * from "./api";
 export type { Attachment } from "./attachment";

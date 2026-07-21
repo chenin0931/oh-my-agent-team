@@ -1,5 +1,6 @@
 {
   "page": {
+    "queue_label": "判断または確認が必要な項目",
     "title": "アクションセンター",
     "back": "アクションセンター"
   },
@@ -53,6 +54,10 @@
     "task_failed": "タスク失敗",
     "agent_blocked": "エージェントがブロック",
     "agent_completed": "エージェントが完了",
+    "session_approval": "承認が必要",
+    "session_waiting_input": "入力が必要",
+    "session_waiting_environment": "実行コンピューターが必要",
+    "outcome_failed": "成果の判断が必要",
     "reaction_added": "リアクションあり",
     "quick_create_done": "エージェントで作成",
     "quick_create_failed": "エージェントでの作成に失敗"

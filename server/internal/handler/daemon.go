@@ -15,8 +15,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/chenin0931/oh-my-agent-team/server/internal/analytics"
 	"github.com/chenin0931/oh-my-agent-team/server/internal/auth"
 	"github.com/chenin0931/oh-my-agent-team/server/internal/daemonws"
@@ -29,6 +27,8 @@ import (
 	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
 	"github.com/chenin0931/oh-my-agent-team/server/pkg/protocol"
 	"github.com/chenin0931/oh-my-agent-team/server/pkg/redact"
+	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // ---------------------------------------------------------------------------
@@ -388,6 +388,7 @@ func (h *Handler) DaemonRegister(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := make([]AgentRuntimeResponse, 0, len(req.Runtimes))
+	onlineRuntimeIDs := make([]pgtype.UUID, 0, len(req.Runtimes))
 	for _, runtime := range req.Runtimes {
 		provider := normalizeProvider(runtime.Type)
 		if provider == "" {
@@ -578,6 +579,9 @@ func (h *Handler) DaemonRegister(w http.ResponseWriter, r *http.Request) {
 			h.mergeLegacyRuntimes(r, registered, provider, req.LegacyDaemonIDs)
 		}
 
+		if registered.Status == "online" {
+			onlineRuntimeIDs = append(onlineRuntimeIDs, registered.ID)
+		}
 		resp = append(resp, runtimeToResponse(registered))
 	}
 	for _, failed := range req.FailedProfiles {
@@ -651,6 +655,13 @@ func (h *Handler) DaemonRegister(w http.ResponseWriter, r *http.Request) {
 		"runtimes": resp,
 	})
 
+	// Registration upserts an existing runtime directly to online. That means
+	// the first heartbeat already observes an online row and cannot detect the
+	// offline -> online edge used by processHeartbeat. Resume here as well;
+	// ClaimWaitingAgentSession keeps concurrent runtimes and heartbeats
+	// idempotent when an Agent has more than one compatible binding.
+	h.resumeWaitingManagedSessionsAsync(r.Context(), onlineRuntimeIDs)
+
 	repoResp := workspaceReposResponse(req.WorkspaceID, ws.Repos, ws.Settings)
 
 	writeJSON(w, http.StatusOK, map[string]any{
@@ -659,6 +670,23 @@ func (h *Handler) DaemonRegister(w http.ResponseWriter, r *http.Request) {
 		"repos_version": repoResp.ReposVersion,
 		"settings":      repoResp.Settings,
 	})
+}
+
+func (h *Handler) resumeWaitingManagedSessionsAsync(ctx context.Context, runtimeIDs []pgtype.UUID) {
+	if h.TaskService == nil || len(runtimeIDs) == 0 {
+		return
+	}
+	ids := append([]pgtype.UUID(nil), runtimeIDs...)
+	resumeCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+	go func() {
+		defer cancel()
+		for _, runtimeID := range ids {
+			if resumed := h.TaskService.ResumeWaitingSessionsForRuntime(resumeCtx, runtimeID); resumed > 0 {
+				slog.Info("managed sessions resumed after runtime registration",
+					"runtime_id", uuidToString(runtimeID), "count", resumed)
+			}
+		}
+	}()
 }
 
 // mergeLegacyRuntimes folds every runtime row keyed on a prior hostname-derived
@@ -1099,6 +1127,15 @@ func (h *Handler) processHeartbeat(ctx context.Context, rt db.AgentRuntime, supp
 		m.UpdateMs = time.Since(updateStart).Milliseconds()
 		return nil, m, err
 	}
+	if rt.Status != "online" && h.TaskService != nil {
+		resumeCtx, cancelResume := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+		go func() {
+			defer cancelResume()
+			if resumed := h.TaskService.ResumeWaitingSessionsForRuntime(resumeCtx, rt.ID); resumed > 0 {
+				slog.Info("managed sessions resumed after runtime recovery", "runtime_id", runtimeID, "count", resumed)
+			}
+		}()
+	}
 	m.UpdateMs = time.Since(updateStart).Milliseconds()
 
 	slog.Debug("daemon heartbeat", "runtime_id", runtimeID)
@@ -1385,6 +1422,35 @@ func (h *Handler) ClaimTaskByRuntime(w http.ResponseWriter, r *http.Request) {
 
 	// Build response with fresh agent data (name + skills + custom_env + custom_args).
 	resp := taskToResponse(*task, runtimeWorkspaceID)
+	var managedVersion *db.AgentVersion
+	var managedSkillIDs []string
+	if task.AgentSessionID.Valid && task.SessionThreadID.Valid {
+		if thread, threadErr := h.Queries.GetAgentSessionThread(r.Context(), task.SessionThreadID); threadErr == nil && thread.AgentSessionID == task.AgentSessionID {
+			resp.ManagedProtocolVersion = "2"
+			resp.CollaborationRole = thread.Role
+			resp.PermissionPolicy = json.RawMessage(thread.PermissionPolicy)
+			if thread.RuntimeID == task.RuntimeID {
+				if thread.ProviderSessionID.Valid {
+					resp.PriorSessionID = thread.ProviderSessionID.String
+				}
+				if thread.WorkDir.Valid {
+					resp.PriorWorkDir = thread.WorkDir.String
+				}
+			}
+			if version, versionErr := h.Queries.GetAgentVersion(r.Context(), thread.AgentVersionID); versionErr == nil && version.AgentID == task.AgentID {
+				managedVersion = &version
+				if err := json.Unmarshal(version.SkillIds, &managedSkillIDs); err != nil {
+					slog.Warn("daemon claim: invalid managed agent skill snapshot", "agent_version_id", uuidToString(version.ID), "error", err)
+					managedSkillIDs = nil
+				}
+				resp.AgentVersion = &AgentVersionClaimData{
+					ID:            uuidToString(version.ID),
+					VersionNumber: version.VersionNumber,
+					ConfigHash:    version.ConfigHash,
+				}
+			}
+		}
+	}
 	composioMCPEnabled := h.composioMCPAppsEnabled(r.Context())
 	if composioMCPEnabled {
 		resp.ConnectedApps = parseRuntimeConnectedAppsForClaim(task.RuntimeConnectedApps, task.ID)
@@ -1406,6 +1472,20 @@ func (h *Handler) ClaimTaskByRuntime(w http.ResponseWriter, r *http.Request) {
 		var mcpConfig json.RawMessage
 		if agent.McpConfig != nil {
 			mcpConfig = json.RawMessage(agent.McpConfig)
+		}
+		if managedVersion != nil {
+			var toolSnapshot struct {
+				MCPServerNames []string `json:"mcp_server_names"`
+				CustomArgs     []string `json:"custom_args"`
+			}
+			if err := json.Unmarshal(managedVersion.ToolConfig, &toolSnapshot); err != nil {
+				slog.Warn("daemon claim: invalid managed agent tool snapshot", "agent_version_id", uuidToString(managedVersion.ID), "error", err)
+				customArgs = nil
+				mcpConfig = nil
+			} else {
+				customArgs = toolSnapshot.CustomArgs
+				mcpConfig = filterMCPConfigByNames(mcpConfig, toolSnapshot.MCPServerNames)
+			}
 		}
 		// Layer the per-task overlay (set at enqueue from the initiator
 		// user's active integrations — currently Composio) on top of the
@@ -1439,12 +1519,33 @@ func (h *Handler) ClaimTaskByRuntime(w http.ResponseWriter, r *http.Request) {
 			ThinkingLevel: agent.ThinkingLevel.String,
 			RuntimeConfig: runtimeConfig,
 		}
+		if managedVersion != nil {
+			resp.Agent.Name = managedVersion.Name
+			resp.Agent.Instructions = managedVersion.Instructions
+			resp.Agent.Model = managedVersion.Model.String
+			resp.Agent.ThinkingLevel = managedVersion.ThinkingLevel.String
+			if rc := bytes.TrimSpace(managedVersion.RuntimeConfig); len(rc) > 0 && !bytes.Equal(rc, []byte("{}")) && !bytes.Equal(rc, []byte("null")) {
+				resp.Agent.RuntimeConfig = json.RawMessage(managedVersion.RuntimeConfig)
+			}
+		}
 		if useSkillRefs {
-			_, skillRefs := h.TaskService.LoadAgentSkillBundles(r.Context(), task.AgentID)
+			var skillRefs []service.AgentSkillRefData
+			if managedVersion != nil {
+				skills := h.TaskService.LoadAgentSkillsByIDs(r.Context(), task.AgentID, managedSkillIDs)
+				skills = append(skills, h.TaskService.BuiltinSkills()...)
+				_, skillRefs = service.BuildAgentSkillBundles(skills)
+			} else {
+				_, skillRefs = h.TaskService.LoadAgentSkillBundles(r.Context(), task.AgentID)
+			}
 			agentSkillCount = len(skillRefs)
 			resp.Agent.SkillRefs = skillRefs
 		} else {
-			skills := h.TaskService.LoadAgentSkills(r.Context(), task.AgentID)
+			var skills []service.AgentSkillData
+			if managedVersion != nil {
+				skills = h.TaskService.LoadAgentSkillsByIDs(r.Context(), task.AgentID, managedSkillIDs)
+			} else {
+				skills = h.TaskService.LoadAgentSkills(r.Context(), task.AgentID)
+			}
 			agentSkillCount = len(skills)
 			builtinSkills := h.TaskService.BuiltinSkills()
 			builtinSkillCount = len(builtinSkills)
@@ -1683,7 +1784,7 @@ func (h *Handler) ClaimTaskByRuntime(w http.ResponseWriter, r *http.Request) {
 		// the user just judged the prior output bad, so the daemon must start a
 		// fresh agent session in a fresh workdir instead of resuming anything
 		// from the same conversation that produced that output.
-		if !task.ForceFreshSession {
+		if shouldUseLegacyIssueResume(*task) {
 			if prior, err := h.Queries.GetLastTaskSession(r.Context(), db.GetLastTaskSessionParams{
 				AgentID: task.AgentID,
 				IssueID: task.IssueID,
@@ -1732,7 +1833,7 @@ func (h *Handler) ClaimTaskByRuntime(w http.ResponseWriter, r *http.Request) {
 					resp.Repos = repos
 				}
 			}
-			if !task.ForceFreshSession {
+			if !task.ForceFreshSession && resp.PriorSessionID == "" {
 				// Resume chat sessions only when the stored pointer was produced
 				// by the same runtime as the claiming task. When the chat_session
 				// pointer is missing (legacy NULL runtime_id), stale (last task
@@ -2089,6 +2190,13 @@ func (h *Handler) ClaimTaskByRuntime(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	payloadBytes, _ = writeMeasuredJSON(w, http.StatusOK, map[string]any{"task": resp})
+}
+
+func shouldUseLegacyIssueResume(task db.AgentTaskQueue) bool {
+	// Managed Session threads own their provider session and work directory.
+	// Falling back to the legacy (agent, issue) lookup would let an independent
+	// reviewer or advisor inherit the executor's private conversation context.
+	return !task.ForceFreshSession && !task.AgentSessionID.Valid && !task.SessionThreadID.Valid
 }
 
 type resolveSkillBundlesRequest struct {
@@ -2641,9 +2749,58 @@ func (h *Handler) ReportTaskMessages(w http.ResponseWriter, r *http.Request) {
 			h.publishTask(protocol.EventTaskMessage, workspaceID, "system", "", taskID,
 				taskMessageToPayload(created, taskID, uuidToString(task.IssueID)))
 		}
+		if h.SessionService != nil && task.AgentSessionID.Valid && task.SessionThreadID.Valid {
+			eventType, payload, visible := managedEventFromTaskMessage(msg)
+			if visible {
+				_, eventErr := h.SessionService.AppendEvent(r.Context(), service.ManagedEventInput{
+					SessionID:      task.AgentSessionID,
+					ThreadID:       task.SessionThreadID,
+					ActorType:      "agent",
+					ActorID:        task.AgentID,
+					EventType:      eventType,
+					Payload:        payload,
+					Visibility:     "workspace",
+					SourceTaskID:   task.ID,
+					IdempotencyKey: fmt.Sprintf("task-message:%s:%d", taskID, msg.Seq),
+				})
+				if eventErr != nil {
+					slog.Warn("failed to append managed session event", "task_id", taskID, "seq", msg.Seq, "error", eventErr)
+				}
+			}
+		}
 	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func managedEventFromTaskMessage(msg TaskMessageRequest) (string, map[string]any, bool) {
+	switch msg.Type {
+	case "text":
+		if strings.TrimSpace(msg.Content) == "" {
+			return "", nil, false
+		}
+		return "agent.message", map[string]any{"message": truncateManagedEventText(msg.Content, 2000)}, true
+	case "tool-use":
+		return "agent.tool_started", map[string]any{"tool": strings.TrimSpace(msg.Tool)}, true
+	case "tool-result":
+		return "agent.tool_completed", map[string]any{"tool": strings.TrimSpace(msg.Tool), "summary": "Tool completed"}, true
+	case "error":
+		summary := msg.Content
+		if strings.TrimSpace(summary) == "" {
+			summary = msg.Output
+		}
+		return "agent.message", map[string]any{"kind": "error", "message": truncateManagedEventText(summary, 1000)}, true
+	default:
+		return "", nil, false
+	}
+}
+
+func truncateManagedEventText(value string, maxRunes int) string {
+	runes := []rune(strings.TrimSpace(value))
+	if len(runes) <= maxRunes {
+		return string(runes)
+	}
+	return string(runes[:maxRunes]) + "…"
 }
 
 func taskMessageToPayload(m db.TaskMessage, taskID, issueID string) protocol.TaskMessagePayload {

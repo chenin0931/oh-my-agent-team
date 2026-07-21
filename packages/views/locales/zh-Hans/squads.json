@@ -1,6 +1,7 @@
 {
   "page": {
     "title": "协作小队",
+    "eyebrow": "多智能体协作编组",
     "new_button": "新建小队",
     "empty_no_squads": "还没有协作小队",
     "empty_description": "小队由一个主智能体协调多个成员，适合需要分工、复核和并行推进的工作。",
@@ -10,7 +11,8 @@
       "leader": "队长",
       "members": "成员",
       "owner": "所有者",
-      "created": "创建时间"
+      "created": "创建时间",
+      "updated": "更新时间"
     },
     "no_matches": "没有匹配的小队",
     "row_menu": "小队操作",
@@ -47,8 +49,14 @@
     "label_member": "成员",
     "label_role": "角色",
     "label_optional": "（可选）",
+    "select_placeholder": "选择真人或智能体",
+    "search_placeholder": "搜索真人和智能体…",
+    "members_section": "真人成员",
+    "agents_section": "智能体",
+    "role_placeholder": "例如：审核、采购",
     "placeholder_role_inline": "添加角色…",
-    "cancel": "取消"
+    "cancel": "取消",
+    "submit": "添加"
   },
   "description_dialog": {
     "title": "编辑描述",
@@ -61,12 +69,44 @@
     "keep_editing": "继续编辑",
     "discard_button": "放弃"
   },
+  "detail_tabs": {
+    "members": "成员",
+    "sessions": "协作会话",
+    "instructions": "协作规则"
+  },
+  "sessions_tab": {
+    "title": "小队协作进程",
+    "summary": "{{active}} 个进行中 · 最近 {{total}} 个会话",
+    "empty_title": "还没有协作会话",
+    "empty_description": "小队接到可执行工作后，Leader 和被委派的智能体会以独立线程显示在这里。",
+    "status": {
+      "queued": "排队中",
+      "running": "执行中",
+      "waiting_approval": "等待审批",
+      "waiting_input": "等待补充",
+      "waiting_environment": "执行电脑离线",
+      "idle": "可继续",
+      "completed": "已完成",
+      "failed": "失败",
+      "cancelled": "已取消"
+    },
+    "role": {
+      "executor": "执行者",
+      "advisor": "顾问",
+      "coordinator": "协调者",
+      "reviewer": "验收者",
+      "planner": "规划者"
+    }
+  },
   "members_tab": {
     "section_title": "成员",
     "section_count_other": "该小队有 {{count}} 名成员",
     "add_member_button": "添加成员",
     "create_agent_button": "创建智能体",
     "leader_chip": "负责人",
+    "default_role_member": "小队成员",
+    "member_type_agent": "智能体",
+    "member_type_human": "真人",
     "view_agent_tooltip": "打开智能体详情",
     "make_leader_tooltip": "设为小队负责人",
     "remove_member_tooltip": "从小队移除",
@@ -88,7 +128,8 @@
     "more_members_other": "还有 {{count}} 人"
   },
   "instructions_tab": {
-    "description": "小队指引会在 主智能体智能体处理分配给该小队的工作项时注入到它的 prompt 中。可用来给 主智能体提供贯穿全队的指导、协作规范，或每次任务都应遵循的上下文。",
+    "description": "主智能体处理分配给小队的工作时，系统会把小队指引注入它的提示词。可在这里约定团队目标、协作方式，以及每次任务都要遵循的规则。",
+    "placeholder": "例如：先核实事实并标明数据缺口，再说明决策风险，最后汇总全队结论。",
     "unsaved_changes": "有未保存的修改",
     "save_button": "保存"
   },

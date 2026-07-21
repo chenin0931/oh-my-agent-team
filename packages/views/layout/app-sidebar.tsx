@@ -1,61 +1,49 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { cn } from "@ohmyagentteam/ui/lib/utils";
-import { useScrollFade } from "@ohmyagentteam/ui/hooks/use-scroll-fade";
-import { AppLink, useNavigation } from "../navigation";
-import { HelpLauncher } from "./help-launcher";
-import { JoinDiscordCard } from "./join-discord-card";
+import {
+  Check,
+  ChevronDown,
+  LogOut,
+  Plus,
+  Sparkles,
+  SquarePen,
+  Star,
+  X,
+} from "lucide-react";
 import {
   DndContext,
   PointerSensor,
+  closestCenter,
   useSensor,
   useSensors,
-  closestCenter,
   type DragEndEvent,
 } from "@dnd-kit/core";
-import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import {
-  Inbox,
-  ListTodo,
-  Monitor,
-  ChevronDown,
-  ChevronRight,
-  Settings,
-  LogOut,
-  Plus,
-  Check,
-  BookOpenText,
-  SquarePen,
-  CircleUser,
-  FolderKanban,
-  BarChart3,
-  X,
-  Zap,
-  Users,
-  Network,
-  Layers3,
-} from "lucide-react";
-import { WorkspaceAvatar } from "../workspace/workspace-avatar";
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { cn } from "@ohmyagentteam/ui/lib/utils";
 import { ActorAvatar } from "@ohmyagentteam/ui/components/common/actor-avatar";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@ohmyagentteam/ui/components/ui/tooltip";
-import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@ohmyagentteam/ui/components/ui/collapsible";
-import { StatusIcon } from "../issues/components/status-icon";
-import { useIssueDraftStore } from "@ohmyagentteam/core/issues/stores/draft-store";
-import { openCreateIssueWithPreference } from "@ohmyagentteam/core/issues/stores/create-mode-store";
+import { BrandMark } from "@ohmyagentteam/ui/components/common/brand-mark";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@ohmyagentteam/ui/components/ui/tooltip";
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarRail,
   useSidebarSafe,
 } from "@ohmyagentteam/ui/components/ui/sidebar";
 import {
@@ -68,111 +56,59 @@ import {
   DropdownMenuTrigger,
 } from "@ohmyagentteam/ui/components/ui/dropdown-menu";
 import { useAuthStore } from "@ohmyagentteam/core/auth";
-import { useCurrentWorkspace, useWorkspacePaths, paths } from "@ohmyagentteam/core/paths";
-import { workspaceListOptions, myInvitationListOptions, workspaceKeys } from "@ohmyagentteam/core/workspace/queries";
-import { resolvePublicFileUrl } from "@ohmyagentteam/core/workspace/avatar-url";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { inboxKeys, deduplicateInboxItems, inboxUnreadSummaryOptions, hasOtherWorkspaceUnread, unreadWorkspaceIds } from "@ohmyagentteam/core/inbox/queries";
 import { api, ApiError } from "@ohmyagentteam/core/api";
-import { useModalStore } from "@ohmyagentteam/core/modals";
-import { useConfigStore } from "@ohmyagentteam/core/config";
-import { useMyRuntimesNeedUpdate } from "@ohmyagentteam/core/runtimes/hooks";
-import { pinListOptions } from "@ohmyagentteam/core/pins/queries";
-import { useDeletePin, useReorderPins } from "@ohmyagentteam/core/pins/mutations";
-import { issueDetailOptions } from "@ohmyagentteam/core/issues/queries";
-import { epicDetailOptions } from "@ohmyagentteam/core/epics/queries";
-import { projectDetailOptions } from "@ohmyagentteam/core/projects/queries";
-import type { PinnedItem } from "@ohmyagentteam/core/types";
-import { useLogout } from "../auth";
-import { ProjectIcon } from "../projects/components/project-icon";
-import { useT } from "../i18n";
-import { BrandMark } from "@ohmyagentteam/ui/components/common/brand-mark";
 import { BRAND_NAME } from "@ohmyagentteam/core/brand";
+import { useConfigStore } from "@ohmyagentteam/core/config";
+import {
+  deduplicateInboxItems,
+  hasOtherWorkspaceUnread,
+  inboxKeys,
+  inboxUnreadSummaryOptions,
+  unreadWorkspaceIds,
+} from "@ohmyagentteam/core/inbox/queries";
+import { issueDetailOptions } from "@ohmyagentteam/core/issues/queries";
+import { useIssueDraftStore } from "@ohmyagentteam/core/issues/stores/draft-store";
+import { openCreateIssueWithPreference } from "@ohmyagentteam/core/issues/stores/create-mode-store";
+import { useModalStore } from "@ohmyagentteam/core/modals";
+import { useDeletePin, useReorderPins } from "@ohmyagentteam/core/pins/mutations";
+import { pinListOptions } from "@ohmyagentteam/core/pins/queries";
+import { paths, useCurrentWorkspace, useWorkspacePaths } from "@ohmyagentteam/core/paths";
+import { projectDetailOptions } from "@ohmyagentteam/core/projects/queries";
+import { epicDetailOptions } from "@ohmyagentteam/core/epics/queries";
+import { useMyRuntimesNeedUpdate } from "@ohmyagentteam/core/runtimes/hooks";
+import type { PinnedItem } from "@ohmyagentteam/core/types";
+import {
+  myInvitationListOptions,
+  workspaceKeys,
+  workspaceListOptions,
+} from "@ohmyagentteam/core/workspace/queries";
+import { resolvePublicFileUrl } from "@ohmyagentteam/core/workspace/avatar-url";
+import { useLogout } from "../auth";
+import { useT } from "../i18n";
+import { StatusIcon } from "../issues/components/status-icon";
+import { AppLink, useNavigation } from "../navigation";
+import { ProjectIcon } from "../projects/components/project-icon";
+import { WorkspaceAvatar } from "../workspace/workspace-avatar";
+import { HelpLauncher } from "./help-launcher";
+import {
+  APP_NAV_SECTIONS,
+  getActiveSection,
+  isNavActive,
+  resolveNavHref,
+} from "./app-navigation";
 
-// Top-level nav items stay active when the user is on a child route
-// (e.g. "Projects" stays lit on /:slug/projects/:id). Pinned items keep
-// strict equality elsewhere — a pinned project shouldn't highlight on
-// sub-pages of itself.
-function isNavActive(pathname: string, href: string): boolean {
-  return pathname === href || pathname.startsWith(href + "/");
-}
-
-// Stable empty arrays for query defaults. Using an inline `= []` default on
-// `useQuery` creates a new array reference on every render when `data` is
-// undefined (e.g. query disabled or loading) — which in turn breaks any
-// `useEffect`/`useMemo` that depends on the value, and can trigger infinite
-// re-render loops when the effect itself calls `setState`.
 const EMPTY_PINS: PinnedItem[] = [];
 const EMPTY_WORKSPACES: Awaited<ReturnType<typeof api.listWorkspaces>> = [];
 const EMPTY_INVITATIONS: Awaited<ReturnType<typeof api.listMyInvitations>> = [];
 const EMPTY_INBOX: Awaited<ReturnType<typeof api.listInbox>> = [];
 const EMPTY_INBOX_SUMMARY: Awaited<ReturnType<typeof api.getInboxUnreadSummary>> = [];
 
-// Nav items reference WorkspacePaths method names so they can be resolved
-// against the current workspace slug at render time (see AppSidebar body).
-// Only parameterless paths are valid nav destinations.
-type NavKey =
-  | "inbox"
-  | "myIssues"
-  | "issues"
-  | "projects"
-  | "autopilots"
-  | "agents"
-  | "squads"
-  | "usage"
-  | "runtimes"
-  | "skills"
-  | "settings";
-
-// Static schema (key + icon) — labels resolved at render via useT("layout").
-type NavLabelKey =
-  | "inbox"
-  | "my_issues"
-  | "issues"
-  | "projects"
-  | "autopilots"
-  | "agents"
-  | "squads"
-  | "usage"
-  | "runtimes"
-  | "skills"
-  | "settings";
-
-const personalNav: { key: NavKey; labelKey: NavLabelKey; icon: typeof Inbox }[] = [
-  { key: "inbox", labelKey: "inbox", icon: Inbox },
-  { key: "myIssues", labelKey: "my_issues", icon: CircleUser },
-];
-
-const workNav: { key: NavKey; labelKey: NavLabelKey; icon: typeof Inbox }[] = [
-  { key: "projects", labelKey: "projects", icon: FolderKanban },
-  { key: "issues", labelKey: "issues", icon: ListTodo },
-  { key: "autopilots", labelKey: "autopilots", icon: Zap },
-];
-
-const collaborationNav: { key: NavKey; labelKey: NavLabelKey; icon: typeof Inbox }[] = [
-  { key: "agents", labelKey: "agents", icon: Network },
-  { key: "squads", labelKey: "squads", icon: Users },
-  { key: "runtimes", labelKey: "runtimes", icon: Monitor },
-];
-
-const systemNav: { key: NavKey; labelKey: NavLabelKey; icon: typeof Inbox }[] = [
-  { key: "skills", labelKey: "skills", icon: BookOpenText },
-  { key: "usage", labelKey: "usage", icon: BarChart3 },
-  { key: "settings", labelKey: "settings", icon: Settings },
-];
-
 function DraftDot() {
-  const hasDraft = useIssueDraftStore((s) => !!(s.draft.title || s.draft.description));
+  const hasDraft = useIssueDraftStore((state) => !!(state.draft.title || state.draft.description));
   if (!hasDraft) return null;
-  return <span className="absolute top-0 right-0 size-1.5 rounded-full bg-brand" />;
+  return <span className="absolute -right-0.5 -top-0.5 size-1.5 rounded-full bg-[#ef6a5b]" />;
 }
 
-/**
- * Presentational pin row. The `label` and `iconNode` are computed by the
- * parent `PinRow` from cached issue / project detail queries — keeping
- * this component dumb means the dnd-kit / navigation wiring lives in
- * one place and the data flow is explicit.
- */
 function SortablePinItem({
   pin,
   href,
@@ -196,102 +132,74 @@ function SortablePinItem({
     if (isDragging) wasDragged.current = true;
   }, [isDragging]);
 
-  const style = { transform: CSS.Transform.toString(transform), transition };
-  const isActive = pathname === href;
-
   return (
     <SidebarMenuItem
       ref={setNodeRef}
-      style={style}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn("group/pin", isDragging && "opacity-30")}
       {...attributes}
       {...listeners}
     >
       <SidebarMenuButton
         size="sm"
-        isActive={isActive}
+        isActive={pathname === href}
         render={<AppLink href={href} draggable={false} />}
         onClick={(event) => {
-          if (wasDragged.current) {
-            wasDragged.current = false;
-            event.preventDefault();
-            return;
-          }
+          if (!wasDragged.current) return;
+          wasDragged.current = false;
+          event.preventDefault();
         }}
-        className={cn(
-          "text-muted-foreground hover:not-data-active:bg-sidebar-accent/70 data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground",
-          isDragging && "pointer-events-none",
-        )}
+        className="text-muted-foreground data-active:bg-accent data-active:text-foreground"
       >
         {iconNode}
-        <span
-          className="min-w-0 flex-1 overflow-hidden whitespace-nowrap"
-          style={{
-            maskImage: "linear-gradient(to right, black calc(100% - 12px), transparent)",
-            WebkitMaskImage: "linear-gradient(to right, black calc(100% - 12px), transparent)",
-          }}
-        >{label}</span>
-        <Tooltip>
-          <TooltipTrigger
-            render={<span role="button" />}
-            className="hidden size-2.5 shrink-0 items-center justify-center rounded-sm text-muted-foreground group-hover/pin:flex hover:text-foreground"
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              onUnpin();
-            }}
-          >
-            <X className="size-1" />
-          </TooltipTrigger>
-          <TooltipContent side="top" sideOffset={4}>{t(($) => $.sidebar.unpin_tooltip)}</TooltipContent>
-        </Tooltip>
+        <span className="min-w-0 flex-1 truncate">{label}</span>
       </SidebarMenuButton>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <SidebarMenuAction
+              showOnHover
+              aria-label={t(($) => $.sidebar.unpin_tooltip)}
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                onUnpin();
+              }}
+            />
+          }
+        >
+          <X className="size-3" />
+        </TooltipTrigger>
+        <TooltipContent side="top">{t(($) => $.sidebar.unpin_tooltip)}</TooltipContent>
+      </Tooltip>
     </SidebarMenuItem>
   );
 }
 
-/**
- * Smart wrapper that resolves a pin's display data (label + status/icon)
- * from the issue / project detail query cache. Both queries are declared
- * unconditionally with `enabled` gates so the hook order stays stable
- * regardless of `pin.item_type`.
- *
- * Loading: render a flat skeleton so the sidebar height doesn't jump.
- * Missing (deleted item / 404): render nothing — the row hides itself
- * until the user unpins manually or a server-side cascade catches up.
- */
 function PinRow({
   pin,
   href,
   pathname,
   onUnpin,
-  wsId,
+  workspaceId,
 }: {
   pin: PinnedItem;
   href: string;
   pathname: string;
   onUnpin: () => void;
-  wsId: string;
+  workspaceId: string;
 }) {
   const isIssue = pin.item_type === "issue";
   const isEpic = pin.item_type === "epic";
-  const issueQuery = useQuery({
-    ...issueDetailOptions(wsId, pin.item_id),
-    enabled: isIssue,
-  });
-  const projectQuery = useQuery({
-    ...projectDetailOptions(wsId, pin.item_id),
-    enabled: pin.item_type === "project",
-  });
-  const epicQuery = useQuery({
-    ...epicDetailOptions(wsId, pin.item_id),
-    enabled: isEpic,
-  });
-
+  const issueQuery = useQuery({ ...issueDetailOptions(workspaceId, pin.item_id), enabled: isIssue });
+  const epicQuery = useQuery({ ...epicDetailOptions(workspaceId, pin.item_id), enabled: isEpic });
+  const projectQuery = useQuery({ ...projectDetailOptions(workspaceId, pin.item_id), enabled: pin.item_type === "project" });
   const triggeredRef = useRef(false);
+
   useEffect(() => {
-    const err = isIssue ? issueQuery.error : isEpic ? epicQuery.error : projectQuery.error;
-    if (err instanceof ApiError && err.status === 404 && !triggeredRef.current) {
+    const error = isIssue ? issueQuery.error : isEpic ? epicQuery.error : projectQuery.error;
+    if (error instanceof ApiError && error.status === 404 && !triggeredRef.current) {
       triggeredRef.current = true;
       onUnpin();
     }
@@ -300,20 +208,14 @@ function PinRow({
   if (isIssue) {
     if (issueQuery.isPending) return <PinSkeleton />;
     if (issueQuery.isError || !issueQuery.data) return null;
-    const issue = issueQuery.data;
-    const label = issue.title;
-    const iconNode = (
-      /* Override parent [&_svg]:size-4 — pinned items need smaller icons to match sm size */
-      <StatusIcon status={issue.status} className="!size-3.5 shrink-0" />
-    );
     return (
       <SortablePinItem
         pin={pin}
         href={href}
         pathname={pathname}
         onUnpin={onUnpin}
-        label={label}
-        iconNode={iconNode}
+        label={issueQuery.data.title}
+        iconNode={<StatusIcon status={issueQuery.data.status} className="!size-3.5 shrink-0" />}
       />
     );
   }
@@ -328,23 +230,21 @@ function PinRow({
         pathname={pathname}
         onUnpin={onUnpin}
         label={epicQuery.data.title}
-        iconNode={<Layers3 className="!size-3.5 shrink-0" />}
+        iconNode={<Sparkles className="!size-3.5 shrink-0" />}
       />
     );
   }
 
   if (projectQuery.isPending) return <PinSkeleton />;
   if (projectQuery.isError || !projectQuery.data) return null;
-  const project = projectQuery.data;
-  const iconNode = <ProjectIcon project={project} size="sm" />;
   return (
     <SortablePinItem
       pin={pin}
       href={href}
       pathname={pathname}
       onUnpin={onUnpin}
-      label={project.title}
-      iconNode={iconNode}
+      label={projectQuery.data.title}
+      iconNode={<ProjectIcon project={projectQuery.data} size="sm" />}
     />
   );
 }
@@ -352,22 +252,18 @@ function PinRow({
 function PinSkeleton() {
   return (
     <SidebarMenuItem>
-      <div className="flex h-7 w-full items-center gap-2 px-2">
-        <div className="size-3.5 shrink-0 rounded-sm bg-sidebar-accent/40" />
-        <div className="h-3 w-24 rounded bg-sidebar-accent/40" />
+      <div className="flex h-8 items-center gap-2 px-2">
+        <div className="size-3.5 rounded-sm bg-muted" />
+        <div className="h-3 w-28 rounded-sm bg-muted" />
       </div>
     </SidebarMenuItem>
   );
 }
 
 interface AppSidebarProps {
-  /** Rendered above SidebarHeader (e.g. desktop traffic light spacer) */
   topSlot?: React.ReactNode;
-  /** Rendered in the header between workspace switcher and new-issue button (e.g. search trigger) */
   searchSlot?: React.ReactNode;
-  /** Extra className for SidebarHeader */
   headerClassName?: string;
-  /** Extra style for SidebarHeader */
   headerStyle?: React.CSSProperties;
 }
 
@@ -375,95 +271,74 @@ export function AppSidebar({ topSlot, searchSlot, headerClassName, headerStyle }
   const { t } = useT("layout");
   const { pathname, push } = useNavigation();
   const sidebar = useSidebarSafe();
-  const isMobileSidebar = sidebar?.isMobile ?? false;
+  const isMobileSidebar = sidebar?.isMobile;
   const setOpenMobile = sidebar?.setOpenMobile;
-  const user = useAuthStore((s) => s.user);
-  const userId = useAuthStore((s) => s.user?.id);
+  const user = useAuthStore((state) => state.user);
+  const userId = user?.id;
   const logout = useLogout();
   const workspace = useCurrentWorkspace();
-  const p = useWorkspacePaths();
+  const workspacePaths = useWorkspacePaths();
+  const activeSection = getActiveSection(pathname, workspacePaths);
   const { data: workspaces = EMPTY_WORKSPACES } = useQuery(workspaceListOptions());
-  const { data: myInvitations = EMPTY_INVITATIONS } = useQuery(myInvitationListOptions());
-  const workspaceCreationDisabled = useConfigStore((s) => s.workspaceCreationDisabled);
+  const { data: invitations = EMPTY_INVITATIONS } = useQuery(myInvitationListOptions());
+  const workspaceCreationDisabled = useConfigStore((state) => state.workspaceCreationDisabled);
 
   useEffect(() => {
     if (isMobileSidebar) setOpenMobile?.(false);
-  }, [pathname, isMobileSidebar, setOpenMobile]);
+  }, [isMobileSidebar, pathname, setOpenMobile]);
 
-  const wsId = workspace?.id;
+  const workspaceId = workspace?.id;
   const { data: inboxItems = EMPTY_INBOX } = useQuery({
-    queryKey: wsId ? inboxKeys.list(wsId) : ["inbox", "disabled"],
+    queryKey: workspaceId ? inboxKeys.list(workspaceId) : ["inbox", "disabled"],
     queryFn: () => api.listInbox(),
-    enabled: !!wsId,
+    enabled: !!workspaceId,
   });
   const unreadCount = React.useMemo(
-    () => deduplicateInboxItems(inboxItems).filter((i) => !i.read).length,
+    () => deduplicateInboxItems(inboxItems).filter((item) => !item.read).length,
     [inboxItems],
   );
-  // Cross-workspace unread summary backs the workspace-switcher dot. One
-  // shared cache entry across workspaces; gated on an active workspace since
-  // the endpoint resolves through the workspace-member middleware.
   const { data: unreadSummary = EMPTY_INBOX_SUMMARY } = useQuery({
     ...inboxUnreadSummaryOptions(),
-    enabled: !!wsId,
+    enabled: !!workspaceId,
   });
   const otherWorkspaceUnread = React.useMemo(
-    () => hasOtherWorkspaceUnread(unreadSummary, wsId),
-    [unreadSummary, wsId],
+    () => hasOtherWorkspaceUnread(unreadSummary, workspaceId),
+    [unreadSummary, workspaceId],
   );
-  // Which workspaces have unread, so the switcher dropdown can point at the
-  // specific one(s) rather than just the aggregate avatar dot.
-  const unreadWsIds = React.useMemo(() => unreadWorkspaceIds(unreadSummary), [unreadSummary]);
-  const hasRuntimeUpdates = useMyRuntimesNeedUpdate(wsId);
+  const unreadWorkspaceSet = React.useMemo(() => unreadWorkspaceIds(unreadSummary), [unreadSummary]);
+  const hasRuntimeUpdates = useMyRuntimesNeedUpdate(workspaceId);
+
   const { data: pinnedItems = EMPTY_PINS } = useQuery({
-    ...pinListOptions(wsId ?? "", userId ?? ""),
-    enabled: !!wsId && !!userId,
+    ...pinListOptions(workspaceId ?? "", userId ?? ""),
+    enabled: !!workspaceId && !!userId,
   });
   const deletePin = useDeletePin();
   const reorderPins = useReorderPins();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
-  const sidebarScrollRef = useRef<HTMLDivElement>(null);
-  const sidebarFadeStyle = useScrollFade(sidebarScrollRef, 24);
   const getPinHref = useCallback(
     (pin: PinnedItem) =>
       pin.item_type === "issue"
-        ? p.issueDetail(pin.item_id)
+        ? workspacePaths.issueDetail(pin.item_id)
         : pin.item_type === "epic"
-          ? p.epicDetail(pin.item_id)
-          : p.projectDetail(pin.item_id),
-    [p],
+          ? workspacePaths.epicDetail(pin.item_id)
+          : workspacePaths.projectDetail(pin.item_id),
+    [workspacePaths],
   );
-
-  // Local presentational copy of pinnedItems for drop-animation stability.
-  // Follows TQ at rest; frozen during a drag gesture so a mid-drag cache
-  // write (our own optimistic update, or a WS refetch) cannot reorder the
-  // DOM under dnd-kit while its drop animation is still interpolating.
   const [localPinned, setLocalPinned] = useState<PinnedItem[]>(pinnedItems);
-  const [localPinnedWsId, setLocalPinnedWsId] = useState<string | null>(wsId ?? null);
-  const isDraggingRef = useRef(false);
-  useEffect(() => {
-    if (!isDraggingRef.current) {
-      setLocalPinned(pinnedItems);
-    }
-  }, [pinnedItems]);
-  useEffect(() => {
-    setLocalPinnedWsId(wsId ?? null);
-  }, [wsId]);
-  const visiblePinned = localPinnedWsId === (wsId ?? null) ? localPinned : EMPTY_PINS;
-  const isActivePinnedRoute = visiblePinned.some((pin) => pathname === getPinHref(pin));
+  const draggingRef = useRef(false);
 
-  const handleDragStart = useCallback(() => {
-    isDraggingRef.current = true;
-  }, []);
+  useEffect(() => {
+    if (!draggingRef.current) setLocalPinned(pinnedItems);
+  }, [pinnedItems]);
+
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
-      isDraggingRef.current = false;
-      const { active, over } = event;
-      if (!over || active.id === over.id) return;
-      const oldIndex = localPinned.findIndex((p) => p.id === active.id);
-      const newIndex = localPinned.findIndex((p) => p.id === over.id);
-      if (oldIndex === -1 || newIndex === -1) return;
-      const reordered = arrayMove(localPinned, oldIndex, newIndex);
+      draggingRef.current = false;
+      if (!event.over || event.active.id === event.over.id) return;
+      const from = localPinned.findIndex((pin) => pin.id === event.active.id);
+      const to = localPinned.findIndex((pin) => pin.id === event.over?.id);
+      if (from < 0 || to < 0) return;
+      const reordered = arrayMove(localPinned, from, to);
       setLocalPinned(reordered);
       reorderPins.mutate(reordered);
     },
@@ -471,377 +346,245 @@ export function AppSidebar({ topSlot, searchSlot, headerClassName, headerStyle }
   );
 
   const queryClient = useQueryClient();
-  const acceptInvitationMut = useMutation({
+  const acceptInvitation = useMutation({
     mutationFn: (id: string) => api.acceptInvitation(id),
-    // After accepting an invitation, navigate INTO the newly-joined workspace.
-    // Otherwise the user stays on their current workspace and just sees the
-    // new one appear in the dropdown — silent and confusing (this is MUL-820).
     onSuccess: async (_, invitationId) => {
-      const invitation = myInvitations.find((i) => i.id === invitationId);
+      const invitation = invitations.find((item) => item.id === invitationId);
       queryClient.invalidateQueries({ queryKey: workspaceKeys.myInvitations() });
-      // staleTime: 0 forces a real network fetch — we need the joined workspace
-      // in the list before we can resolve its slug for navigation.
-      const list = await queryClient.fetchQuery({
-        ...workspaceListOptions(),
-        staleTime: 0,
-      });
-      const joined = invitation
-        ? list.find((w) => w.id === invitation.workspace_id)
-        : null;
-      if (joined) {
-        push(paths.workspace(joined.slug).issues());
-      }
+      const list = await queryClient.fetchQuery({ ...workspaceListOptions(), staleTime: 0 });
+      const joined = invitation ? list.find((item) => item.id === invitation.workspace_id) : null;
+      if (joined) push(paths.workspace(joined.slug).issues());
     },
   });
-  const declineInvitationMut = useMutation({
+  const declineInvitation = useMutation({
     mutationFn: (id: string) => api.declineInvitation(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: workspaceKeys.myInvitations() });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: workspaceKeys.myInvitations() }),
   });
 
-  // Global "C" shortcut: opens whichever create mode the user landed on last
-  // (agent vs manual), persisted in useCreateModeStore. The mode switch lives
-  // inside both modal footers so users can flip without remembering which
-  // shortcut goes where — `c` always means "open the create flow I prefer".
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== "c" && e.key !== "C") return;
-      if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
-      const tag = (e.target as HTMLElement)?.tagName;
-      const isEditable =
-        tag === "INPUT" ||
-        tag === "TEXTAREA" ||
-        tag === "SELECT" ||
-        (e.target as HTMLElement)?.isContentEditable;
-      if (isEditable) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key.toLowerCase() !== "c" || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
+      const target = event.target as HTMLElement;
+      if (["INPUT", "TEXTAREA", "SELECT"].includes(target?.tagName) || target?.isContentEditable) return;
       if (useModalStore.getState().modal) return;
-      e.preventDefault();
-      // Auto-fill project when on a project detail page. The manual form
-      // consumes `project_id`; quick-create also honours it as a seed for
-      // its project picker, so passing it through is safe for both modes.
+      event.preventDefault();
       const projectMatch = pathname.match(/^\/[^/]+\/projects\/([^/]+)$/);
-      const data = projectMatch ? { project_id: projectMatch[1] } : undefined;
-      openCreateIssueWithPreference(data);
+      openCreateIssueWithPreference(projectMatch ? { project_id: projectMatch[1] } : undefined);
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [pathname]);
 
   return (
-      <Sidebar variant="inset">
-        {topSlot}
-        {/* Workspace Switcher */}
-        <SidebarHeader className={cn("py-3", headerClassName)} style={headerStyle}>
-          <div className="flex h-7 items-center gap-2 px-2">
-            <BrandMark className="size-4 shrink-0" />
-            <span className="truncate font-serif text-[13px] font-medium">
-              {BRAND_NAME}
-            </span>
-          </div>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  render={
-                    <SidebarMenuButton>
-                      <span className="relative">
-                        <WorkspaceAvatar name={workspace?.name ?? "M"} avatarUrl={workspace?.avatar_url} size="sm" />
-                        {/* Shared brand dot: a pending invitation OR another
-                            workspace with unread inbox items. The active
-                            workspace's own unread stays on the Inbox nav count
-                            (below), so it is deliberately excluded here. */}
-                        {(myInvitations.length > 0 || otherWorkspaceUnread) && (
-                          <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-brand ring-1 ring-sidebar" />
-                        )}
-                      </span>
-                      <span className="flex-1 truncate font-medium">
-                        {workspace?.name ?? BRAND_NAME}
-                      </span>
-                      <ChevronDown className="size-3 text-muted-foreground" />
-                    </SidebarMenuButton>
-                  }
-                />
-                <DropdownMenuContent
-                  className="w-auto min-w-56"
-                  align="start"
-                  side="bottom"
-                  sideOffset={4}
-                >
-                  <div className="flex items-center gap-2.5 px-2 py-1.5">
-                    <ActorAvatar
-                      name={user?.name ?? ""}
-                      initials={(user?.name ?? "U").charAt(0).toUpperCase()}
-                      avatarUrl={resolvePublicFileUrl(user?.avatar_url)}
-                      size={32}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium leading-tight">
-                        {user?.name}
-                      </p>
-                      <p className="truncate text-xs text-muted-foreground leading-tight">
-                        {user?.email}
-                      </p>
-                    </div>
-                  </div>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuGroup>
-                    <DropdownMenuLabel className="text-xs text-muted-foreground">
-                      {t(($) => $.sidebar.workspaces_label)}
-                    </DropdownMenuLabel>
-                    {workspaces.map((ws) => (
-                      <DropdownMenuItem
-                        key={ws.id}
-                        render={
-                          <AppLink href={paths.workspace(ws.slug).issues()} />
-                        }
-                      >
-                        <WorkspaceAvatar name={ws.name} avatarUrl={ws.avatar_url} size="sm" />
-                        <span className="flex-1 truncate">{ws.name}</span>
-                        {/* Points at the specific workspace holding unread
-                            inbox items. Sits in the same right-edge slot as the
-                            active-workspace check; the active workspace is
-                            excluded (its unread is the Inbox nav count), so dot
-                            and check never collide on one row. */}
-                        {ws.id !== workspace?.id && unreadWsIds.has(ws.id) && (
-                          <span className="size-2 rounded-full bg-brand" />
-                        )}
-                        {ws.id === workspace?.id && (
-                          <Check className="h-3.5 w-3.5 text-primary" />
-                        )}
-                      </DropdownMenuItem>
-                    ))}
-                    {!workspaceCreationDisabled && (
-                      <DropdownMenuItem
-                        onClick={() =>
-                          useModalStore.getState().open("create-workspace")
-                        }
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                        {t(($) => $.sidebar.create_workspace)}
-                      </DropdownMenuItem>
-                    )}
-                  </DropdownMenuGroup>
-                  {myInvitations.length > 0 && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuGroup>
-                        <DropdownMenuLabel className="text-xs text-muted-foreground">
-                          {t(($) => $.sidebar.pending_invitations_label)}
-                        </DropdownMenuLabel>
-                        {myInvitations.map((inv) => (
-                          <div key={inv.id} className="flex items-center gap-2 px-2 py-1.5">
-                            <WorkspaceAvatar name={inv.workspace_name ?? "W"} size="sm" />
-                            <span className="flex-1 truncate text-sm">{inv.workspace_name ?? t(($) => $.sidebar.invitation_workspace_fallback)}</span>
-                            <button
-                              type="button"
-                              className="text-xs px-2 py-0.5 rounded bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-                              disabled={acceptInvitationMut.isPending}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                acceptInvitationMut.mutate(inv.id);
-                              }}
-                            >
-                              {t(($) => $.sidebar.invitation_join)}
-                            </button>
-                            <button
-                              type="button"
-                              className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground hover:bg-muted/80 disabled:opacity-50"
-                              disabled={declineInvitationMut.isPending}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                declineInvitationMut.mutate(inv.id);
-                              }}
-                            >
-                              {t(($) => $.sidebar.invitation_decline)}
-                            </button>
-                          </div>
-                        ))}
-                      </DropdownMenuGroup>
-                    </>
-                  )}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuGroup>
-                    <DropdownMenuItem variant="destructive" onClick={logout}>
-                      <LogOut className="h-3.5 w-3.5" />
-                      {t(($) => $.sidebar.log_out)}
-                    </DropdownMenuItem>
-                  </DropdownMenuGroup>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </SidebarMenuItem>
-          </SidebarMenu>
-          <SidebarMenu>
-            {searchSlot && (
-              <SidebarMenuItem>
-                {searchSlot}
-              </SidebarMenuItem>
-            )}
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                className="text-muted-foreground"
-                onClick={() => openCreateIssueWithPreference()}
+    <Sidebar
+      variant="sidebar"
+      collapsible="offcanvas"
+      className="border-r border-border bg-background text-foreground"
+    >
+      {topSlot}
+      <SidebarHeader
+        className={cn("items-center gap-3 border-b border-border px-3 py-4", headerClassName)}
+        style={headerStyle}
+      >
+        <div className="flex w-full items-center justify-center gap-3 md:h-8">
+          <BrandMark monochrome className="size-7 text-foreground" />
+          <span className="truncate font-serif text-base font-medium md:sr-only">{BRAND_NAME}</span>
+        </div>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <button
+                type="button"
+                aria-label={workspace?.name ?? BRAND_NAME}
+                title={workspace?.name ?? BRAND_NAME}
+                className="flex h-10 w-full items-center justify-center gap-2 rounded-md text-foreground/80 transition-colors hover:bg-accent hover:text-foreground md:size-10"
               >
                 <span className="relative">
-                  <SquarePen />
-                  <DraftDot />
+                  <WorkspaceAvatar name={workspace?.name ?? "O"} avatarUrl={workspace?.avatar_url} size="sm" />
+                  {(invitations.length > 0 || otherWorkspaceUnread) && (
+                    <span data-workspace-unread className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-brand ring-1 ring-sidebar" />
+                  )}
                 </span>
-                <span>{t(($) => $.sidebar.new_issue)}</span>
-                <kbd className="pointer-events-none ml-auto inline-flex h-5 select-none items-center gap-0.5 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">{t(($) => $.sidebar.new_issue_shortcut)}</kbd>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarHeader>
+                <span className="min-w-0 flex-1 truncate text-left text-sm md:sr-only">{workspace?.name}</span>
+                <ChevronDown className="size-3 md:hidden" />
+              </button>
+            }
+          />
+          <DropdownMenuContent align="start" side="right" sideOffset={10} className="min-w-64">
+            <div className="flex items-center gap-2.5 px-2 py-2">
+              <ActorAvatar
+                name={user?.name ?? ""}
+                initials={(user?.name ?? "U").charAt(0).toUpperCase()}
+                avatarUrl={resolvePublicFileUrl(user?.avatar_url)}
+                size={32}
+              />
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium">{user?.name}</p>
+                <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
+              </div>
+            </div>
+            <DropdownMenuSeparator />
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>{t(($) => $.sidebar.workspaces_label)}</DropdownMenuLabel>
+              {workspaces.map((item) => (
+                <DropdownMenuItem key={item.id} render={<AppLink href={paths.workspace(item.slug).issues()} />}>
+                  <WorkspaceAvatar name={item.name} avatarUrl={item.avatar_url} size="sm" />
+                  <span className="min-w-0 flex-1 truncate">{item.name}</span>
+                  {item.id !== workspaceId && unreadWorkspaceSet.has(item.id) && <span className="size-2 rounded-full bg-brand" />}
+                  {item.id === workspaceId && <Check className="size-3.5" />}
+                </DropdownMenuItem>
+              ))}
+              {!workspaceCreationDisabled && (
+                <DropdownMenuItem onClick={() => useModalStore.getState().open("create-workspace")}>
+                  <Plus className="size-3.5" />
+                  {t(($) => $.sidebar.create_workspace)}
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuGroup>
+            {invitations.length > 0 && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel>{t(($) => $.sidebar.pending_invitations_label)}</DropdownMenuLabel>
+                {invitations.map((invitation) => (
+                  <div key={invitation.id} className="flex items-center gap-2 px-2 py-1.5">
+                    <span className="min-w-0 flex-1 truncate text-xs">{invitation.workspace_name}</span>
+                    <button type="button" className="rounded bg-foreground px-2 py-1 text-[11px] text-background" onClick={() => acceptInvitation.mutate(invitation.id)}>
+                      {t(($) => $.sidebar.invitation_join)}
+                    </button>
+                    <button type="button" className="rounded px-2 py-1 text-[11px] text-muted-foreground hover:bg-muted" onClick={() => declineInvitation.mutate(invitation.id)}>
+                      {t(($) => $.sidebar.invitation_decline)}
+                    </button>
+                  </div>
+                ))}
+              </>
+            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem variant="destructive" onClick={logout}>
+              <LogOut className="size-3.5" />
+              {t(($) => $.sidebar.log_out)}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
-        {/* Navigation */}
-        <SidebarContent ref={sidebarScrollRef} style={sidebarFadeStyle}>
-          <SidebarGroup>
-            <SidebarGroupLabel>{t(($) => $.sidebar.personal_group)}</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu className="gap-0.5">
-                {personalNav.map((item) => {
-                  const href = p[item.key]();
-                  const isActive = isNavActive(pathname, href);
-                  return (
-                    <SidebarMenuItem key={item.key}>
-                      <SidebarMenuButton
-                        isActive={isActive}
-                        render={<AppLink href={href} />}
-                        className="text-muted-foreground hover:not-data-active:bg-sidebar-accent/70 data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground"
-                      >
-                        <item.icon />
-                        <span>{t(($) => $.nav[item.labelKey])}</span>
-                        {item.key === "inbox" && unreadCount > 0 && (
-                          <span className="ml-auto text-xs">
-                            {unreadCount > 99 ? "99+" : unreadCount}
-                          </span>
-                        )}
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  );
-                })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
+        {searchSlot ? <div className="w-full md:hidden">{searchSlot}</div> : null}
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <button
+                type="button"
+                aria-label={t(($) => $.sidebar.new_issue)}
+                onClick={() => openCreateIssueWithPreference()}
+                className="flex h-10 w-full items-center justify-center gap-2 rounded-md bg-brand text-brand-foreground transition-colors hover:bg-brand/90 md:size-10"
+              />
+            }
+          >
+            <span className="relative"><SquarePen className="size-4" /><DraftDot /></span>
+            <span className="flex-1 text-left text-sm font-medium md:sr-only">{t(($) => $.sidebar.new_issue)}</span>
+          </TooltipTrigger>
+          <TooltipContent side="right" className="hidden md:block">{t(($) => $.sidebar.new_issue)}</TooltipContent>
+        </Tooltip>
+      </SidebarHeader>
 
-          {visiblePinned.length > 0 && (
-            <Collapsible defaultOpen>
-              <SidebarGroup className="group/pinned">
-                <SidebarGroupLabel
-                  render={<CollapsibleTrigger />}
-                  className="group/trigger cursor-pointer hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground"
+      <SidebarContent className="items-center gap-2 px-3 py-4">
+        <nav className="flex w-full flex-col items-center gap-1" aria-label={t(($) => $.shell.section_navigation)}>
+          {APP_NAV_SECTIONS.map((section) => {
+            const href = resolveNavHref(workspacePaths, section.items[0]!.key);
+            const active = activeSection.key === section.key;
+            const showUnread = section.key === "work" && unreadCount > 0;
+            const showRuntimeUpdate = section.key === "capabilities" && hasRuntimeUpdates;
+            return (
+              <Tooltip key={section.key}>
+                <TooltipTrigger
+                  render={
+                    <AppLink
+                      href={href}
+                      aria-current={active ? "page" : undefined}
+                      aria-label={t(($) => $.shell.sections[section.key])}
+                      className={cn(
+                        "relative flex h-11 w-full items-center justify-start gap-3 rounded-md px-3 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground md:size-11 md:justify-center md:px-0",
+                        active && "bg-foreground text-background hover:bg-foreground hover:text-background",
+                      )}
+                    />
+                  }
                 >
-                  <span>{t(($) => $.sidebar.pinned_label)}</span>
-                  <ChevronRight className="!size-3 ml-1 stroke-[2.5] transition-transform duration-200 group-data-[panel-open]/trigger:rotate-90" />
-                  <span className="ml-auto text-[10px] text-muted-foreground opacity-0 transition-opacity group-hover/pinned:opacity-100">{visiblePinned.length}</span>
-                </SidebarGroupLabel>
-                <CollapsibleContent>
-                  <SidebarGroupContent>
-                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-                      <SortableContext items={visiblePinned.map((p) => p.id)} strategy={verticalListSortingStrategy}>
-                        <SidebarMenu className="gap-0.5">
-                          {visiblePinned.map((pin: PinnedItem) => (
-                            <PinRow
-                              key={pin.id}
-                              pin={pin}
-                              href={getPinHref(pin)}
-                              pathname={pathname}
-                              onUnpin={() => deletePin.mutate({ itemType: pin.item_type, itemId: pin.item_id })}
-                              wsId={wsId ?? ""}
-                            />
-                          ))}
-                        </SidebarMenu>
-                      </SortableContext>
-                    </DndContext>
-                  </SidebarGroupContent>
-                </CollapsibleContent>
-              </SidebarGroup>
-            </Collapsible>
-          )}
+                  <section.icon className="size-[18px] shrink-0" />
+                  <span className="truncate text-sm md:sr-only">{t(($) => $.shell.sections[section.key])}</span>
+                  {showUnread && (
+                    <span className={cn("ml-auto text-[10px] tabular-nums md:absolute md:-right-0.5 md:-top-0.5 md:flex md:size-4 md:items-center md:justify-center md:rounded-full", active ? "text-background md:bg-brand md:text-brand-foreground" : "text-brand md:bg-brand md:text-brand-foreground")}>{unreadCount > 9 ? "9+" : unreadCount}</span>
+                  )}
+                  {showRuntimeUpdate && <span className="ml-auto size-1.5 rounded-full bg-[#ef6a5b] md:absolute md:right-1 md:top-1" />}
+                </TooltipTrigger>
+                <TooltipContent side="right" className="hidden md:block">{t(($) => $.shell.sections[section.key])}</TooltipContent>
+              </Tooltip>
+            );
+          })}
+        </nav>
 
-          <SidebarGroup>
-            <SidebarGroupLabel>{t(($) => $.sidebar.work_group)}</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu className="gap-0.5">
-                {workNav.map((item) => {
-                  const href = p[item.key]();
-                  const isActive = !isActivePinnedRoute && isNavActive(pathname, href);
-                  return (
-                    <SidebarMenuItem key={item.key}>
-                      <SidebarMenuButton
-                        isActive={isActive}
-                        render={<AppLink href={href} />}
-                        className="text-muted-foreground hover:not-data-active:bg-sidebar-accent/70 data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground"
-                      >
-                        <item.icon />
-                        <span>{t(($) => $.nav[item.labelKey])}</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  );
-                })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
+        {localPinned.length > 0 && (
+          <DropdownMenu>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <DropdownMenuTrigger
+                    aria-label={t(($) => $.shell.favorites)}
+                    className="mt-2 flex h-11 w-full items-center justify-start gap-3 rounded-md px-3 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground md:size-11 md:justify-center md:px-0"
+                  />
+                }
+              >
+                <Star className="size-[18px]" />
+                <span className="truncate text-sm md:sr-only">{t(($) => $.shell.favorites)}</span>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="hidden md:block">{t(($) => $.shell.favorites)}</TooltipContent>
+            </Tooltip>
+            <DropdownMenuContent side="right" align="start" sideOffset={10} className="w-72 p-2">
+              <DropdownMenuLabel>{t(($) => $.shell.favorites)}</DropdownMenuLabel>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragStart={() => { draggingRef.current = true; }}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext items={localPinned.map((pin) => pin.id)} strategy={verticalListSortingStrategy}>
+                  <SidebarMenu>
+                    {localPinned.map((pin) => (
+                      <PinRow
+                        key={pin.id}
+                        pin={pin}
+                        href={getPinHref(pin)}
+                        pathname={pathname}
+                        workspaceId={workspaceId ?? ""}
+                        onUnpin={() => deletePin.mutate({ itemType: pin.item_type, itemId: pin.item_id })}
+                      />
+                    ))}
+                  </SidebarMenu>
+                </SortableContext>
+              </DndContext>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
 
-          <SidebarGroup>
-            <SidebarGroupLabel>{t(($) => $.sidebar.network_group)}</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu className="gap-0.5">
-                {collaborationNav.map((item) => {
-                  const href = p[item.key]();
-                  const isActive = isNavActive(pathname, href);
-                  return (
-                    <SidebarMenuItem key={item.key}>
-                      <SidebarMenuButton
-                        isActive={isActive}
-                        render={<AppLink href={href} />}
-                        className="text-muted-foreground hover:not-data-active:bg-sidebar-accent/70 data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground"
-                      >
-                        <item.icon />
-                        <span>{t(($) => $.nav[item.labelKey])}</span>
-                        {item.key === "runtimes" && hasRuntimeUpdates && (
-                          <span className="ml-auto size-1.5 rounded-full bg-destructive" />
-                        )}
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  );
-                })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
+        <div className="mt-3 w-full border-t border-border pt-3 md:hidden">
+          {APP_NAV_SECTIONS.map((section) => (
+            <div key={section.key} className="mb-4">
+              <p className="mb-1 px-3 text-[10px] font-medium uppercase text-muted-foreground">{t(($) => $.shell.sections[section.key])}</p>
+              {section.items.map((item) => {
+                const href = resolveNavHref(workspacePaths, item.key);
+                return (
+                  <AppLink key={item.key} href={href} className={cn("flex h-9 items-center gap-3 rounded-md px-3 text-sm text-muted-foreground", isNavActive(pathname, href) && "bg-accent text-foreground")}>
+                    <item.icon className="size-4" />
+                    {t(($) => $.nav[item.labelKey])}
+                  </AppLink>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      </SidebarContent>
 
-          <SidebarGroup>
-            <SidebarGroupLabel>{t(($) => $.sidebar.system_group)}</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu className="gap-0.5">
-                {systemNav.map((item) => {
-                  const href = p[item.key]();
-                  const isActive = isNavActive(pathname, href);
-                  return (
-                    <SidebarMenuItem key={item.key}>
-                      <SidebarMenuButton
-                        isActive={isActive}
-                        render={<AppLink href={href} />}
-                        className="text-muted-foreground hover:not-data-active:bg-sidebar-accent/70 data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground"
-                      >
-                        <item.icon />
-                        <span>{t(($) => $.nav[item.labelKey])}</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  );
-                })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        </SidebarContent>
-
-        <SidebarFooter className="p-2">
-          <JoinDiscordCard />
-          <div className="flex justify-end">
-            <HelpLauncher />
-          </div>
-        </SidebarFooter>
-        <SidebarRail />
-      </Sidebar>
+      <SidebarFooter className="items-center border-t border-border p-3 text-muted-foreground [&_button]:text-muted-foreground">
+        <HelpLauncher />
+      </SidebarFooter>
+    </Sidebar>
   );
 }

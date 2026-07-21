@@ -20,6 +20,18 @@
     "discord": "커뮤니티",
     "feedback": "피드백"
   },
+  "shell": {
+    "primary_navigation": "전역 탐색",
+    "section_navigation": "현재 영역 탐색",
+    "sections": {
+      "work": "업무",
+      "plan": "계획",
+      "network": "협업",
+      "capabilities": "기능",
+      "admin": "관리"
+    },
+    "favorites": "즐겨찾기"
+  },
   "workspace_loader": {
     "loading_workspace": "워크스페이스 로딩 중...",
     "loading_named_prefix": "로딩 중"

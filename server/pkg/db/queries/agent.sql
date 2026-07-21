@@ -187,11 +187,15 @@ VALUES (
     COALESCE(sqlc.narg('is_leader_task')::boolean, FALSE),
     sqlc.narg(handoff_note),
     sqlc.narg(squad_id),
-    CASE
-        WHEN COALESCE(sqlc.narg('head_sha')::text, '') <> ''
-        THEN jsonb_build_object('head_sha', sqlc.narg('head_sha')::text)
-        ELSE NULL
-    END,
+    NULLIF(
+        COALESCE(sqlc.narg('managed_context')::jsonb, '{}'::jsonb)
+        || CASE
+            WHEN COALESCE(sqlc.narg('head_sha')::text, '') <> ''
+            THEN jsonb_build_object('head_sha', sqlc.narg('head_sha')::text)
+            ELSE '{}'::jsonb
+        END,
+        '{}'::jsonb
+    ),
     sqlc.narg(originator_user_id),
     sqlc.narg(runtime_mcp_overlay),
     sqlc.narg(runtime_connected_apps)
@@ -281,7 +285,8 @@ INSERT INTO agent_task_queue (
     status, priority, trigger_comment_id, trigger_summary, context,
     session_id, work_dir,
     attempt, max_attempts, parent_task_id, force_fresh_session, is_leader_task,
-    squad_id, originator_user_id, runtime_mcp_overlay, runtime_connected_apps
+    squad_id, originator_user_id, runtime_mcp_overlay, runtime_connected_apps,
+    agent_session_id, session_thread_id
 )
 SELECT
     p.agent_id, p.runtime_id, p.issue_id, p.chat_session_id, p.autopilot_run_id,
@@ -294,7 +299,8 @@ SELECT
     p.squad_id,
     p.originator_user_id,
     sqlc.narg(runtime_mcp_overlay),
-    sqlc.narg(runtime_connected_apps)
+    sqlc.narg(runtime_connected_apps),
+    p.agent_session_id, p.session_thread_id
 FROM agent_task_queue p
 WHERE p.id = $1
 RETURNING *;

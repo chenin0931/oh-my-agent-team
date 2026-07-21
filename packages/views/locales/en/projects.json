@@ -1,5 +1,6 @@
 {
   "page": {
+    "portfolio_label": "Outcome portfolio",
     "title": "Projects",
     "new_project": "New project",
     "empty": "No projects yet",
@@ -71,6 +72,7 @@
     "pin_tooltip": "Pin to sidebar",
     "unpin_tooltip": "Unpin from sidebar",
     "sidebar_tooltip": "Toggle sidebar",
+    "more_actions": "More project actions",
     "copy_link": "Copy link",
     "delete_action": "Delete project",
     "section_properties": "Properties",

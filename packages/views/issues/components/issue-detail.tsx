@@ -62,6 +62,7 @@ import { collectThreadReplies, deriveThreadResolution } from "./thread-utils";
 import { IssueAgentHeaderChip } from "./issue-agent-header-chip";
 import { WorkItemAgentPanel } from "./work-item-agent-panel";
 import { ExecutionLogSection } from "./execution-log-section";
+import { ManagedSessionSection } from "./managed-session-section";
 import { PullRequestList } from "./pull-request-list";
 import { useGitHubSettings } from "@ohmyagentteam/core/github";
 import { useQuery } from "@tanstack/react-query";
@@ -87,6 +88,8 @@ import { useFileUpload } from "@ohmyagentteam/core/hooks/use-file-upload";
 import { api } from "@ohmyagentteam/core/api";
 import { useTimeAgo } from "../../i18n";
 import { cn } from "@ohmyagentteam/ui/lib/utils";
+import { useFeatureEnabled } from "@ohmyagentteam/core/config";
+import { AGENT_SESSIONS_V2_FLAG } from "@ohmyagentteam/core/feature-flags";
 
 import { ProgressRing } from "./progress-ring";
 import { matchesPinyin } from "../../editor/extensions/pinyin-match";
@@ -542,7 +545,9 @@ function ActivityBlock({
               {leadIcon}
             </div>
             <div className="flex min-w-0 flex-1 items-center gap-1">
-              <span className="shrink-0 font-medium">{getActorName(entry.actor_type, entry.actor_id)}</span>
+              <span className="shrink-0 font-medium">
+                {entry.actor_name_snapshot ?? getActorName(entry.actor_type, entry.actor_id)}
+              </span>
               <span className="truncate">{formatActivity(entry, t, getActorName)}</span>
               {(entry.coalesced_count ?? 1) > 1 &&
                 entry.action !== "task_completed" &&
@@ -709,6 +714,7 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
 
   // Issue navigation — read from TQ list cache
   const wsId = useWorkspaceId();
+  const managedSessionsEnabled = useFeatureEnabled(AGENT_SESSIONS_V2_FLAG);
   const { data: members = [] } = useQuery(memberListOptions(wsId));
   const { data: agents = [] } = useQuery(agentListOptions(wsId));
   // Workspace owners and admins moderate any comment authored by anyone
@@ -1674,7 +1680,7 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
           owns its own collapse state and WS subscriptions. Hides itself
           when there are no runs to show. */}
       <WorkItemAgentPanel issue={issue} subscribers={subscribers} canDecompose={canModerateComments} />
-      <ExecutionLogSection issueId={id} />
+      {!managedSessionsEnabled && <ExecutionLogSection issueId={id} />}
 
       {/* Token usage */}
       {usage && usage.task_count > 0 && (
@@ -1809,20 +1815,28 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
   if (breadcrumbProject) {
     breadcrumbSegments.push({
       href: paths.projectDetail(breadcrumbProject.id),
-      className: "flex items-center gap-1 min-w-0 max-w-40",
+      className: "hidden min-w-0 max-w-56 shrink-0 items-center gap-1 sm:flex",
       label: (
         <>
           <ProjectIcon project={breadcrumbProject} size="sm" />
-          <span className="min-w-0 truncate">{breadcrumbProject.title}</span>
+          <span className="min-w-0 truncate" title={breadcrumbProject.title}>
+            {breadcrumbProject.title}
+          </span>
         </>
       ),
     });
   }
   if (breadcrumbEpic) {
     breadcrumbSegments.push({
-      href: paths.epicDetail(breadcrumbEpic.id),
-      className: "min-w-0 max-w-40",
-      label: <span className="truncate">{breadcrumbEpic.title}</span>,
+      href: issueProjectId
+        ? paths.projectBoard(issueProjectId)
+        : paths.epicDetail(breadcrumbEpic.id),
+      className: "hidden min-w-0 max-w-56 shrink-0 sm:block",
+      label: (
+        <span className="block truncate" title={breadcrumbEpic.title}>
+          {breadcrumbEpic.title}
+        </span>
+      ),
     });
   }
   if (parentIssue) {
@@ -1842,7 +1856,7 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
           leaf={
             <AppLink
               href={paths.issueDetail(issue.id)}
-              className="flex min-w-0 transition-opacity hover:opacity-80"
+              className="flex shrink-0 transition-opacity hover:opacity-80"
             >
               <span className="shrink-0 font-medium text-foreground">
                 {issue.identifier}
@@ -1879,8 +1893,9 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      className="text-muted-foreground"
-                      onClick={() => { onDone(); }}
+                    className="text-muted-foreground"
+                    onClick={() => { onDone(); }}
+                    aria-label={t(($) => $.detail.archive_tooltip)}
                     >
                       <Archive />
                     </Button>
@@ -1897,6 +1912,7 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
                     size="icon-sm"
                     className={cn("text-muted-foreground", actions.isPinned && "text-foreground")}
                     onClick={actions.togglePin}
+                    aria-label={actions.isPinned ? t(($) => $.detail.unpin_tooltip) : t(($) => $.detail.pin_tooltip)}
                   >
                     {actions.isPinned ? <PinOff /> : <Pin />}
                   </Button>
@@ -1911,7 +1927,12 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
               // above and skip navigation. Otherwise the modal navigates for us.
               onDeletedNavigateTo={onDelete ? undefined : paths.issues()}
               trigger={
-                <Button variant="ghost" size="icon-sm" className="text-muted-foreground">
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="text-muted-foreground"
+                  aria-label={t(($) => $.detail.more_actions)}
+                >
                   <MoreHorizontal />
                 </Button>
               }
@@ -1924,6 +1945,7 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
                     size="icon-sm"
                     className={sidebarOpen ? "" : "text-muted-foreground"}
                     onClick={handleToggleSidebar}
+                    aria-label={t(($) => $.detail.sidebar_tooltip)}
                   >
                     <PanelRight />
                   </Button>
@@ -1938,15 +1960,16 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
         <div
           ref={setScrollContainerEl}
           data-tab-scroll-root
-          className="relative flex-1 overflow-y-auto"
+          data-omat-work-item
+          className="relative flex-1 overflow-y-auto bg-[var(--shell-background)]"
         >
-        <div className="mx-auto w-full max-w-[1440px] px-8 py-8">
+        <div className="mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">
           <div className={cn(isMobile && mobileCollaborationTab === "activity" && "hidden")}>
           <TitleEditor
             key={`title-${id}`}
             defaultValue={issue.title}
             placeholder={t(($) => $.detail.title_placeholder)}
-            className="w-full text-2xl font-bold leading-snug"
+            className="w-full font-serif text-3xl font-semibold leading-tight"
             onBlur={(value) => {
               const trimmed = value.trim();
               if (trimmed && trimmed !== issue.title) handleUpdateField({ title: trimmed });
@@ -1979,10 +2002,10 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
           )}
           </div>
 
-          <div className="2xl:grid 2xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.72fr)] 2xl:gap-10">
-          <div className={cn("min-w-0", isMobile && mobileCollaborationTab === "activity" && "hidden")}>
+          <div className="mt-5 xl:grid xl:grid-cols-[minmax(0,1.08fr)_minmax(380px,0.92fr)] xl:gap-4">
+          <div className={cn("min-w-0 rounded-md border bg-background p-5 sm:p-6", isMobile && mobileCollaborationTab === "activity" && "hidden")}>
 
-          <div {...descDropZoneProps} className="relative mt-5 rounded-lg">
+          <div {...descDropZoneProps} className="relative rounded-md">
             <ContentEditor
               ref={descEditorRef}
               key={id}
@@ -2131,7 +2154,7 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
                   const groups = groupSubIssuesByStage(childIssues);
                   const staged = childIssues.some((c) => c.stage != null);
                   return (
-                    <div className="overflow-hidden rounded-lg border bg-card/30 divide-y divide-border/60">
+                    <div className="overflow-hidden rounded-md border bg-card/30 divide-y divide-border/60">
                       {groups.map(({ stage: groupStage, items }) => (
                         <Fragment key={groupStage ?? "unstaged"}>
                           {staged && (
@@ -2156,26 +2179,25 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
           </div>
 
           <div className={cn(
-            "min-w-0",
-            "2xl:border-l 2xl:pl-10",
+            "mt-4 min-w-0 rounded-md border bg-background p-5 sm:p-6 xl:mt-0",
             isMobile && mobileCollaborationTab === "content" && "hidden",
           )}>
 
-          <div className="my-8 border-t 2xl:mt-0 2xl:border-t-0" />
+          <div className="my-2 border-t xl:hidden" />
 
           {/* Activity / Comments */}
           <div>
-            <div className="flex items-center justify-between">
-              <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex min-w-0 flex-wrap items-center gap-3">
                 <h2 className="text-base font-semibold">{t(($) => $.detail.activity_section)}</h2>
-                <div className="flex items-center rounded-md bg-muted p-0.5">
+                <div className="flex max-w-full items-center overflow-x-auto rounded-md bg-muted p-0.5">
                   {(["all", "comments", "agent", "system", "runs"] as const).map((filter) => (
                     <button
                       key={filter}
                       type="button"
                       onClick={() => setActivityFilter(filter)}
                       className={cn(
-                        "rounded px-2 py-1 text-xs text-muted-foreground transition-colors",
+                        "shrink-0 whitespace-nowrap rounded px-2 py-1 text-xs text-muted-foreground transition-colors",
                         activityFilter === filter && "bg-background text-foreground shadow-sm",
                       )}
                     >
@@ -2184,7 +2206,7 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
                   ))}
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="ml-auto flex shrink-0 items-center gap-2">
                 <button
                   type="button"
                   onClick={handleToggleSubscribe}
@@ -2227,6 +2249,8 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
             </div>
 
             <LocalDirectoryHint projectId={issue?.project_id} />
+
+            {managedSessionsEnabled && issue && <ManagedSessionSection issue={issue} />}
 
             {/* The "agent is working" live signal now lives in the header
                 (IssueAgentHeaderChip) so it stays in one fixed place and
@@ -2346,7 +2370,7 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
   }
 
   return (
-    <ResizablePanelGroup orientation="horizontal" className="flex-1 min-h-0" defaultLayout={defaultLayout} onLayoutChanged={onLayoutChanged}>
+    <ResizablePanelGroup orientation="horizontal" className="flex-1 min-h-0 bg-[var(--shell-background)]" defaultLayout={defaultLayout} onLayoutChanged={onLayoutChanged}>
       <ResizablePanel id="content" minSize="50%">
         {detailContent}
       </ResizablePanel>

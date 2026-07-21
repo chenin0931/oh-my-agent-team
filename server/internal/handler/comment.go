@@ -10,13 +10,13 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/chenin0931/oh-my-agent-team/server/internal/logger"
 	"github.com/chenin0931/oh-my-agent-team/server/internal/service"
 	"github.com/chenin0931/oh-my-agent-team/server/internal/util"
 	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
 	"github.com/chenin0931/oh-my-agent-team/server/pkg/protocol"
+	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type CommentResponse struct {
@@ -24,6 +24,7 @@ type CommentResponse struct {
 	IssueID        string               `json:"issue_id"`
 	AuthorType     string               `json:"author_type"`
 	AuthorID       string               `json:"author_id"`
+	AuthorName     *string              `json:"author_name_snapshot,omitempty"`
 	Content        string               `json:"content"`
 	Type           string               `json:"type"`
 	ParentID       *string              `json:"parent_id"`
@@ -71,6 +72,7 @@ func commentToResponse(c db.Comment, reactions []ReactionResponse, attachments [
 		IssueID:        uuidToString(c.IssueID),
 		AuthorType:     c.AuthorType,
 		AuthorID:       uuidToString(c.AuthorID),
+		AuthorName:     textToPtr(c.AuthorNameSnapshot),
 		Content:        c.Content,
 		Type:           c.Type,
 		ParentID:       uuidToPtr(c.ParentID),
@@ -1272,6 +1274,16 @@ func (h *Handler) CreateComment(w http.ResponseWriter, r *http.Request) {
 			if parseErr == nil {
 				task, err := h.Queries.GetAgentTask(r.Context(), taskUUID)
 				if err == nil && task.IssueID.Valid && uuidToString(task.IssueID) == uuidToString(issue.ID) {
+					if task.SessionThreadID.Valid {
+						if thread, threadErr := h.Queries.GetAgentSessionThread(r.Context(), task.SessionThreadID); threadErr == nil && thread.ParentThreadID.Valid {
+							for _, mention := range util.ParseMentions(req.Content) {
+								if mention.Type == "agent" || mention.Type == "squad" {
+									writeError(w, http.StatusForbidden, "delegated squad workers cannot delegate to another Agent or Squad; leave a result for the coordinator instead")
+									return
+								}
+							}
+						}
+					}
 					if task.TriggerCommentID.Valid {
 						if uuidToString(parentID) != uuidToString(task.TriggerCommentID) {
 							writeError(w, http.StatusConflict,
@@ -1435,12 +1447,25 @@ func (h *Handler) triggerTasksForComment(ctx context.Context, issue db.Issue, co
 	if isNoteComment(comment.Content) {
 		return
 	}
+	if comment.SourceTaskID.Valid {
+		if task, err := h.Queries.GetAgentTask(ctx, comment.SourceTaskID); err == nil && task.SessionThreadID.Valid {
+			if thread, threadErr := h.Queries.GetAgentSessionThread(ctx, task.SessionThreadID); threadErr == nil && !managedThreadCanRouteComment(thread) {
+				// Advisor/Reviewer output and delegated Squad worker comments are
+				// collaboration artifacts, not new execution authority.
+				return
+			}
+		}
+	}
 	triggers := h.computeCommentAgentTriggers(ctx, issue, comment.Content, parentComment, actorType, actorID, commentTriggerComputeOptions{
 		ExcludeTriggerCommentID: comment.ID,
 		OriginatorUserID:        originatorUserID,
 	})
 	triggers = filterSuppressedCommentAgentTriggers(triggers, suppressAgentIDs)
 	h.enqueueCommentAgentTriggers(ctx, issue, comment.ID, triggers)
+}
+
+func managedThreadCanRouteComment(thread db.AgentSessionThread) bool {
+	return !thread.ParentThreadID.Valid && (thread.Role == service.SessionModeExecutor || thread.Role == service.SessionModeCoordinator)
 }
 
 func filterSuppressedCommentAgentTriggers(triggers []commentAgentTrigger, suppressAgentIDs []pgtype.UUID) []commentAgentTrigger {

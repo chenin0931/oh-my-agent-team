@@ -4,7 +4,7 @@ import { ArrowDown, ArrowUp } from "lucide-react";
 
 import { cn } from "../../lib/utils";
 
-// Linear-style list grid. The container declares every column track once via
+// Shared work ledger. The container declares every column track once via
 // a literal `grid-cols-[...]` class (plus responsive variants); the header and
 // each row span the full template with `grid-cols-subgrid`, so column widths
 // have a single source of truth and never drift between header, rows, and
@@ -38,7 +38,7 @@ function ListGrid({
   return (
     <div
       role="table"
-      className={cn("grid w-full min-w-0 content-start gap-x-3", className)}
+      className={cn("grid w-full min-w-0 content-start gap-x-3 bg-[var(--shell-background)]", className)}
       {...props}
     />
   );
@@ -53,7 +53,7 @@ function ListGridHeader({
     <div
       role="row"
       className={cn(
-        "group/header sticky top-0 z-10 col-span-full grid h-9 grid-cols-subgrid items-center bg-background after:pointer-events-none after:absolute after:inset-x-0 after:top-full after:h-3 after:bg-gradient-to-b after:from-background after:to-transparent",
+        "group/header sticky top-0 z-10 col-span-full grid h-11 grid-cols-subgrid items-center border-y bg-background",
         className,
       )}
       {...props}
@@ -146,7 +146,7 @@ function ListGridBody({
   return (
     <div
       className={cn(
-        "col-span-full grid grid-cols-subgrid content-start",
+        "col-span-full grid grid-cols-subgrid content-start gap-y-1 py-1.5",
         className,
       )}
       {...props}
@@ -175,7 +175,7 @@ function ListGridRow({ className, children, ...props }: ListGridRowProps) {
     <div
       role="row"
       className={cn(
-        "group/row col-span-full grid h-12 grid-cols-subgrid items-center transition-colors hover:bg-accent/40",
+        "group/row col-span-full grid min-h-14 grid-cols-subgrid items-center rounded-md border border-border/70 bg-background transition-colors hover:border-foreground/20 hover:bg-background",
         className,
       )}
       {...props}

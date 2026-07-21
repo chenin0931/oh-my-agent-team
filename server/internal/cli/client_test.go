@@ -166,6 +166,50 @@ func TestPostJSON(t *testing.T) {
 	})
 }
 
+func TestPostJSONWaitsForManagedApprovalAndRetriesOnce(t *testing.T) {
+	const approvalID = "11111111-1111-1111-1111-111111111111"
+	const sessionID = "22222222-2222-2222-2222-222222222222"
+	mutationCalls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/api/agent-sessions/"+sessionID:
+			json.NewEncoder(w).Encode(map[string]any{"approvals": []map[string]any{{"id": approvalID, "status": "approved"}}})
+		case r.Method == http.MethodPost && r.URL.Path == "/api/issues":
+			mutationCalls++
+			body, _ := io.ReadAll(r.Body)
+			if string(body) != `{"title":"Launch review"}` {
+				t.Errorf("mutation body was not replayed: %s", body)
+			}
+			if mutationCalls == 1 {
+				w.WriteHeader(http.StatusPreconditionRequired)
+				json.NewEncoder(w).Encode(map[string]any{
+					"code": "approval_required", "approval_id": approvalID,
+					"agent_session_id": sessionID, "title": "Create a work item",
+				})
+				return
+			}
+			if got := r.Header.Get("X-Approval-ID"); got != approvalID {
+				t.Errorf("approval header = %q, want %q", got, approvalID)
+			}
+			w.WriteHeader(http.StatusCreated)
+			json.NewEncoder(w).Encode(map[string]any{"id": "issue-1"})
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+
+	client := NewAPIClient(srv.URL, "workspace-1", "task-token")
+	client.TaskID = "33333333-3333-3333-3333-333333333333"
+	var out map[string]any
+	if err := client.PostJSON(context.Background(), "/api/issues", map[string]string{"title": "Launch review"}, &out); err != nil {
+		t.Fatalf("PostJSON: %v", err)
+	}
+	if mutationCalls != 2 || out["id"] != "issue-1" {
+		t.Fatalf("mutation calls=%d response=%v", mutationCalls, out)
+	}
+}
+
 func TestDeleteJSONResponse(t *testing.T) {
 	type respBody struct {
 		ID string `json:"id"`

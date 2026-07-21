@@ -12,6 +12,7 @@ export interface TimelineEntry {
   id: string;
   actor_type: string;
   actor_id: string;
+  actor_name_snapshot?: string | null;
   created_at: string;
   // Activity fields
   action?: string;

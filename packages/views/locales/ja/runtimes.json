@@ -1,5 +1,6 @@
 {
   "page": {
+    "execution_label": "接続されたコンピューターとローカルエージェント",
     "title": "デスクトップエージェント",
     "tagline": "コンピュータ上の Codex、Claude Code、WorkBuddy を接続し、チームエージェントを作成します。",
     "learn_more": "詳しく見る →",

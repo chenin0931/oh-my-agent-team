@@ -141,6 +141,13 @@ import type {
   CreateBillingCheckoutSessionResponse,
   BillingCheckoutSessionStatus,
   CreateBillingPortalSessionResponse,
+  AgentSession,
+  AgentSessionStatus,
+  AgentSessionEventsResponse,
+  PostAgentSessionEventRequest,
+  AgentExecutionBinding,
+  AgentVersionSummary,
+  UpsertAgentExecutionBindingRequest,
 } from "../types";
 import type { CreateFeedbackResponse, FeedbackKind } from "../feedback/types";
 import type {
@@ -1606,6 +1613,77 @@ export class ApiClient {
 
   async listTasksByIssue(issueId: string): Promise<AgentTask[]> {
     return this.fetch(`/api/issues/${issueId}/task-runs`);
+  }
+
+  async listIssueAgentSessions(issueId: string): Promise<AgentSession[]> {
+    return this.fetch(`/api/issues/${issueId}/sessions`);
+  }
+
+  async createIssueAgentSession(
+    issueId: string,
+    message?: string,
+  ): Promise<{ status: AgentSessionStatus; task_id?: string; agent_session_id?: string }> {
+    return this.fetch(`/api/issues/${issueId}/sessions`, {
+      method: "POST",
+      body: JSON.stringify({ message: message?.trim() || undefined }),
+    });
+  }
+
+  async listAgentSessions(agentId: string, limit = 50): Promise<AgentSession[]> {
+    return this.fetch(`/api/agents/${agentId}/sessions?limit=${limit}`);
+  }
+
+  async listSquadAgentSessions(squadId: string): Promise<AgentSession[]> {
+    return this.fetch(`/api/squads/${squadId}/sessions`);
+  }
+
+  async listAgentVersions(agentId: string): Promise<AgentVersionSummary[]> {
+    return this.fetch(`/api/agents/${agentId}/versions`);
+  }
+
+  async getAgentSession(sessionId: string): Promise<AgentSession> {
+    return this.fetch(`/api/agent-sessions/${sessionId}`);
+  }
+
+  async listAgentSessionEvents(
+    sessionId: string,
+    params: { after_seq?: number; limit?: number } = {},
+  ): Promise<AgentSessionEventsResponse> {
+    const query = new URLSearchParams();
+    if (params.after_seq != null) query.set("after_seq", String(params.after_seq));
+    if (params.limit != null) query.set("limit", String(params.limit));
+    const suffix = query.size > 0 ? `?${query.toString()}` : "";
+    return this.fetch(`/api/agent-sessions/${sessionId}/events${suffix}`);
+  }
+
+  async postAgentSessionEvent(
+    sessionId: string,
+    event: PostAgentSessionEventRequest,
+  ): Promise<Record<string, unknown>> {
+    return this.fetch(`/api/agent-sessions/${sessionId}/events`, {
+      method: "POST",
+      body: JSON.stringify(event),
+    });
+  }
+
+  async listAgentExecutionBindings(agentId: string): Promise<AgentExecutionBinding[]> {
+    return this.fetch(`/api/agents/${agentId}/execution-bindings`);
+  }
+
+  async upsertAgentExecutionBinding(
+    agentId: string,
+    binding: UpsertAgentExecutionBindingRequest,
+  ): Promise<AgentExecutionBinding[]> {
+    return this.fetch(`/api/agents/${agentId}/execution-bindings`, {
+      method: "PUT",
+      body: JSON.stringify(binding),
+    });
+  }
+
+  async deleteAgentExecutionBinding(agentId: string, runtimeId: string): Promise<void> {
+    return this.fetch(`/api/agents/${agentId}/execution-bindings/${runtimeId}`, {
+      method: "DELETE",
+    });
   }
 
   async getIssueUsage(issueId: string): Promise<IssueUsageSummary> {

@@ -11,8 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/chenin0931/oh-my-agent-team/server/internal/analytics"
 	"github.com/chenin0931/oh-my-agent-team/server/internal/events"
 	"github.com/chenin0931/oh-my-agent-team/server/internal/featureflags"
@@ -20,12 +18,15 @@ import (
 	"github.com/chenin0931/oh-my-agent-team/server/internal/realtime"
 	"github.com/chenin0931/oh-my-agent-team/server/internal/runtimeapps"
 	"github.com/chenin0931/oh-my-agent-team/server/internal/util"
+	agentpkg "github.com/chenin0931/oh-my-agent-team/server/pkg/agent"
 	db "github.com/chenin0931/oh-my-agent-team/server/pkg/db/generated"
 	"github.com/chenin0931/oh-my-agent-team/server/pkg/featureflag"
 	"github.com/chenin0931/oh-my-agent-team/server/pkg/protocol"
 	"github.com/chenin0931/oh-my-agent-team/server/pkg/redact"
 	"github.com/chenin0931/oh-my-agent-team/server/pkg/skillbundle"
 	"github.com/chenin0931/oh-my-agent-team/server/pkg/taskfailure"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type TaskService struct {
@@ -39,6 +40,9 @@ type TaskService struct {
 	// FeatureFlags is the server-side toggle router. Nil is valid and returns
 	// each call site's default.
 	FeatureFlags *featureflag.Service
+	// Sessions owns the durable execution layer above one-turn queue rows. It is
+	// optional so legacy tests and old deployments keep their current behavior.
+	Sessions *ManagedSessionService
 	// EmptyClaim caches "this runtime has no queued task" so the daemon
 	// poll path can skip a Postgres scan on the steady-state empty case.
 	// Optional — a nil cache disables the fast path and every claim
@@ -228,6 +232,43 @@ func (s *TaskService) buildRuntimeMCPOverlay(ctx context.Context, originatorUser
 	return data
 }
 
+// buildVersionedRuntimeMCPOverlay uses the immutable toolkit membership saved
+// on the Session's Agent version while still resolving short-lived credentials
+// at enqueue time. Secrets are never copied into agent_version.
+func (s *TaskService) buildVersionedRuntimeMCPOverlay(ctx context.Context, originatorUserID pgtype.UUID, agent db.Agent, agentVersionID pgtype.UUID) runtimeMCPOverlayData {
+	if agentVersionID.Valid && s != nil && s.Queries != nil {
+		if version, err := s.Queries.GetAgentVersion(ctx, agentVersionID); err == nil {
+			if allowlist, ok := composioToolkitsFromVersion(version.ToolConfig); ok {
+				agent.ComposioToolkitAllowlist = allowlist
+			}
+		}
+	}
+	return s.buildRuntimeMCPOverlay(ctx, originatorUserID, agent)
+}
+
+func composioToolkitsFromVersion(toolConfig []byte) ([]string, bool) {
+	var fields map[string]json.RawMessage
+	if len(toolConfig) == 0 || json.Unmarshal(toolConfig, &fields) != nil {
+		return nil, false
+	}
+	raw, ok := fields["composio_toolkits"]
+	if !ok {
+		return nil, false
+	}
+	var allowlist []string
+	if json.Unmarshal(raw, &allowlist) != nil {
+		return nil, false
+	}
+	return append([]string{}, allowlist...), true
+}
+
+func managedVersionID(placement *ManagedSessionPlacement) pgtype.UUID {
+	if placement == nil {
+		return pgtype.UUID{}
+	}
+	return placement.Thread.AgentVersionID
+}
+
 // resolveOriginatorFromTriggerComment returns the top-of-chain HUMAN user
 // id for a comment that triggered an Enqueue* path. The chain rules
 // (MUL-3869):
@@ -353,6 +394,9 @@ func (s *TaskService) captureTaskCancelled(ctx context.Context, task db.AgentTas
 	if err := s.Queries.DeleteTaskTokensByTask(ctx, task.ID); err != nil {
 		slog.Warn("cancel task: failed to revoke task tokens",
 			"task_id", util.UUIDToString(task.ID), "error", err)
+	}
+	if s.Sessions != nil {
+		s.Sessions.OnTaskCancelled(ctx, task, task.Error.String)
 	}
 }
 
@@ -598,7 +642,139 @@ func (s *TaskService) EnqueueTaskForIssue(ctx context.Context, issue db.Issue, t
 	if len(triggerCommentID) > 0 {
 		commentID = triggerCommentID[0]
 	}
-	return s.enqueueIssueTask(ctx, issue, commentID, false, "")
+	return s.enqueueIssueTask(ctx, issue, commentID, false, false, pgtype.UUID{}, "")
+}
+
+func (s *TaskService) managedSessionsEnabled(ctx context.Context) bool {
+	return s != nil && s.Sessions != nil && featureflags.AgentSessionsV2Enabled(ctx, s.FeatureFlags)
+}
+
+func (s *TaskService) ensureManagedPlacement(
+	ctx context.Context,
+	issue db.Issue,
+	agent db.Agent,
+	mode, role string,
+	squadID, createdBy pgtype.UUID,
+	forceNew bool,
+) (*ManagedSessionPlacement, pgtype.UUID, error) {
+	if !s.managedSessionsEnabled(ctx) {
+		if !agent.RuntimeID.Valid {
+			return nil, pgtype.UUID{}, fmt.Errorf("agent has no runtime")
+		}
+		return nil, agent.RuntimeID, nil
+	}
+	allowPool := featureflags.AgentRuntimePoolingEnabled(ctx, s.FeatureFlags)
+	if runtime, runtimeErr := s.Sessions.selectRuntime(ctx, s.Queries, agent, allowPool); runtimeErr == nil {
+		if agentpkg.CheckManagedSessionCLIVersion(managedRuntimeCLIVersion(runtime.Metadata)) != nil {
+			// A daemon below 0.4.0 gets the exact legacy queue shape. Runtime
+			// pooling, Session identity and approvals are not partially enabled.
+			if !agent.RuntimeID.Valid {
+				return nil, pgtype.UUID{}, fmt.Errorf("agent has no compatible legacy runtime")
+			}
+			primary, primaryErr := s.Queries.GetAgentRuntime(ctx, agent.RuntimeID)
+			if primaryErr != nil || primary.Status != "online" {
+				return nil, pgtype.UUID{}, ErrManagedSessionWaitingEnvironment
+			}
+			return nil, primary.ID, nil
+		}
+	} else if !errors.Is(runtimeErr, pgx.ErrNoRows) {
+		return nil, pgtype.UUID{}, runtimeErr
+	}
+	placement, err := s.Sessions.Ensure(ctx, EnsureManagedSessionParams{
+		Issue:       issue,
+		Agent:       agent,
+		Mode:        mode,
+		Role:        role,
+		SquadID:     squadID,
+		CreatedBy:   createdBy,
+		ForceNew:    forceNew,
+		AllowPool:   allowPool,
+		MaxAttempts: 3,
+	})
+	if err != nil {
+		return nil, pgtype.UUID{}, err
+	}
+	if placement.WaitingEnvironment || !placement.Runtime.ID.Valid {
+		return &placement, pgtype.UUID{}, ErrManagedSessionWaitingEnvironment
+	}
+	return &placement, placement.Runtime.ID, nil
+}
+
+func managedRuntimeCLIVersion(metadata []byte) string {
+	if len(metadata) == 0 {
+		return ""
+	}
+	var payload map[string]any
+	if json.Unmarshal(metadata, &payload) != nil {
+		return ""
+	}
+	version, _ := payload["cli_version"].(string)
+	return strings.TrimSpace(version)
+}
+
+// ResumeWaitingSessionsForRuntime wakes Sessions that were parked without a
+// usable execution environment. ClaimWaitingAgentSession makes concurrent
+// heartbeats and binding updates race-safe: only one caller can enqueue the
+// next turn for a given Session.
+func (s *TaskService) ResumeWaitingSessionsForRuntime(ctx context.Context, runtimeID pgtype.UUID) int {
+	if s == nil || s.Sessions == nil || !runtimeID.Valid || !s.managedSessionsEnabled(ctx) {
+		return 0
+	}
+	ids, err := s.Queries.ListWaitingAgentSessionsForRuntime(ctx, db.ListWaitingAgentSessionsForRuntimeParams{
+		RuntimeID:   runtimeID,
+		ResultLimit: 20,
+	})
+	if err != nil {
+		slog.Warn("list waiting managed sessions failed", "runtime_id", util.UUIDToString(runtimeID), "error", err)
+		return 0
+	}
+	resumed := 0
+	for _, id := range ids {
+		session, claimErr := s.Queries.ClaimWaitingAgentSession(ctx, id)
+		if claimErr != nil {
+			if !errors.Is(claimErr, pgx.ErrNoRows) {
+				slog.Warn("claim waiting managed session failed", "session_id", util.UUIDToString(id), "error", claimErr)
+			}
+			continue
+		}
+		thread, threadErr := s.Queries.GetPrimaryAgentSessionThread(ctx, session.ID)
+		issue, issueErr := s.Queries.GetIssue(ctx, session.IssueID)
+		if threadErr != nil || issueErr != nil || !managedSessionCanResume(issue, session, thread) {
+			_, _ = s.Sessions.Transition(ctx, session.ID, SessionStatusCancelled, "work item is no longer eligible for execution", thread.ID, pgtype.UUID{})
+			continue
+		}
+
+		var enqueueErr error
+		switch session.Mode {
+		case SessionModeAdvisor:
+			_, enqueueErr = s.EnqueueIssueAdvisor(ctx, issue, thread.AgentID, session.CreatedBy, session.Goal)
+		case SessionModeCoordinator:
+			_, enqueueErr = s.EnqueueTaskForSquadLeaderWithHandoff(ctx, issue, thread.AgentID, session.EntrySquadID, "Execution environment restored; continue the current Session.")
+		default:
+			_, enqueueErr = s.EnqueueTaskForIssueWithHandoff(ctx, issue, "Execution environment restored; continue the current Session.")
+		}
+		if enqueueErr != nil {
+			_, _ = s.Sessions.Transition(ctx, session.ID, SessionStatusWaitingEnvironment, enqueueErr.Error(), thread.ID, pgtype.UUID{})
+			slog.Warn("resume waiting managed session failed", "session_id", util.UUIDToString(session.ID), "error", enqueueErr)
+			continue
+		}
+		resumed++
+	}
+	return resumed
+}
+
+func managedSessionCanResume(issue db.Issue, session db.AgentSession, thread db.AgentSessionThread) bool {
+	if !issue.ID.Valid || issue.IssueType == IssueTypeEpic || issue.Status == "backlog" || issue.Status == "done" || issue.Status == "cancelled" {
+		return false
+	}
+	switch session.Mode {
+	case SessionModeAdvisor:
+		return true
+	case SessionModeCoordinator:
+		return issue.AssigneeType.Valid && issue.AssigneeType.String == "squad" && issue.AssigneeID == session.EntrySquadID
+	default:
+		return issue.AssigneeType.Valid && issue.AssigneeType.String == "agent" && issue.AssigneeID == thread.AgentID
+	}
 }
 
 // MemberAssigneeAdvisorContext is stamped on issue-linked tasks that ask an
@@ -615,11 +791,37 @@ type MemberAssigneeAdvisorContext struct {
 const MemberAssigneeAdvisorContextType = "member_assignee_advisor"
 const ManualIssueAdvisorContextType = "manual_issue_advisor"
 const EpicAdvisorContextType = "epic_advisor"
+const ManagedOutcomeReviewContextType = "managed_outcome_review"
 
 const (
 	TaskCollaborationRoleExecutor = "executor"
 	TaskCollaborationRoleAdvisor  = "advisor"
+	TaskCollaborationRoleReviewer = "reviewer"
 )
+
+type ManagedOutcomeReviewContext struct {
+	Type           string `json:"type"`
+	AgentSessionID string `json:"agent_session_id"`
+	OutcomeID      string `json:"outcome_id"`
+	Rubric         string `json:"rubric"`
+	Attempt        int32  `json:"attempt"`
+}
+
+func ParseManagedOutcomeReviewContext(task db.AgentTaskQueue) (ManagedOutcomeReviewContext, bool) {
+	if !task.AgentSessionID.Valid || !task.SessionThreadID.Valid || len(task.Context) == 0 {
+		return ManagedOutcomeReviewContext{}, false
+	}
+	var review ManagedOutcomeReviewContext
+	if json.Unmarshal(task.Context, &review) != nil || review.Type != ManagedOutcomeReviewContextType {
+		return ManagedOutcomeReviewContext{}, false
+	}
+	return review, true
+}
+
+func IsManagedOutcomeReviewTask(task db.AgentTaskQueue) bool {
+	_, ok := ParseManagedOutcomeReviewContext(task)
+	return ok
+}
 
 func ParseMemberAssigneeAdvisorContext(task db.AgentTaskQueue) (MemberAssigneeAdvisorContext, bool) {
 	if !task.IssueID.Valid || task.ChatSessionID.Valid || task.AutopilotRunID.Valid || len(task.Context) == 0 {
@@ -649,10 +851,371 @@ func IsEpicAdvisorTask(task db.AgentTaskQueue) bool {
 // comment-only advisory pass. The role travels with task events so inbox
 // listeners do not turn an optional advisor failure into a human action item.
 func TaskCollaborationRole(task db.AgentTaskQueue) string {
+	if IsManagedOutcomeReviewTask(task) {
+		return TaskCollaborationRoleReviewer
+	}
 	if IsMemberAssigneeAdvisorTask(task) {
 		return TaskCollaborationRoleAdvisor
 	}
 	return TaskCollaborationRoleExecutor
+}
+
+func (s *TaskService) EnqueueOutcomeReview(ctx context.Context, executorTask db.AgentTaskQueue) (db.AgentTaskQueue, error) {
+	if s == nil || s.Sessions == nil || !executorTask.AgentSessionID.Valid || !executorTask.SessionThreadID.Valid {
+		return db.AgentTaskQueue{}, fmt.Errorf("managed outcome review requires a Session task")
+	}
+	session, err := s.Queries.GetAgentSession(ctx, executorTask.AgentSessionID)
+	if err != nil {
+		return db.AgentTaskQueue{}, err
+	}
+	outcome, err := s.Queries.GetSessionOutcome(ctx, session.ID)
+	if err != nil {
+		return db.AgentTaskQueue{}, err
+	}
+	executorThread, err := s.Queries.GetPrimaryAgentSessionThread(ctx, session.ID)
+	if err != nil {
+		return db.AgentTaskQueue{}, err
+	}
+	agent, err := s.Queries.GetAgent(ctx, executorThread.AgentID)
+	if err != nil {
+		return db.AgentTaskQueue{}, err
+	}
+	runtime, err := s.Sessions.selectRuntime(ctx, s.Queries, agent, featureflags.AgentRuntimePoolingEnabled(ctx, s.FeatureFlags))
+	if err != nil {
+		_, _ = s.Sessions.Transition(ctx, session.ID, SessionStatusWaitingEnvironment, "no online environment for outcome review", executorThread.ID, executorTask.ID)
+		return db.AgentTaskQueue{}, ErrManagedSessionWaitingEnvironment
+	}
+
+	reviewerThread, err := s.Queries.GetAgentSessionThreadForAgent(ctx, db.GetAgentSessionThreadForAgentParams{
+		AgentSessionID: session.ID,
+		AgentID:        executorThread.AgentID,
+		Role:           "reviewer",
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		policy, _ := json.Marshal(DefaultSessionPermissionPolicy(SessionModeReviewer))
+		reviewerThread, err = s.Queries.CreateAgentSessionThread(ctx, db.CreateAgentSessionThreadParams{
+			AgentSessionID:   session.ID,
+			AgentID:          executorThread.AgentID,
+			AgentVersionID:   executorThread.AgentVersionID,
+			RuntimeID:        runtime.ID,
+			ParentThreadID:   executorThread.ID,
+			Role:             "reviewer",
+			Status:           SessionStatusQueued,
+			PermissionPolicy: policy,
+		})
+	} else if err == nil {
+		reviewerThread, err = s.Queries.UpdateAgentSessionThreadRuntime(ctx, db.UpdateAgentSessionThreadRuntimeParams{
+			RuntimeID: runtime.ID,
+			Status:    SessionStatusQueued,
+			ID:        reviewerThread.ID,
+		})
+	}
+	if err != nil {
+		return db.AgentTaskQueue{}, fmt.Errorf("prepare reviewer thread: %w", err)
+	}
+	attempt := outcome.CurrentIteration + 1
+	contextJSON, _ := json.Marshal(ManagedOutcomeReviewContext{
+		Type:           ManagedOutcomeReviewContextType,
+		AgentSessionID: util.UUIDToString(session.ID),
+		OutcomeID:      util.UUIDToString(outcome.ID),
+		Rubric:         outcome.RubricMarkdown,
+		Attempt:        attempt,
+	})
+	issue, err := s.Queries.GetIssue(ctx, session.IssueID)
+	if err != nil {
+		return db.AgentTaskQueue{}, err
+	}
+	task, err := s.Queries.CreateAgentTask(ctx, db.CreateAgentTaskParams{
+		AgentID:          reviewerThread.AgentID,
+		RuntimeID:        runtime.ID,
+		IssueID:          issue.ID,
+		Priority:         priorityToInt(issue.Priority),
+		ManagedContext:   contextJSON,
+		OriginatorUserID: session.CreatedBy,
+	})
+	if err != nil {
+		s.restoreOutcomeReviewRetryState(ctx, session, outcome, reviewerThread)
+		return db.AgentTaskQueue{}, fmt.Errorf("create outcome reviewer task: %w", err)
+	}
+	task, err = s.Sessions.AttachTask(ctx, task, ManagedSessionPlacement{
+		Session: session,
+		Thread:  reviewerThread,
+		Runtime: runtime,
+	})
+	if err != nil {
+		return db.AgentTaskQueue{}, err
+	}
+	_, _ = s.Sessions.AppendEvent(ctx, ManagedEventInput{
+		SessionID:      session.ID,
+		ThreadID:       reviewerThread.ID,
+		ActorType:      "system",
+		EventType:      "outcome.evaluation_started",
+		Payload:        map[string]any{"attempt": attempt},
+		Visibility:     "workspace",
+		SourceTaskID:   task.ID,
+		IdempotencyKey: fmt.Sprintf("outcome:start:%d", attempt),
+	})
+	s.broadcastTaskEvent(ctx, protocol.EventTaskQueued, task)
+	s.NotifyTaskEnqueued(ctx, task)
+	return task, nil
+}
+
+func (s *TaskService) restoreOutcomeReviewRetryState(ctx context.Context, session db.AgentSession, outcome db.SessionOutcome, reviewerThread db.AgentSessionThread) {
+	tasks, err := s.Queries.ListTasksByAgentSession(ctx, session.ID)
+	if err != nil || hasActiveOutcomeReviewTask(tasks) {
+		return
+	}
+	_, _ = s.Queries.UpdateSessionOutcomeStatus(ctx, db.UpdateSessionOutcomeStatusParams{
+		Status:             outcomeReviewRetryStatus(outcome.CurrentIteration),
+		IncrementIteration: false,
+		ID:                 outcome.ID,
+	})
+	_, _ = s.Queries.UpdateAgentSessionThreadStatus(ctx, db.UpdateAgentSessionThreadStatusParams{
+		Status: SessionStatusIdle,
+		ID:     reviewerThread.ID,
+	})
+}
+
+func hasActiveOutcomeReviewTask(tasks []db.AgentTaskQueue) bool {
+	for _, task := range tasks {
+		if IsManagedOutcomeReviewTask(task) && (task.Status == "queued" || task.Status == "dispatched" || task.Status == "running") {
+			return true
+		}
+	}
+	return false
+}
+
+func outcomeReviewRetryStatus(currentIteration int32) string {
+	if currentIteration > 0 {
+		return "revision_requested"
+	}
+	return "pending"
+}
+
+func (s *TaskService) ensureSquadWorkerPlacement(ctx context.Context, issue db.Issue, agent db.Agent, squadID pgtype.UUID) (*ManagedSessionPlacement, pgtype.UUID, error) {
+	if !s.managedSessionsEnabled(ctx) || !featureflags.SquadSessionOrchestrationEnabled(ctx, s.FeatureFlags) {
+		return nil, pgtype.UUID{}, pgx.ErrNoRows
+	}
+	session, err := s.Queries.GetOpenCoordinatorSessionForSquad(ctx, db.GetOpenCoordinatorSessionForSquadParams{IssueID: issue.ID, SquadID: squadID})
+	if err != nil {
+		return nil, pgtype.UUID{}, err
+	}
+	threads, err := s.Queries.ListAgentSessionThreads(ctx, session.ID)
+	if err != nil {
+		return nil, pgtype.UUID{}, err
+	}
+	var parent db.AgentSessionThread
+	delegatedCount := 0
+	activeCount := 0
+	for _, thread := range threads {
+		if !thread.ParentThreadID.Valid && !parent.ID.Valid {
+			parent = thread
+		}
+		if thread.ParentThreadID.Valid {
+			delegatedCount++
+		}
+		if thread.Status == SessionStatusQueued || thread.Status == SessionStatusRunning || thread.Status == SessionStatusWaitingApproval {
+			activeCount++
+		}
+		if thread.AgentID == agent.ID && thread.ParentThreadID.Valid && thread.Role == "executor" {
+			runtime, runtimeErr := s.Sessions.selectRuntime(ctx, s.Queries, agent, featureflags.AgentRuntimePoolingEnabled(ctx, s.FeatureFlags))
+			if runtimeErr != nil {
+				return nil, pgtype.UUID{}, ErrManagedSessionWaitingEnvironment
+			}
+			thread, err = s.Queries.UpdateAgentSessionThreadRuntime(ctx, db.UpdateAgentSessionThreadRuntimeParams{RuntimeID: runtime.ID, Status: SessionStatusQueued, ID: thread.ID})
+			if err != nil {
+				return nil, pgtype.UUID{}, err
+			}
+			return &ManagedSessionPlacement{Session: session, Thread: thread, Runtime: runtime}, runtime.ID, nil
+		}
+	}
+	if !parent.ID.Valid {
+		return nil, pgtype.UUID{}, errors.New("coordinator Session has no leader thread")
+	}
+	if delegatedCount >= 20 {
+		return nil, pgtype.UUID{}, errors.New("squad Session reached the 20-agent delegation limit")
+	}
+	if activeCount >= 10 {
+		return nil, pgtype.UUID{}, errors.New("squad Session reached the 10-thread concurrency limit")
+	}
+	runtime, err := s.Sessions.selectRuntime(ctx, s.Queries, agent, featureflags.AgentRuntimePoolingEnabled(ctx, s.FeatureFlags))
+	if err != nil {
+		return nil, pgtype.UUID{}, ErrManagedSessionWaitingEnvironment
+	}
+	if agentpkg.CheckManagedSessionCLIVersion(managedRuntimeCLIVersion(runtime.Metadata)) != nil {
+		return nil, pgtype.UUID{}, pgx.ErrNoRows
+	}
+	version, err := s.Sessions.SnapshotAgent(ctx, agent)
+	if err != nil {
+		return nil, pgtype.UUID{}, err
+	}
+	policy, _ := json.Marshal(DefaultSquadWorkerPermissionPolicy())
+	thread, err := s.Queries.CreateAgentSessionThread(ctx, db.CreateAgentSessionThreadParams{
+		AgentSessionID:   session.ID,
+		AgentID:          agent.ID,
+		AgentVersionID:   version.ID,
+		RuntimeID:        runtime.ID,
+		ParentThreadID:   parent.ID,
+		Role:             "executor",
+		Status:           SessionStatusQueued,
+		PermissionPolicy: policy,
+	})
+	if err != nil {
+		return nil, pgtype.UUID{}, err
+	}
+	_, _ = s.Sessions.AppendEvent(ctx, ManagedEventInput{
+		SessionID: session.ID, ThreadID: thread.ID, ActorType: "system", EventType: "session.thread_created",
+		Payload: map[string]any{"role": "executor", "agent_id": util.UUIDToString(agent.ID), "parent_thread_id": util.UUIDToString(parent.ID)}, Visibility: "workspace",
+	})
+	return &ManagedSessionPlacement{Session: session, Thread: thread, Runtime: runtime, Created: true}, runtime.ID, nil
+}
+
+type managedOutcomeReviewResult struct {
+	Verdict  string   `json:"verdict"`
+	Summary  string   `json:"summary"`
+	Evidence []string `json:"evidence"`
+}
+
+func (s *TaskService) completeOutcomeReview(ctx context.Context, task db.AgentTaskQueue, reviewContext ManagedOutcomeReviewContext) {
+	if s.Sessions == nil {
+		return
+	}
+	session, err := s.Queries.GetAgentSession(ctx, task.AgentSessionID)
+	if err != nil {
+		return
+	}
+	outcome, err := s.Queries.GetSessionOutcome(ctx, session.ID)
+	if err != nil || util.UUIDToString(outcome.ID) != reviewContext.OutcomeID {
+		return
+	}
+	result, parseErr := parseManagedOutcomeReviewResult(task.Result)
+	if parseErr != nil {
+		result = managedOutcomeReviewResult{
+			Verdict:  "failed",
+			Summary:  "Reviewer did not return a valid structured evaluation.",
+			Evidence: []string{parseErr.Error()},
+		}
+	}
+	evidence, _ := json.Marshal(result.Evidence)
+	evaluation, err := s.Queries.CreateOutcomeEvaluation(ctx, db.CreateOutcomeEvaluationParams{
+		OutcomeID:        outcome.ID,
+		ReviewerThreadID: task.SessionThreadID,
+		Attempt:          reviewContext.Attempt,
+		Verdict:          result.Verdict,
+		Summary:          result.Summary,
+		Evidence:         evidence,
+	})
+	if err != nil {
+		slog.Warn("save outcome evaluation failed", "task_id", util.UUIDToString(task.ID), "error", err)
+		return
+	}
+	_, _ = s.Sessions.AppendEvent(ctx, ManagedEventInput{
+		SessionID:      session.ID,
+		ThreadID:       task.SessionThreadID,
+		ActorType:      "agent",
+		ActorID:        task.AgentID,
+		EventType:      "outcome.evaluation_completed",
+		Payload:        map[string]any{"evaluation_id": util.UUIDToString(evaluation.ID), "attempt": reviewContext.Attempt, "verdict": result.Verdict, "summary": result.Summary},
+		Visibility:     "workspace",
+		SourceTaskID:   task.ID,
+		IdempotencyKey: fmt.Sprintf("outcome:complete:%d", reviewContext.Attempt),
+	})
+
+	if result.Verdict == "passed" {
+		_, _ = s.Queries.UpdateSessionOutcomeStatus(ctx, db.UpdateSessionOutcomeStatusParams{Status: "passed", IncrementIteration: true, ID: outcome.ID})
+		_, _ = s.Sessions.Transition(ctx, session.ID, SessionStatusCompleted, "outcome accepted", task.SessionThreadID, task.ID)
+		s.Sessions.moveIssueToReview(ctx, task)
+		return
+	}
+
+	if result.Verdict == "revision_requested" && reviewContext.Attempt < outcome.MaxIterations {
+		_, _ = s.Queries.UpdateSessionOutcomeStatus(ctx, db.UpdateSessionOutcomeStatusParams{Status: "revision_requested", IncrementIteration: true, ID: outcome.ID})
+		_, _ = s.Sessions.Transition(ctx, session.ID, SessionStatusWaitingInput, "outcome needs revision", task.SessionThreadID, task.ID)
+		issue, issueErr := s.Queries.GetIssue(ctx, session.IssueID)
+		if issueErr == nil {
+			handoff := fmt.Sprintf("Outcome review attempt %d requested a revision. Address this feedback, then return a new result for review:\n\n%s", reviewContext.Attempt, result.Summary)
+			if _, enqueueErr := s.EnqueueTaskForIssueWithHandoff(ctx, issue, handoff); enqueueErr != nil {
+				slog.Warn("enqueue executor revision failed", "session_id", util.UUIDToString(session.ID), "error", enqueueErr)
+			}
+		}
+		return
+	}
+
+	status := "waiting_input"
+	if result.Verdict == "revision_requested" {
+		status = "waiting_input"
+	}
+	_, _ = s.Queries.UpdateSessionOutcomeStatus(ctx, db.UpdateSessionOutcomeStatusParams{Status: status, IncrementIteration: true, ID: outcome.ID})
+	_, _ = s.Sessions.Transition(ctx, session.ID, SessionStatusWaitingInput, result.Summary, task.SessionThreadID, task.ID)
+	s.Sessions.NotifyAction(ctx, session, task.AgentID, "outcome_failed", "Outcome needs your decision", result.Summary, fmt.Sprintf("outcome:%d", reviewContext.Attempt), map[string]any{
+		"attempt": reviewContext.Attempt,
+		"verdict": result.Verdict,
+	})
+}
+
+func parseManagedOutcomeReviewResult(raw []byte) (managedOutcomeReviewResult, error) {
+	var completed protocol.TaskCompletedPayload
+	if err := json.Unmarshal(raw, &completed); err != nil {
+		return managedOutcomeReviewResult{}, fmt.Errorf("decode task result: %w", err)
+	}
+	output := strings.TrimSpace(completed.Output)
+	output = strings.TrimPrefix(output, "```json")
+	output = strings.TrimPrefix(output, "```")
+	output = strings.TrimSuffix(output, "```")
+	output = strings.TrimSpace(output)
+
+	// Providers may concatenate an earlier progress message with the final JSON
+	// response. Try the complete output first, then each object boundary, and
+	// keep the last object that satisfies the reviewer schema. A decoder is used
+	// instead of slicing at the last closing brace so braces inside JSON strings
+	// remain valid and harmless trailing prose is ignored.
+	candidates := []string{output}
+	for offset := 0; offset < len(output); {
+		next := strings.IndexByte(output[offset:], '{')
+		if next < 0 {
+			break
+		}
+		offset += next
+		if offset > 0 {
+			candidates = append(candidates, output[offset:])
+		}
+		offset++
+	}
+
+	var (
+		matched     managedOutcomeReviewResult
+		found       bool
+		decodeErr   error
+		semanticErr error
+	)
+	for _, candidate := range candidates {
+		var result managedOutcomeReviewResult
+		if err := json.NewDecoder(strings.NewReader(candidate)).Decode(&result); err != nil {
+			decodeErr = err
+			continue
+		}
+		if result.Verdict != "passed" && result.Verdict != "revision_requested" {
+			semanticErr = fmt.Errorf("unsupported reviewer verdict %q", result.Verdict)
+			continue
+		}
+		result.Summary = strings.TrimSpace(result.Summary)
+		if result.Summary == "" {
+			semanticErr = errors.New("reviewer summary is required")
+			continue
+		}
+		matched = result
+		found = true
+	}
+	if found {
+		return matched, nil
+	}
+	if semanticErr != nil {
+		return managedOutcomeReviewResult{}, semanticErr
+	}
+	if decodeErr == nil {
+		return managedOutcomeReviewResult{}, errors.New("reviewer output contains no JSON object")
+	}
+	return managedOutcomeReviewResult{}, fmt.Errorf("decode reviewer output: %w", decodeErr)
 }
 
 // EnqueueIssueAdvisor creates a manually requested, comment-only advisor run.
@@ -681,7 +1244,20 @@ func (s *TaskService) enqueueManualAdvisor(ctx context.Context, issue db.Issue, 
 	if err != nil {
 		return db.AgentTaskQueue{}, fmt.Errorf("load advisor agent: %w", err)
 	}
-	if !agent.RuntimeID.Valid || agent.ArchivedAt.Valid {
+	if agent.ArchivedAt.Valid {
+		return db.AgentTaskQueue{}, fmt.Errorf("advisor agent is not ready")
+	}
+	runtimeID := agent.RuntimeID
+	var placement *ManagedSessionPlacement
+	if defaultIssueType(issue.IssueType) != IssueTypeEpic {
+		var placementErr error
+		placement, runtimeID, placementErr = s.ensureManagedPlacement(
+			ctx, issue, agent, SessionModeAdvisor, "advisor", pgtype.UUID{}, originatorUserID, false,
+		)
+		if placementErr != nil {
+			return db.AgentTaskQueue{}, placementErr
+		}
+	} else if !runtimeID.Valid {
 		return db.AgentTaskQueue{}, fmt.Errorf("advisor agent is not ready")
 	}
 	payload := MemberAssigneeAdvisorContext{
@@ -694,10 +1270,10 @@ func (s *TaskService) enqueueManualAdvisor(ctx context.Context, issue db.Issue, 
 	if err != nil {
 		return db.AgentTaskQueue{}, fmt.Errorf("marshal advisor context: %w", err)
 	}
-	runtimeMCPOverlay := s.buildRuntimeMCPOverlay(ctx, originatorUserID, agent)
+	runtimeMCPOverlay := s.buildVersionedRuntimeMCPOverlay(ctx, originatorUserID, agent, managedVersionID(placement))
 	task, err := s.Queries.CreateMemberAssigneeAdvisorTask(ctx, db.CreateMemberAssigneeAdvisorTaskParams{
 		AgentID:              agent.ID,
-		RuntimeID:            agent.RuntimeID,
+		RuntimeID:            runtimeID,
 		IssueID:              issue.ID,
 		Priority:             priorityToInt(issue.Priority),
 		Context:              contextJSON,
@@ -707,6 +1283,12 @@ func (s *TaskService) enqueueManualAdvisor(ctx context.Context, issue db.Issue, 
 	})
 	if err != nil {
 		return db.AgentTaskQueue{}, fmt.Errorf("create manual advisor task: %w", err)
+	}
+	if placement != nil {
+		task, err = s.Sessions.AttachTask(ctx, task, *placement)
+		if err != nil {
+			return db.AgentTaskQueue{}, fmt.Errorf("attach advisor task to managed session: %w", err)
+		}
 	}
 	s.addAdvisorSubscriber(ctx, issue, agent.ID)
 	s.broadcastTaskEvent(ctx, protocol.EventTaskQueued, task)
@@ -769,8 +1351,81 @@ func (s *TaskService) EnqueueMemberAssigneeAdvisors(ctx context.Context, issue d
 	}
 }
 
+// NotifyMemberIssueAssigned gives a human assignee a durable work entry before
+// any owned-Agent advice arrives. Assignment, subscription and execution are
+// separate concerns: this writes only an Inbox item and never queues a task.
+func (s *TaskService) NotifyMemberIssueAssigned(ctx context.Context, issue db.Issue, actorType string, actorID pgtype.UUID) {
+	if s == nil || s.Queries == nil || !issue.AssigneeType.Valid || issue.AssigneeType.String != "member" || !issue.AssigneeID.Valid {
+		return
+	}
+	if defaultIssueType(issue.IssueType) == IssueTypeEpic {
+		return
+	}
+	if actorType != "member" && actorType != "agent" && actorType != "system" {
+		actorType = "system"
+	}
+	details, _ := json.Marshal(map[string]any{
+		"issue_id":     util.UUIDToString(issue.ID),
+		"issue_status": issue.Status,
+	})
+	item, err := s.Queries.CreateInboxItem(ctx, db.CreateInboxItemParams{
+		WorkspaceID:   issue.WorkspaceID,
+		RecipientType: "member",
+		RecipientID:   issue.AssigneeID,
+		Type:          "issue_assigned",
+		Severity:      "action_required",
+		IssueID:       issue.ID,
+		TargetType:    pgtype.Text{String: "issue", Valid: true},
+		TargetID:      issue.ID,
+		Title:         issue.Title,
+		Body:          pgtype.Text{},
+		ActorType:     pgtype.Text{String: actorType, Valid: true},
+		ActorID:       actorID,
+		Details:       details,
+	})
+	if err != nil {
+		slog.Warn("create member assignment inbox item failed", "issue_id", util.UUIDToString(issue.ID), "recipient_id", util.UUIDToString(issue.AssigneeID), "error", err)
+		return
+	}
+	if s.Bus == nil {
+		return
+	}
+	s.Bus.Publish(events.Event{
+		Type:        protocol.EventInboxNew,
+		WorkspaceID: util.UUIDToString(issue.WorkspaceID),
+		ActorType:   actorType,
+		ActorID:     util.UUIDToString(actorID),
+		Payload: map[string]any{"item": map[string]any{
+			"id": util.UUIDToString(item.ID), "workspace_id": util.UUIDToString(item.WorkspaceID),
+			"recipient_type": item.RecipientType, "recipient_id": util.UUIDToString(item.RecipientID),
+			"type": item.Type, "severity": item.Severity, "issue_id": util.UUIDToPtr(item.IssueID),
+			"target_type": util.TextToPtr(item.TargetType), "target_id": util.UUIDToPtr(item.TargetID),
+			"title": item.Title, "body": util.TextToPtr(item.Body), "read": item.Read, "archived": item.Archived,
+			"created_at": util.TimestampToString(item.CreatedAt), "actor_type": util.TextToPtr(item.ActorType),
+			"actor_id": util.UUIDToPtr(item.ActorID), "details": json.RawMessage(item.Details),
+			"issue_status": issue.Status,
+		}},
+	})
+}
+
 func (s *TaskService) enqueueMemberAssigneeAdvisorTask(ctx context.Context, issue db.Issue, assigneeUserID pgtype.UUID, agent db.Agent) (db.AgentTaskQueue, bool, error) {
-	if !agent.RuntimeID.Valid || agent.ArchivedAt.Valid {
+	if agent.ArchivedAt.Valid {
+		return db.AgentTaskQueue{}, false, nil
+	}
+	runtimeID := agent.RuntimeID
+	var placement *ManagedSessionPlacement
+	if s.managedSessionsEnabled(ctx) {
+		var placementErr error
+		placement, runtimeID, placementErr = s.ensureManagedPlacement(
+			ctx, issue, agent, SessionModeAdvisor, "advisor", pgtype.UUID{}, assigneeUserID, false,
+		)
+		if errors.Is(placementErr, ErrManagedSessionWaitingEnvironment) {
+			return db.AgentTaskQueue{}, false, nil
+		}
+		if placementErr != nil {
+			return db.AgentTaskQueue{}, false, placementErr
+		}
+	} else if !runtimeID.Valid {
 		return db.AgentTaskQueue{}, false, nil
 	}
 	payload := MemberAssigneeAdvisorContext{
@@ -781,7 +1436,7 @@ func (s *TaskService) enqueueMemberAssigneeAdvisorTask(ctx context.Context, issu
 	if err != nil {
 		return db.AgentTaskQueue{}, false, fmt.Errorf("marshal advisor context: %w", err)
 	}
-	runtimeMCPOverlay := s.buildRuntimeMCPOverlay(ctx, assigneeUserID, agent)
+	runtimeMCPOverlay := s.buildVersionedRuntimeMCPOverlay(ctx, assigneeUserID, agent, managedVersionID(placement))
 
 	var task db.AgentTaskQueue
 	err = s.runInTx(ctx, func(qtx *db.Queries) error {
@@ -798,7 +1453,7 @@ func (s *TaskService) enqueueMemberAssigneeAdvisorTask(ctx context.Context, issu
 		}
 		t, err := qtx.CreateMemberAssigneeAdvisorTask(ctx, db.CreateMemberAssigneeAdvisorTaskParams{
 			AgentID:              agent.ID,
-			RuntimeID:            agent.RuntimeID,
+			RuntimeID:            runtimeID,
 			IssueID:              issue.ID,
 			Priority:             priorityToInt(issue.Priority),
 			Context:              contextJSON,
@@ -825,6 +1480,12 @@ func (s *TaskService) enqueueMemberAssigneeAdvisorTask(ctx context.Context, issu
 	}
 	if err != nil {
 		return db.AgentTaskQueue{}, false, err
+	}
+	if placement != nil {
+		task, err = s.Sessions.AttachTask(ctx, task, *placement)
+		if err != nil {
+			return db.AgentTaskQueue{}, false, fmt.Errorf("attach member advisor task to managed session: %w", err)
+		}
 	}
 	return task, true, nil
 }
@@ -861,7 +1522,60 @@ func (s *TaskService) addAdvisorSubscriber(ctx context.Context, issue db.Issue, 
 // dedicated task column; the daemon renders it via the assignment-handoff
 // branch. Empty note behaves exactly like EnqueueTaskForIssue.
 func (s *TaskService) EnqueueTaskForIssueWithHandoff(ctx context.Context, issue db.Issue, handoffNote string) (db.AgentTaskQueue, error) {
-	return s.enqueueIssueTask(ctx, issue, pgtype.UUID{}, false, handoffNote)
+	return s.enqueueIssueTask(ctx, issue, pgtype.UUID{}, false, false, pgtype.UUID{}, handoffNote)
+}
+
+// EnqueueTaskForIssueWithHandoffAs records the member who explicitly started
+// or redirected execution. That member owns approvals and waiting-state
+// notifications for a newly created managed Session.
+func (s *TaskService) EnqueueTaskForIssueWithHandoffAs(ctx context.Context, issue db.Issue, handoffNote string, originator pgtype.UUID) (db.AgentTaskQueue, error) {
+	return s.enqueueIssueTask(ctx, issue, pgtype.UUID{}, false, false, originator, handoffNote)
+}
+
+// EnqueueNewManagedSessionForIssue explicitly replaces the current ownership
+// Session while preserving Advisor/reviewer collaboration. The new primary
+// thread snapshots the Agent again and starts without a provider session ID.
+func (s *TaskService) EnqueueNewManagedSessionForIssue(ctx context.Context, issue db.Issue, userID pgtype.UUID, instruction string) (db.AgentTaskQueue, error) {
+	if !s.managedSessionsEnabled(ctx) {
+		return db.AgentTaskQueue{}, errors.New("managed sessions are not enabled")
+	}
+	if issue.Status == "backlog" || issue.Status == "done" || issue.Status == "cancelled" {
+		return db.AgentTaskQueue{}, errors.New("work item must be active to start a new session")
+	}
+	if !issue.AssigneeType.Valid || !issue.AssigneeID.Valid {
+		return db.AgentTaskQueue{}, errors.New("work item has no Agent or Squad assignee")
+	}
+
+	switch issue.AssigneeType.String {
+	case "agent":
+		agent, err := s.Queries.GetAgent(ctx, issue.AssigneeID)
+		if err != nil || agent.ArchivedAt.Valid {
+			return db.AgentTaskQueue{}, errors.New("assigned Agent is not available")
+		}
+	case "squad":
+		squad, err := s.Queries.GetSquad(ctx, issue.AssigneeID)
+		if err != nil {
+			return db.AgentTaskQueue{}, errors.New("assigned Squad is not available")
+		}
+		leader, err := s.Queries.GetAgent(ctx, squad.LeaderID)
+		if err != nil || leader.ArchivedAt.Valid {
+			return db.AgentTaskQueue{}, errors.New("Squad coordinator is not available")
+		}
+	default:
+		return db.AgentTaskQueue{}, errors.New("human-owned work uses Advisor Sessions, not an executor session")
+	}
+
+	cancelled, err := s.Sessions.CancelSupersededExecutorsForIssue(ctx, issue.ID, "", pgtype.UUID{}, "replaced by a new session")
+	if err != nil {
+		return db.AgentTaskQueue{}, err
+	}
+	s.BroadcastCancelledTasks(ctx, cancelled)
+
+	if issue.AssigneeType.String == "agent" {
+		return s.enqueueIssueTask(ctx, issue, pgtype.UUID{}, false, true, userID, instruction)
+	}
+	squad, _ := s.Queries.GetSquad(ctx, issue.AssigneeID)
+	return s.enqueueMentionTask(ctx, issue, squad.LeaderID, pgtype.UUID{}, true, issue.AssigneeID, false, true, userID, instruction)
 }
 
 // enqueueIssueTask is the shared implementation behind EnqueueTaskForIssue
@@ -909,7 +1623,7 @@ func (s *TaskService) ResolveIssueReviewSHAParam(ctx context.Context, issueID pg
 	return headShaText(s.ResolveIssueReviewSHA(ctx, issueID))
 }
 
-func (s *TaskService) enqueueIssueTask(ctx context.Context, issue db.Issue, triggerCommentID pgtype.UUID, forceFreshSession bool, handoffNote string) (db.AgentTaskQueue, error) {
+func (s *TaskService) enqueueIssueTask(ctx context.Context, issue db.Issue, triggerCommentID pgtype.UUID, forceFreshSession, forceNewManagedSession bool, originatorOverride pgtype.UUID, handoffNote string) (db.AgentTaskQueue, error) {
 	if defaultIssueType(issue.IssueType) == IssueTypeEpic {
 		return db.AgentTaskQueue{}, fmt.Errorf("epic is a planning container and cannot execute tasks")
 	}
@@ -927,21 +1641,35 @@ func (s *TaskService) enqueueIssueTask(ctx context.Context, issue db.Issue, trig
 		slog.Debug("task enqueue skipped: agent is archived", "issue_id", util.UUIDToString(issue.ID), "agent_id", util.UUIDToString(agent.ID))
 		return db.AgentTaskQueue{}, fmt.Errorf("agent is archived")
 	}
-	if !agent.RuntimeID.Valid {
-		slog.Error("task enqueue failed", "issue_id", util.UUIDToString(issue.ID), "error", "agent has no runtime")
-		return db.AgentTaskQueue{}, fmt.Errorf("agent has no runtime")
-	}
-
 	originatorUserID := s.resolveOriginatorForIssueTask(ctx, issue, triggerCommentID)
-	runtimeMCPOverlay := s.buildRuntimeMCPOverlay(ctx, originatorUserID, agent)
+	if originatorOverride.Valid {
+		originatorUserID = originatorOverride
+	}
+	placement, runtimeID, err := s.ensureManagedPlacement(
+		ctx, issue, agent, SessionModeExecutor, "executor", pgtype.UUID{}, originatorUserID, forceNewManagedSession,
+	)
+	if err != nil {
+		if errors.Is(err, ErrManagedSessionWaitingEnvironment) {
+			slog.Info("managed session parked: no online environment",
+				"issue_id", util.UUIDToString(issue.ID),
+				"agent_id", util.UUIDToString(agent.ID))
+		}
+		return db.AgentTaskQueue{}, err
+	}
+	if placement != nil && placement.Session.CreatedBy.Valid && !originatorOverride.Valid {
+		// Follow-up turns and environment recovery stay owned by the member who
+		// opened the Session, even when the issue has an older creator.
+		originatorUserID = placement.Session.CreatedBy
+	}
+	runtimeMCPOverlay := s.buildVersionedRuntimeMCPOverlay(ctx, originatorUserID, agent, managedVersionID(placement))
 	task, err := s.Queries.CreateAgentTask(ctx, db.CreateAgentTaskParams{
 		AgentID:              issue.AssigneeID,
-		RuntimeID:            agent.RuntimeID,
+		RuntimeID:            runtimeID,
 		IssueID:              issue.ID,
 		Priority:             priorityToInt(issue.Priority),
 		TriggerCommentID:     triggerCommentID,
 		TriggerSummary:       s.buildCommentTriggerSummary(ctx, triggerCommentID),
-		ForceFreshSession:    pgtype.Bool{Bool: forceFreshSession, Valid: forceFreshSession},
+		ForceFreshSession:    pgtype.Bool{Bool: forceFreshSession && placement == nil, Valid: forceFreshSession && placement == nil},
 		HandoffNote:          pgtype.Text{String: handoffNote, Valid: handoffNote != ""},
 		OriginatorUserID:     originatorUserID,
 		RuntimeMcpOverlay:    runtimeMCPOverlay.Overlay,
@@ -953,6 +1681,12 @@ func (s *TaskService) enqueueIssueTask(ctx context.Context, issue db.Issue, trig
 	if err != nil {
 		slog.Error("task enqueue failed", "issue_id", util.UUIDToString(issue.ID), "error", err)
 		return db.AgentTaskQueue{}, fmt.Errorf("create task: %w", err)
+	}
+	if placement != nil {
+		task, err = s.Sessions.AttachTask(ctx, task, *placement)
+		if err != nil {
+			return db.AgentTaskQueue{}, fmt.Errorf("attach task to managed session: %w", err)
+		}
 	}
 
 	slog.Info("task enqueued",
@@ -976,13 +1710,13 @@ func (s *TaskService) enqueueIssueTask(ctx context.Context, issue db.Issue, trig
 // Unlike EnqueueTaskForIssue, this takes an explicit agent ID rather than
 // deriving it from the issue assignee.
 func (s *TaskService) EnqueueTaskForMention(ctx context.Context, issue db.Issue, agentID pgtype.UUID, triggerCommentID pgtype.UUID) (db.AgentTaskQueue, error) {
-	return s.enqueueMentionTask(ctx, issue, agentID, triggerCommentID, false, pgtype.UUID{}, false, "")
+	return s.enqueueMentionTask(ctx, issue, agentID, triggerCommentID, false, pgtype.UUID{}, false, false, pgtype.UUID{}, "")
 }
 
 // EnqueueTaskForThreadParent creates a queued task for the agent who authored
 // the direct parent comment a member replied to.
 func (s *TaskService) EnqueueTaskForThreadParent(ctx context.Context, issue db.Issue, agentID pgtype.UUID, triggerCommentID pgtype.UUID) (db.AgentTaskQueue, error) {
-	return s.enqueueMentionTask(ctx, issue, agentID, triggerCommentID, false, pgtype.UUID{}, false, "")
+	return s.enqueueMentionTask(ctx, issue, agentID, triggerCommentID, false, pgtype.UUID{}, false, false, pgtype.UUID{}, "")
 }
 
 // EnqueueTaskForSquadLeader is the leader-role variant of EnqueueTaskForMention.
@@ -997,17 +1731,56 @@ func (s *TaskService) EnqueueTaskForThreadParent(ctx context.Context, issue db.I
 // leader task was triggered (comment @squad, issue assign, autopilot,
 // sub-issue done callback). See migration 127.
 func (s *TaskService) EnqueueTaskForSquadLeader(ctx context.Context, issue db.Issue, leaderID pgtype.UUID, squadID pgtype.UUID, triggerCommentID pgtype.UUID) (db.AgentTaskQueue, error) {
-	return s.enqueueMentionTask(ctx, issue, leaderID, triggerCommentID, true, squadID, false, "")
+	return s.enqueueMentionTask(ctx, issue, leaderID, triggerCommentID, true, squadID, false, false, pgtype.UUID{}, "")
 }
 
 // EnqueueTaskForSquadLeaderWithHandoff is the assign/promote variant carrying a
 // handoff note into the leader run's opening context (MUL-3375). Empty note
 // behaves exactly like EnqueueTaskForSquadLeader.
 func (s *TaskService) EnqueueTaskForSquadLeaderWithHandoff(ctx context.Context, issue db.Issue, leaderID pgtype.UUID, squadID pgtype.UUID, handoffNote string) (db.AgentTaskQueue, error) {
-	return s.enqueueMentionTask(ctx, issue, leaderID, pgtype.UUID{}, true, squadID, false, handoffNote)
+	return s.enqueueMentionTask(ctx, issue, leaderID, pgtype.UUID{}, true, squadID, false, false, pgtype.UUID{}, handoffNote)
 }
 
-func (s *TaskService) enqueueMentionTask(ctx context.Context, issue db.Issue, agentID pgtype.UUID, triggerCommentID pgtype.UUID, isLeader bool, squadID pgtype.UUID, forceFreshSession bool, handoffNote string) (db.AgentTaskQueue, error) {
+// EnqueueTaskForSquadLeaderWithHandoffAs is the member-attributed variant used
+// by explicit assignment, promotion and Session messages.
+func (s *TaskService) EnqueueTaskForSquadLeaderWithHandoffAs(ctx context.Context, issue db.Issue, leaderID pgtype.UUID, squadID pgtype.UUID, handoffNote string, originator pgtype.UUID) (db.AgentTaskQueue, error) {
+	return s.enqueueMentionTask(ctx, issue, leaderID, pgtype.UUID{}, true, squadID, false, false, originator, handoffNote)
+}
+
+func (s *TaskService) enqueueManagedCoordinatorFollowUp(ctx context.Context, source db.AgentTaskQueue, completion ManagedTaskCompletion) {
+	if !completion.ResumeCoordinator || !source.IssueID.Valid || !completion.CoordinatorAgentID.Valid || !completion.SquadID.Valid {
+		return
+	}
+	issue, err := s.Queries.GetIssue(ctx, source.IssueID)
+	if err == nil {
+		_, err = s.EnqueueTaskForSquadLeaderWithHandoffAs(
+			ctx,
+			issue,
+			completion.CoordinatorAgentID,
+			completion.SquadID,
+			completion.HandoffNote,
+			completion.OriginatorUserID,
+		)
+	}
+	if err == nil {
+		return
+	}
+	slog.Warn("resume Squad coordinator after delegated work failed",
+		"session_id", util.UUIDToString(completion.SessionID),
+		"issue_id", util.UUIDToString(source.IssueID),
+		"error", err,
+	)
+	if s.Sessions == nil || !completion.SessionID.Valid {
+		return
+	}
+	if session, loadErr := s.Queries.GetAgentSession(ctx, completion.SessionID); loadErr == nil {
+		thread, _ := s.Queries.GetPrimaryAgentSessionThread(ctx, session.ID)
+		_, _ = s.Sessions.Transition(ctx, session.ID, SessionStatusWaitingInput, "coordinator synthesis could not start", thread.ID, source.ID)
+		s.Sessions.NotifyAction(ctx, session, completion.CoordinatorAgentID, "session_waiting_input", "Squad synthesis needs input", "Delegated work finished, but the coordinator could not resume. Retry the Session or ask the coordinator to summarize.", "squad-synthesis-unavailable", map[string]any{"error": redact.Text(err.Error())})
+	}
+}
+
+func (s *TaskService) enqueueMentionTask(ctx context.Context, issue db.Issue, agentID pgtype.UUID, triggerCommentID pgtype.UUID, isLeader bool, squadID pgtype.UUID, forceFreshSession, forceNewManagedSession bool, originatorOverride pgtype.UUID, handoffNote string) (db.AgentTaskQueue, error) {
 	if defaultIssueType(issue.IssueType) == IssueTypeEpic {
 		return db.AgentTaskQueue{}, fmt.Errorf("epic is a planning container and cannot execute issue tasks")
 	}
@@ -1020,27 +1793,69 @@ func (s *TaskService) enqueueMentionTask(ctx context.Context, issue db.Issue, ag
 		slog.Debug("mention task enqueue skipped: agent is archived", "issue_id", util.UUIDToString(issue.ID), "agent_id", util.UUIDToString(agentID))
 		return db.AgentTaskQueue{}, fmt.Errorf("agent is archived")
 	}
-	if !agent.RuntimeID.Valid {
-		slog.Error("mention task enqueue failed: agent has no runtime", "issue_id", util.UUIDToString(issue.ID), "agent_id", util.UUIDToString(agentID))
-		return db.AgentTaskQueue{}, fmt.Errorf("agent has no runtime")
-	}
-
 	originatorUserID := s.resolveOriginatorForIssueTask(ctx, issue, triggerCommentID)
-	runtimeMCPOverlay := s.buildRuntimeMCPOverlay(ctx, originatorUserID, agent)
+	if originatorOverride.Valid {
+		originatorUserID = originatorOverride
+	}
+	isSquadWorker := false
+	if !isLeader && issue.AssigneeType.Valid && issue.AssigneeType.String == "squad" && issue.AssigneeID.Valid && featureflags.SquadSessionOrchestrationEnabled(ctx, s.FeatureFlags) {
+		if squad, squadErr := s.Queries.GetSquad(ctx, issue.AssigneeID); squadErr == nil && squad.LeaderID != agentID {
+			if member, memberErr := s.Queries.IsSquadMember(ctx, db.IsSquadMemberParams{SquadID: issue.AssigneeID, MemberType: "agent", MemberID: agentID}); memberErr == nil && member {
+				isSquadWorker = true
+				squadID = issue.AssigneeID
+			}
+		}
+	}
+	mode := SessionModeExecutor
+	role := "executor"
+	if isLeader {
+		mode = SessionModeCoordinator
+		role = "coordinator"
+	} else if !isSquadWorker && !(issue.AssigneeType.Valid && issue.AssigneeType.String == "agent" && issue.AssigneeID == agentID) {
+		mode = SessionModeAdvisor
+		role = "advisor"
+	}
+	var placement *ManagedSessionPlacement
+	var runtimeID pgtype.UUID
+	if isSquadWorker {
+		placement, runtimeID, err = s.ensureSquadWorkerPlacement(ctx, issue, agent, squadID)
+		if errors.Is(err, pgx.ErrNoRows) {
+			placement, runtimeID, err = s.ensureManagedPlacement(ctx, issue, agent, SessionModeAdvisor, "advisor", pgtype.UUID{}, originatorUserID, false)
+			mode = SessionModeAdvisor
+		}
+	} else {
+		placement, runtimeID, err = s.ensureManagedPlacement(ctx, issue, agent, mode, role, squadID, originatorUserID, forceNewManagedSession)
+	}
+	if err != nil {
+		return db.AgentTaskQueue{}, err
+	}
+	if placement != nil && placement.Session.CreatedBy.Valid && !originatorOverride.Valid {
+		originatorUserID = placement.Session.CreatedBy
+	}
+	var managedContext []byte
+	if placement != nil && mode == SessionModeAdvisor {
+		managedContext, _ = json.Marshal(MemberAssigneeAdvisorContext{
+			Type:           ManualIssueAdvisorContextType,
+			AssigneeUserID: util.UUIDToString(originatorUserID),
+			TargetType:     "issue",
+		})
+	}
+	runtimeMCPOverlay := s.buildVersionedRuntimeMCPOverlay(ctx, originatorUserID, agent, managedVersionID(placement))
 	task, err := s.Queries.CreateAgentTask(ctx, db.CreateAgentTaskParams{
 		AgentID:              agentID,
-		RuntimeID:            agent.RuntimeID,
+		RuntimeID:            runtimeID,
 		IssueID:              issue.ID,
 		Priority:             priorityToInt(issue.Priority),
 		TriggerCommentID:     triggerCommentID,
 		TriggerSummary:       s.buildCommentTriggerSummary(ctx, triggerCommentID),
 		IsLeaderTask:         pgtype.Bool{Bool: isLeader, Valid: isLeader},
-		ForceFreshSession:    pgtype.Bool{Bool: forceFreshSession, Valid: forceFreshSession},
+		ForceFreshSession:    pgtype.Bool{Bool: forceFreshSession && placement == nil, Valid: forceFreshSession && placement == nil},
 		HandoffNote:          pgtype.Text{String: handoffNote, Valid: handoffNote != ""},
 		SquadID:              squadID,
 		OriginatorUserID:     originatorUserID,
 		RuntimeMcpOverlay:    runtimeMCPOverlay.Overlay,
 		RuntimeConnectedApps: runtimeMCPOverlay.ConnectedApps,
+		ManagedContext:       managedContext,
 		// Stamp the reviewed head so dedup can distinguish this run's target
 		// from a later request against a new HEAD (TEN-356).
 		HeadSha: headShaText(s.ResolveIssueReviewSHA(ctx, issue.ID)),
@@ -1048,6 +1863,12 @@ func (s *TaskService) enqueueMentionTask(ctx context.Context, issue db.Issue, ag
 	if err != nil {
 		slog.Error("mention task enqueue failed", "issue_id", util.UUIDToString(issue.ID), "agent_id", util.UUIDToString(agentID), "error", err)
 		return db.AgentTaskQueue{}, fmt.Errorf("create task: %w", err)
+	}
+	if placement != nil {
+		task, err = s.Sessions.AttachTask(ctx, task, *placement)
+		if err != nil {
+			return db.AgentTaskQueue{}, fmt.Errorf("attach mention task to managed session: %w", err)
+		}
 	}
 
 	slog.Info("mention task enqueued", "task_id", util.UUIDToString(task.ID), "issue_id", util.UUIDToString(issue.ID), "agent_id", util.UUIDToString(agentID), "is_leader_task", isLeader)
@@ -1352,6 +2173,35 @@ func (s *TaskService) CancelTasksForIssue(ctx context.Context, issueID pgtype.UU
 		s.ReconcileAgentStatus(ctx, t.AgentID)
 		s.broadcastTaskEvent(ctx, protocol.EventTaskCancelled, t)
 	}
+	return nil
+}
+
+// CancelManagedSessionsForIssue closes the durable execution layer without
+// touching unrelated legacy tasks. Callers use this for terminal work-item
+// transitions; the returned queue rows are reconciled and broadcast here.
+func (s *TaskService) CancelManagedSessionsForIssue(ctx context.Context, issueID pgtype.UUID, reason string) error {
+	if s == nil || s.Sessions == nil {
+		return nil
+	}
+	cancelled, err := s.Sessions.CancelOpenForIssue(ctx, issueID, reason)
+	if err != nil {
+		return err
+	}
+	s.BroadcastCancelledTasks(ctx, cancelled)
+	return nil
+}
+
+// CancelSupersededManagedExecutors stops only ownership Sessions made stale by
+// an assignee change. Advisor and reviewer tasks remain independent.
+func (s *TaskService) CancelSupersededManagedExecutors(ctx context.Context, issueID pgtype.UUID, assigneeType string, assigneeID pgtype.UUID, reason string) error {
+	if s == nil || s.Sessions == nil {
+		return nil
+	}
+	cancelled, err := s.Sessions.CancelSupersededExecutorsForIssue(ctx, issueID, assigneeType, assigneeID, reason)
+	if err != nil {
+		return err
+	}
+	s.BroadcastCancelledTasks(ctx, cancelled)
 	return nil
 }
 
@@ -1781,6 +2631,9 @@ func (s *TaskService) StartTask(ctx context.Context, taskID pgtype.UUID) (*db.Ag
 
 	slog.Info("task started", "task_id", util.UUIDToString(task.ID), "issue_id", util.UUIDToString(task.IssueID))
 	s.captureTaskStarted(ctx, task)
+	if s.Sessions != nil {
+		s.Sessions.OnTaskStarted(ctx, task)
+	}
 	// Tell every connected workspace WS client that this task transitioned
 	// (dispatched | waiting_local_directory) → running. Without this, the
 	// workspace-wide `agentTaskSnapshot` query only refreshes on the 30s
@@ -1944,6 +2797,24 @@ func (s *TaskService) CompleteTask(ctx context.Context, taskID pgtype.UUID, resu
 
 	slog.Info("task completed", "task_id", util.UUIDToString(task.ID), "issue_id", util.UUIDToString(task.IssueID))
 	s.captureTaskCompleted(ctx, task)
+	managedCompletion := ManagedTaskCompletion{}
+	if s.Sessions != nil {
+		managedCompletion = s.Sessions.OnTaskCompleted(ctx, task)
+		if reviewContext, isReview := ParseManagedOutcomeReviewContext(task); isReview {
+			s.completeOutcomeReview(ctx, task, reviewContext)
+		} else if managedCompletion.NeedsOutcomeReview {
+			if featureflags.OutcomeEvaluationEnabled(ctx, s.FeatureFlags) {
+				if _, err := s.EnqueueOutcomeReview(ctx, task); err != nil {
+					slog.Warn("enqueue outcome review failed", "task_id", util.UUIDToString(task.ID), "session_id", util.UUIDToString(task.AgentSessionID), "error", err)
+					if session, loadErr := s.Queries.GetAgentSession(ctx, task.AgentSessionID); loadErr == nil {
+						s.Sessions.NotifyAction(ctx, session, task.AgentID, "session_waiting_input", "Outcome review needs input", "The automatic Reviewer could not start. Review the Agent result and decide how to continue.", "reviewer-unavailable", map[string]any{"error": redact.Text(err.Error())})
+					}
+				}
+			} else if session, err := s.Queries.GetAgentSession(ctx, task.AgentSessionID); err == nil {
+				s.Sessions.NotifyAction(ctx, session, task.AgentID, "session_waiting_input", "Review the Agent outcome", "Acceptance criteria are defined. Review the Agent result and decide how to continue.", "manual-outcome-review", nil)
+			}
+		}
+	}
 
 	// Invariant: every completed issue task must have at least one agent
 	// comment on the issue, so the user always sees something when a run
@@ -1953,7 +2824,7 @@ func (s *TaskService) CompleteTask(ctx context.Context, taskID pgtype.UUID, resu
 	// tasks, TriggerCommentID threads the fallback under the original comment;
 	// for assignment-triggered tasks it is NULL and the fallback is top-level.
 	// Chat tasks have no IssueID and are handled separately below.
-	if task.IssueID.Valid {
+	if task.IssueID.Valid && !IsManagedOutcomeReviewTask(task) {
 		isAdvisorTask := IsMemberAssigneeAdvisorTask(task)
 		suppressNoActionComment, err := HasSquadLeaderNoActionEvaluationForTask(ctx, s.Queries, task)
 		if err != nil {
@@ -1997,6 +2868,9 @@ func (s *TaskService) CompleteTask(ctx context.Context, taskID pgtype.UUID, resu
 				}
 			}
 		}
+	}
+	if managedCompletion.ResumeCoordinator {
+		s.enqueueManagedCoordinatorFollowUp(ctx, task, managedCompletion)
 	}
 
 	// Quick-create tasks: locate the issue the agent just created and push
@@ -2146,14 +3020,22 @@ func (s *TaskService) FailTask(ctx context.Context, taskID pgtype.UUID, errMsg, 
 	// Auto-retry eligible failures (orphan, timeout, runtime_offline,
 	// runtime_recovery). The helper itself enforces attempt < max_attempts
 	// and only triggers for issue/chat tasks.
-	retried, _ := s.MaybeRetryFailedTask(ctx, task)
+	retried, retryErr := s.MaybeRetryFailedTask(ctx, task)
+	waitingEnvironment := errors.Is(retryErr, ErrManagedSessionWaitingEnvironment)
+	managedCompletion := ManagedTaskCompletion{}
+	if s.Sessions != nil && retried == nil && !waitingEnvironment {
+		managedCompletion = s.Sessions.OnTaskFailed(ctx, task, errMsg)
+	}
 
 	// Skip the per-failure system comment when we'll immediately retry —
 	// the new task will surface its own status to the user, and we don't
 	// want to spam the issue with "task timed out" messages on every
 	// daemon hiccup.
-	if errMsg != "" && task.IssueID.Valid && retried == nil {
+	if errMsg != "" && task.IssueID.Valid && retried == nil && !waitingEnvironment {
 		s.createAgentComment(ctx, task.IssueID, task.AgentID, redact.Text(errMsg), "system", task.TriggerCommentID, task.ID)
+	}
+	if managedCompletion.ResumeCoordinator {
+		s.enqueueManagedCoordinatorFollowUp(ctx, task, managedCompletion)
 	}
 
 	// Mirror the issue fallback for chat tasks: write an assistant
@@ -2161,7 +3043,7 @@ func (s *TaskService) FailTask(ctx context.Context, taskID pgtype.UUID, errMsg, 
 	// conversation history shows what happened. Skip when auto-retry is
 	// pending (the new attempt will write its own outcome) — same guard as
 	// the issue path above.
-	if task.ChatSessionID.Valid && retried == nil {
+	if task.ChatSessionID.Valid && retried == nil && !waitingEnvironment {
 		if _, err := s.Queries.CreateChatMessage(ctx, db.CreateChatMessageParams{
 			ChatSessionID: task.ChatSessionID,
 			Role:          "assistant",
@@ -2185,7 +3067,7 @@ func (s *TaskService) FailTask(ctx context.Context, taskID pgtype.UUID, errMsg, 
 	// requester so they can either retry or fall back to the advanced form
 	// without losing their original prompt. Skipped when an auto-retry is
 	// pending — the new attempt will write its own outcome.
-	if retried == nil {
+	if retried == nil && !waitingEnvironment {
 		if qc, ok := s.parseQuickCreateContext(task); ok {
 			s.notifyQuickCreateFailed(ctx, task, qc, errMsg)
 		}
@@ -2270,12 +3152,71 @@ func (s *TaskService) MaybeRetryFailedTask(ctx context.Context, parent db.AgentT
 			"error", agentErr,
 		)
 	} else {
-		runtimeMCPOverlay = s.buildRuntimeMCPOverlay(ctx, parent.OriginatorUserID, agent)
+		versionID := pgtype.UUID{}
+		if parent.SessionThreadID.Valid && s.Queries != nil {
+			if thread, threadErr := s.Queries.GetAgentSessionThread(ctx, parent.SessionThreadID); threadErr == nil {
+				versionID = thread.AgentVersionID
+			}
+		}
+		runtimeMCPOverlay = s.buildVersionedRuntimeMCPOverlay(ctx, parent.OriginatorUserID, agent, versionID)
 	}
-	child, err := s.Queries.CreateRetryTask(ctx, db.CreateRetryTaskParams{
-		ID:                   parent.ID,
-		RuntimeMcpOverlay:    runtimeMCPOverlay.Overlay,
-		RuntimeConnectedApps: runtimeMCPOverlay.ConnectedApps,
+
+	var failoverRuntime pgtype.UUID
+	if s.Sessions != nil && parent.AgentSessionID.Valid && parent.SessionThreadID.Valid && agentErr == nil &&
+		featureflags.AgentRuntimePoolingEnabled(ctx, s.FeatureFlags) &&
+		(reason == "runtime_offline" || reason == "runtime_recovery") {
+		runtime, runtimeErr := s.Queries.SelectManagedRuntimeForAgentExcluding(ctx, db.SelectManagedRuntimeForAgentExcludingParams{
+			AgentID:           parent.AgentID,
+			ExcludedRuntimeID: parent.RuntimeID,
+		})
+		if errors.Is(runtimeErr, pgx.ErrNoRows) {
+			runtime, runtimeErr = s.Queries.SelectManagedRuntimeForAgent(ctx, parent.AgentID)
+		}
+		if errors.Is(runtimeErr, pgx.ErrNoRows) {
+			_, _ = s.Queries.UpdateAgentSessionThreadRuntime(ctx, db.UpdateAgentSessionThreadRuntimeParams{
+				RuntimeID: pgtype.UUID{},
+				Status:    SessionStatusWaitingEnvironment,
+				ID:        parent.SessionThreadID,
+			})
+			session, sessionErr := s.Sessions.Transition(ctx, parent.AgentSessionID, SessionStatusWaitingEnvironment, "no online bound runtime", parent.SessionThreadID, parent.ID)
+			if sessionErr == nil {
+				s.Sessions.NotifyAction(ctx, session, parent.AgentID, "session_waiting_environment", "Execution computer needed", "Connect or enable a compatible desktop agent to continue this Session.", "environment", map[string]any{"status": SessionStatusWaitingEnvironment})
+			}
+			return nil, ErrManagedSessionWaitingEnvironment
+		}
+		if runtimeErr != nil {
+			return nil, runtimeErr
+		}
+		if runtime.ID != parent.RuntimeID {
+			failoverRuntime = runtime.ID
+		}
+	}
+
+	var child db.AgentTaskQueue
+	err := s.runInTx(ctx, func(qtx *db.Queries) error {
+		created, createErr := qtx.CreateRetryTask(ctx, db.CreateRetryTaskParams{
+			ID:                   parent.ID,
+			RuntimeMcpOverlay:    runtimeMCPOverlay.Overlay,
+			RuntimeConnectedApps: runtimeMCPOverlay.ConnectedApps,
+		})
+		if createErr != nil {
+			return createErr
+		}
+		child = created
+		if failoverRuntime.Valid {
+			child, createErr = qtx.MoveQueuedManagedTaskToRuntime(ctx, db.MoveQueuedManagedTaskToRuntimeParams{
+				RuntimeID: failoverRuntime,
+				ID:        child.ID,
+			})
+			if createErr != nil {
+				return createErr
+			}
+			_, createErr = qtx.ResetAgentSessionThreadForRuntimeFailover(ctx, db.ResetAgentSessionThreadForRuntimeFailoverParams{
+				RuntimeID: failoverRuntime,
+				ID:        parent.SessionThreadID,
+			})
+		}
+		return createErr
 	})
 	if err != nil {
 		slog.Warn("task auto-retry failed",
@@ -2284,6 +3225,18 @@ func (s *TaskService) MaybeRetryFailedTask(ctx context.Context, parent db.AgentT
 			"error", err,
 		)
 		return nil, err
+	}
+	if failoverRuntime.Valid && s.Sessions != nil {
+		_, _ = s.Sessions.AppendEvent(ctx, ManagedEventInput{
+			SessionID:      parent.AgentSessionID,
+			ThreadID:       parent.SessionThreadID,
+			ActorType:      "system",
+			EventType:      "session.thread_runtime_changed",
+			Payload:        map[string]any{"from_runtime_id": util.UUIDToString(parent.RuntimeID), "runtime_id": util.UUIDToString(failoverRuntime), "reason": reason},
+			Visibility:     "workspace",
+			SourceTaskID:   child.ID,
+			IdempotencyKey: "runtime-failover:" + util.UUIDToString(child.ID),
+		})
 	}
 	slog.Info("task auto-retry enqueued",
 		"parent_task_id", util.UUIDToString(parent.ID),
@@ -2424,9 +3377,9 @@ func (s *TaskService) RerunIssue(ctx context.Context, issueID pgtype.UUID, sourc
 func (s *TaskService) enqueueRerunTask(ctx context.Context, issue db.Issue, agentID pgtype.UUID, triggerCommentID pgtype.UUID, isLeader bool, squadID pgtype.UUID) (db.AgentTaskQueue, error) {
 	if issue.AssigneeType.String == "agent" && issue.AssigneeID.Valid &&
 		util.UUIDToString(issue.AssigneeID) == util.UUIDToString(agentID) {
-		return s.enqueueIssueTask(ctx, issue, triggerCommentID, true, "")
+		return s.enqueueIssueTask(ctx, issue, triggerCommentID, true, false, pgtype.UUID{}, "")
 	}
-	return s.enqueueMentionTask(ctx, issue, agentID, triggerCommentID, isLeader, squadID, true, "")
+	return s.enqueueMentionTask(ctx, issue, agentID, triggerCommentID, isLeader, squadID, true, false, pgtype.UUID{}, "")
 }
 
 // HandleFailedTasks runs the post-failure side effects for a batch of
@@ -2615,6 +3568,43 @@ func (s *TaskService) LoadAgentSkills(ctx context.Context, agentID pgtype.UUID) 
 		files, _ := s.Queries.ListSkillFiles(ctx, sk.ID)
 		for _, f := range files {
 			data.Files = append(data.Files, AgentSkillFileData{Path: f.Path, Content: f.Content})
+		}
+		result = append(result, data)
+	}
+	return result
+}
+
+// LoadAgentSkillsByIDs applies the immutable skill membership captured by an
+// Agent version. Skill content still comes from the workspace skill record,
+// but skills attached after the Session started cannot leak into an existing
+// thread and skills removed from the Agent remain available by their IDs.
+func (s *TaskService) LoadAgentSkillsByIDs(ctx context.Context, agentID pgtype.UUID, skillIDs []string) []AgentSkillData {
+	if len(skillIDs) == 0 {
+		return nil
+	}
+	agent, err := s.Queries.GetAgent(ctx, agentID)
+	if err != nil {
+		return nil
+	}
+	result := make([]AgentSkillData, 0, len(skillIDs))
+	for _, id := range skillIDs {
+		skillID, err := util.ParseUUID(id)
+		if err != nil {
+			continue
+		}
+		skill, err := s.Queries.GetSkill(ctx, skillID)
+		if err != nil || skill.WorkspaceID != agent.WorkspaceID {
+			continue
+		}
+		data := AgentSkillData{
+			ID:          util.UUIDToString(skill.ID),
+			Name:        skill.Name,
+			Description: skill.Description,
+			Content:     skill.Content,
+		}
+		files, _ := s.Queries.ListSkillFiles(ctx, skill.ID)
+		for _, file := range files {
+			data.Files = append(data.Files, AgentSkillFileData{Path: file.Path, Content: file.Content})
 		}
 		result = append(result, data)
 	}

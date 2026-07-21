@@ -220,17 +220,26 @@ function ResolvedThreadBar({
   const authorsLabel = useMemo(() => {
     const MAX_NAMED = 2;
     const seen = new Set<string>();
-    const ordered: { type: string | null; id: string | null }[] = [];
+    const ordered: {
+      type: string | null;
+      id: string | null;
+      nameSnapshot?: string | null;
+    }[] = [];
     for (const e of [entry, ...replies]) {
       const key = `${e.actor_type}:${e.actor_id}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      ordered.push({ type: e.actor_type, id: e.actor_id });
+      ordered.push({
+        type: e.actor_type,
+        id: e.actor_id,
+        nameSnapshot: e.actor_name_snapshot,
+      });
     }
     const named = ordered
       .slice(0, MAX_NAMED)
       .map((a) =>
-        getName(a.type as "member" | "agent" | null | undefined, a.id),
+        a.nameSnapshot ??
+          getName(a.type as "member" | "agent" | null | undefined, a.id),
       )
       .join(", ");
     const remaining = ordered.length - MAX_NAMED;
@@ -407,10 +416,12 @@ function CommentBody({
     issueAttachmentsOptions(wsId, issueId),
   );
 
-  const name = getName(
-    entry.actor_type as "member" | "agent" | null | undefined,
-    entry.actor_id,
-  );
+  const name =
+    entry.actor_name_snapshot ??
+    getName(
+      entry.actor_type as "member" | "agent" | null | undefined,
+      entry.actor_id,
+    );
   const edited =
     entry.updated_at &&
     entry.created_at &&
